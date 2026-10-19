@@ -30,32 +30,34 @@ export function Dashboard({
   onAccessEvent?: (event: EventCardProps) => void
 }) {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[402px] flex-col px-6 pt-12">
-      {/* Cabeçalho */}
-      <AccentHeading font="heading">Meus Eventos</AccentHeading>
+    <div className="min-h-screen w-full bg-surface">
+      <div className="mx-auto w-full max-w-[402px] px-6 pt-12 pb-10 lg:max-w-5xl lg:px-10 lg:pt-16">
+        {/* Cabeçalho */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <AccentHeading font="heading">Meus Eventos</AccentHeading>
+          <Button
+            className="lg:max-w-[220px]"
+            onClick={onCreate}
+            icon={<img src={circlePlus} alt="" width={24} height={24} />}
+          >
+            Criar Evento
+          </Button>
+        </div>
 
-      {/* Ação principal */}
-      <Button
-        className="mt-4"
-        onClick={onCreate}
-        icon={<img src={circlePlus} alt="" width={24} height={24} />}
-      >
-        Criar Evento
-      </Button>
+        {/* Divisor (só mobile) */}
+        <span className="mx-auto mt-4 block h-px w-3/5 bg-field-border lg:hidden" />
 
-      {/* Divisor */}
-      <span className="mx-auto mt-4 h-px w-3/5 bg-field-border" />
-
-      {/* Lista de eventos */}
-      <section className="mt-6 flex flex-col gap-5">
-        {events.map((event) => (
-          <EventCard
-            key={event.title}
-            {...event}
-            onAccess={() => onAccessEvent?.(event)}
-          />
-        ))}
-      </section>
+        {/* Lista de eventos */}
+        <section className="mt-6 grid grid-cols-1 gap-5 lg:mt-8 lg:grid-cols-2 lg:gap-6 xl:grid-cols-3">
+          {events.map((event) => (
+            <EventCard
+              key={event.title}
+              {...event}
+              onAccess={() => onAccessEvent?.(event)}
+            />
+          ))}
+        </section>
+      </div>
     </div>
   )
 }

@@ -6,7 +6,7 @@ import eye from '../assets/eye.svg'
 import houseWhite from '../assets/house-white.svg'
 import settings from '../assets/settings.svg'
 import { AccentHeading } from '../components/AccentHeading'
-import { BottomNav } from '../components/BottomNav'
+import { AppLayout } from '../components/AppLayout'
 import { FilterChip } from '../components/FilterChip'
 import { Input } from '../components/Input'
 import { PaymentRow, type Payment } from '../components/PaymentRow'
@@ -37,14 +37,20 @@ export function Rateio({ onBack }: { onBack?: () => void }) {
     })
   }, [search, filter])
 
+  const nav = [
+    { icon: houseWhite, label: 'Inicio', onClick: onBack },
+    { icon: eye, label: 'Visualizar' },
+    { icon: settings, label: 'Configurações' },
+  ]
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[402px] flex-col px-6 pt-10">
+    <AppLayout items={nav}>
       <NavBack onBack={onBack} />
 
       <AccentHeading>Rateio de Pagamentos</AccentHeading>
 
-      {/* Carrossel de estatísticas */}
-      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2">
+      {/* Estatísticas: carrossel no mobile, grade no desktop */}
+      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
         <StatCard icon={banknoteStat} value="R$ 2.678,99" tone="lilac" label="Total despesas" />
         <StatCard icon={badgePercent} value="80%" tone="mint" label="Porcentagem paga" />
         <StatCard icon={circleDollar} value="R$ 256,97" tone="peach" label="Valor por formando" />
@@ -52,7 +58,7 @@ export function Rateio({ onBack }: { onBack?: () => void }) {
 
       {/* Busca */}
       <Input
-        className="mt-5"
+        className="mt-5 lg:max-w-md"
         name="busca-rateio"
         placeholder="Formando..."
         value={search}
@@ -74,23 +80,15 @@ export function Rateio({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* Lista de rateio */}
-      <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto">
+      <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto lg:grid lg:grid-cols-2 lg:content-start lg:gap-x-6 lg:gap-y-4 lg:overflow-visible">
         {visible.length > 0 ? (
           visible.map((p) => <PaymentRow key={p.name} {...p} />)
         ) : (
-          <p className="mt-8 text-center font-display text-[13px] text-muted">
+          <p className="mt-8 text-center font-display text-[13px] text-muted lg:col-span-2">
             Nenhum formando encontrado.
           </p>
         )}
       </div>
-
-      <BottomNav
-        items={[
-          { icon: houseWhite, label: 'Inicio', onClick: onBack },
-          { icon: eye, label: 'Visualizar' },
-          { icon: settings, label: 'Configurações' },
-        ]}
-      />
-    </div>
+    </AppLayout>
   )
 }

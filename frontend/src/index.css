@@ -57,25 +57,11 @@ body {
 }
 
 /*
- * Casca da aplicação: em telas grandes, centraliza a coluna "mobile"
- * (uma única por vez) sobre o fundo e dá um leve destaque. No mobile,
- * a coluna ocupa a largura toda e o fundo fica invisível.
+ * Casca da aplicação. No mobile é só o contêiner de altura cheia; cada
+ * tela controla a própria largura. No desktop, as telas se expandem
+ * (sidebar + conteúdo), então o fundo fica por baixo do que não preenche.
  */
 .app-shell {
-  display: flex;
   min-height: 100svh;
-  justify-content: center;
   background: var(--color-backdrop);
-}
-
-.app-shell > * {
-  width: 100%;
-  max-width: 402px;
-  background: var(--color-surface);
-}
-
-@media (min-width: 640px) {
-  .app-shell > * {
-    box-shadow: 0 0 60px rgba(38, 33, 92, 0.1);
-  }
 }

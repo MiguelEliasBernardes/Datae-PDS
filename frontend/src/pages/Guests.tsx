@@ -6,7 +6,7 @@ import mailX from '../assets/mail-x.svg'
 import messageWarning from '../assets/message-square-warning.svg'
 import settings from '../assets/settings.svg'
 import { AccentHeading } from '../components/AccentHeading'
-import { BottomNav } from '../components/BottomNav'
+import { AppLayout } from '../components/AppLayout'
 import { FilterChip } from '../components/FilterChip'
 import { GuestRow, type Guest } from '../components/GuestRow'
 import { Input } from '../components/Input'
@@ -43,14 +43,20 @@ export function Guests({ onBack }: { onBack?: () => void }) {
     })
   }, [search, filter])
 
+  const nav = [
+    { icon: houseWhite, label: 'Inicio', onClick: onBack },
+    { icon: eye, label: 'Visualizar' },
+    { icon: settings, label: 'Configurações' },
+  ]
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[402px] flex-col px-6 pt-10">
+    <AppLayout items={nav}>
       <NavBack onBack={onBack} />
 
       <AccentHeading>Convidados</AccentHeading>
 
-      {/* Carrossel de estatísticas */}
-      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2">
+      {/* Estatísticas: carrossel no mobile, grade no desktop */}
+      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
         <StatCard
           icon={mailCheck}
           value="48"
@@ -70,7 +76,7 @@ export function Guests({ onBack }: { onBack?: () => void }) {
 
       {/* Busca */}
       <Input
-        className="mt-5"
+        className="mt-5 lg:max-w-md"
         name="busca-convidado"
         placeholder="Convidado..."
         value={search}
@@ -97,23 +103,15 @@ export function Guests({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* Lista de convidados */}
-      <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto">
+      <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto lg:grid lg:grid-cols-2 lg:content-start lg:gap-x-6 lg:gap-y-4 lg:overflow-visible">
         {visible.length > 0 ? (
           visible.map((g) => <GuestRow key={g.name} {...g} />)
         ) : (
-          <p className="mt-8 text-center font-display text-[13px] text-muted">
+          <p className="mt-8 text-center font-display text-[13px] text-muted lg:col-span-2">
             Nenhum convidado encontrado.
           </p>
         )}
       </div>
-
-      <BottomNav
-        items={[
-          { icon: houseWhite, label: 'Inicio' },
-          { icon: eye, label: 'Visualizar' },
-          { icon: settings, label: 'Configurações' },
-        ]}
-      />
-    </div>
+    </AppLayout>
   )
 }
