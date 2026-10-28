@@ -11,7 +11,7 @@ import settings from '../assets/settings.svg'
 import share2 from '../assets/share-2.svg'
 import users from '../assets/users.svg'
 import { AccentHeading } from '../components/AccentHeading'
-import { BottomNav } from '../components/BottomNav'
+import { AppLayout } from '../components/AppLayout'
 import { FeatureGrid } from '../components/FeatureGrid'
 import { NavBack } from '../components/NavBack'
 import { StatCard, type StatCardProps } from '../components/StatCard'
@@ -41,21 +41,27 @@ export function EventPanel({
   onOpenSettings?: () => void
   onOpenPreview?: () => void
 }) {
+  const nav = [
+    { icon: house, label: 'Inicio', active: true },
+    { icon: eye, label: 'Visualizar', onClick: onOpenPreview },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
+  ]
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[402px] flex-col px-6 pt-10">
+    <AppLayout items={nav}>
       <NavBack label="Eventos" onBack={onBack} />
 
       <AccentHeading>Chá de panela Marina e Rafael</AccentHeading>
 
-      {/* Carrossel de estatísticas */}
-      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2">
+      {/* Estatísticas: carrossel no mobile, grade no desktop */}
+      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
         {stats.map((stat) => (
           <StatCard key={stat.value} {...stat} />
         ))}
       </div>
 
       {/* Link para convidados */}
-      <div className="mt-5 flex flex-col gap-2">
+      <div className="mt-5 flex flex-col gap-2 lg:max-w-xl">
         <span className="font-display text-[14px] font-semibold text-primary-strong">
           Link para convidados
         </span>
@@ -86,14 +92,6 @@ export function EventPanel({
           ]}
         />
       </div>
-
-      <BottomNav
-        items={[
-          { icon: house, label: 'Inicio', active: true },
-          { icon: eye, label: 'Visualizar', onClick: onOpenPreview },
-          { icon: settings, label: 'Configurações', onClick: onOpenSettings },
-        ]}
-      />
-    </div>
+    </AppLayout>
   )
 }

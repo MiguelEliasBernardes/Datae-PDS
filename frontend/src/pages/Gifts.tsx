@@ -8,7 +8,7 @@ import productSample from '../assets/product-sample.png'
 import settings from '../assets/settings.svg'
 import shoppingBag from '../assets/shopping-bag.svg'
 import { AccentHeading } from '../components/AccentHeading'
-import { BottomNav } from '../components/BottomNav'
+import { AppLayout } from '../components/AppLayout'
 import { Button } from '../components/Button'
 import { FilterChip } from '../components/FilterChip'
 import { Input } from '../components/Input'
@@ -28,7 +28,15 @@ const products: Product[] = [
 type Filter = 'disponiveis' | 'reservados' | 'cotas'
 
 /** Tela O6 - Gestão da Lista de Presentes. */
-export function Gifts({ onBack }: { onBack?: () => void }) {
+export function Gifts({ 
+  onBack,
+  onOpenSettings,
+  onOpenPreview 
+  }: {
+  onBack?: () => void
+  onOpenSettings?: () => void
+  onOpenPreview?: () => void
+  }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter | null>(null)
 
@@ -44,14 +52,20 @@ export function Gifts({ onBack }: { onBack?: () => void }) {
     })
   }, [search, filter])
 
+  const nav = [
+    { icon: houseWhite, label: 'Inicio', onClick: onBack },
+    { icon: eye, label: 'Visualizar', onClick: onOpenPreview },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
+  ]
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[402px] flex-col px-6 pt-10">
+    <AppLayout items={nav}>
       <NavBack onBack={onBack} />
 
       <AccentHeading>Lista de Presentes</AccentHeading>
 
-      {/* Carrossel de estatísticas */}
-      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2">
+      {/* Estatísticas: carrossel no mobile, grade no desktop */}
+      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
         <StatCard icon={giftStat} value="15" tone="lilac" label="Presentes" />
         <StatCard icon={shoppingBag} value="9" tone="rose" label="Reservados" />
         <StatCard icon={circleCheckBig} value="6" tone="peach" label="Disponíveis" />
@@ -59,7 +73,7 @@ export function Gifts({ onBack }: { onBack?: () => void }) {
 
       {/* Adicionar presente */}
       <Button
-        className="mt-5"
+        className="mt-5 lg:max-w-xs"
         icon={<img src={circlePlus} alt="" width={24} height={24} />}
       >
         Adicionar Presente
@@ -67,7 +81,7 @@ export function Gifts({ onBack }: { onBack?: () => void }) {
 
       {/* Busca */}
       <Input
-        className="mt-4"
+        className="mt-4 lg:max-w-md"
         name="busca-presente"
         placeholder="Presente..."
         value={search}
@@ -94,23 +108,15 @@ export function Gifts({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* Lista de produtos */}
-      <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto">
+      <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto lg:grid lg:grid-cols-2 lg:content-start lg:gap-x-6 lg:gap-y-4 lg:overflow-visible">
         {visible.length > 0 ? (
           visible.map((p) => <ProductRow key={p.name} {...p} />)
         ) : (
-          <p className="mt-8 text-center font-display text-[13px] text-muted">
+          <p className="mt-8 text-center font-display text-[13px] text-muted lg:col-span-2">
             Nenhum presente encontrado.
           </p>
         )}
       </div>
-
-      <BottomNav
-        items={[
-          { icon: houseWhite, label: 'Inicio' },
-          { icon: eye, label: 'Visualizar' },
-          { icon: settings, label: 'Configurações' },
-        ]}
-      />
-    </div>
+    </AppLayout>
   )
 }

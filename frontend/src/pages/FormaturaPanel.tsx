@@ -7,7 +7,7 @@ import settings from '../assets/settings.svg'
 import split from '../assets/split.svg'
 import users from '../assets/users.svg'
 import { AccentHeading } from '../components/AccentHeading'
-import { BottomNav } from '../components/BottomNav'
+import { AppLayout } from '../components/AppLayout'
 import { FeatureGrid } from '../components/FeatureGrid'
 import { Input } from '../components/Input'
 import { NavBack } from '../components/NavBack'
@@ -17,22 +17,30 @@ export function FormaturaPanel({
   onBack,
   onOpenFormandos,
   onOpenRateio,
+  onOpenSettings
 }: {
   onBack?: () => void
   onOpenFormandos?: () => void
   onOpenRateio?: () => void
+  onOpenSettings?: () => void
 }) {
   const [subdomain, setSubdomain] = useState('')
 
+  const nav = [
+    { icon: house, label: 'Inicio', active: true, onClick: onBack },
+    { icon: eye, label: 'Visualizar' },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
+  ]
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[402px] flex-col px-6 pt-10">
+    <AppLayout items={nav}>
       <NavBack label="Eventos" onBack={onBack} />
 
       <AccentHeading>Formatura ADS 2026/2</AccentHeading>
 
       {/* Link para convidados */}
       <Input
-        className="mt-5"
+        className="mt-5 lg:max-w-xl"
         label="Link para convidados"
         labelTone="field"
         name="subdominio"
@@ -52,14 +60,6 @@ export function FormaturaPanel({
           ]}
         />
       </div>
-
-      <BottomNav
-        items={[
-          { icon: house, label: 'Inicio', active: true, onClick: onBack },
-          { icon: eye, label: 'Visualizar' },
-          { icon: settings, label: 'Configurações' },
-        ]}
-      />
-    </div>
+    </AppLayout>
   )
 }

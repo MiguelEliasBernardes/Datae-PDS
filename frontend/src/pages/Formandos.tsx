@@ -5,7 +5,7 @@ import graduationCap from '../assets/graduation-cap.svg'
 import houseWhite from '../assets/house-white.svg'
 import settings from '../assets/settings.svg'
 import { AccentHeading } from '../components/AccentHeading'
-import { BottomNav } from '../components/BottomNav'
+import { AppLayout } from '../components/AppLayout'
 import { Button } from '../components/Button'
 import { FilterChip } from '../components/FilterChip'
 import { Input } from '../components/Input'
@@ -24,7 +24,15 @@ const members: Member[] = [
 type Filter = 'membro' | 'administrador'
 
 /** Tela F2 - Formandos. */
-export function Formandos({ onBack }: { onBack?: () => void }) {
+export function Formandos({
+  onBack,
+  onOpenSettings,
+  onOpenPreview 
+  }: {
+  onBack?: () => void
+  onOpenSettings?: () => void
+  onOpenPreview?: () => void
+  }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter | null>(null)
 
@@ -38,14 +46,20 @@ export function Formandos({ onBack }: { onBack?: () => void }) {
     })
   }, [search, filter])
 
+  const nav = [
+    { icon: houseWhite, label: 'Inicio', onClick: onBack },
+    { icon: eye, label: 'Visualizar', onClick: onOpenPreview },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
+  ]
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[402px] flex-col px-6 pt-10">
+    <AppLayout items={nav}>
       <NavBack onBack={onBack} />
 
       <AccentHeading>Formandos</AccentHeading>
 
       {/* Estatística */}
-      <div className="mt-5">
+      <div className="mt-5 lg:max-w-sm">
         <StatCard
           icon={graduationCap}
           value="20"
@@ -56,7 +70,7 @@ export function Formandos({ onBack }: { onBack?: () => void }) {
 
       {/* Adicionar formando */}
       <Button
-        className="mt-5"
+        className="mt-5 lg:max-w-xs"
         icon={<img src={circlePlus} alt="" width={24} height={24} />}
       >
         Adicionar Formando
@@ -64,7 +78,7 @@ export function Formandos({ onBack }: { onBack?: () => void }) {
 
       {/* Busca */}
       <Input
-        className="mt-4"
+        className="mt-4 lg:max-w-md"
         name="busca-formando"
         placeholder="Formando..."
         value={search}
@@ -86,23 +100,15 @@ export function Formandos({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* Lista de formandos */}
-      <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto">
+      <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto lg:grid lg:grid-cols-2 lg:content-start lg:gap-x-6 lg:gap-y-4 lg:overflow-visible">
         {visible.length > 0 ? (
           visible.map((m) => <MemberRow key={m.name} {...m} />)
         ) : (
-          <p className="mt-8 text-center font-display text-[13px] text-muted">
+          <p className="mt-8 text-center font-display text-[13px] text-muted lg:col-span-2">
             Nenhum formando encontrado.
           </p>
         )}
       </div>
-
-      <BottomNav
-        items={[
-          { icon: houseWhite, label: 'Inicio', onClick: onBack },
-          { icon: eye, label: 'Visualizar' },
-          { icon: settings, label: 'Configurações' },
-        ]}
-      />
-    </div>
+    </AppLayout>
   )
 }

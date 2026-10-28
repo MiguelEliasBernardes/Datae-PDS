@@ -51,13 +51,23 @@ function renderScreen(
         />
       )
     case 'guests':
-      return <Guests onBack={() => setScreen('event')} />
+      return <Guests onBack={() => setScreen('event')}
+        onOpenSettings={() => setScreen('settings')}
+        onOpenPreview={() => setScreen('landing')}
+      />
     case 'gifts':
-      return <Gifts onBack={() => setScreen('event')} />
+      return <Gifts onBack={() => setScreen('event')} 
+        onOpenSettings={() => setScreen('settings')}
+        onOpenPreview={() => setScreen('landing')}
+      />
     case 'settings':
-      return <PageSettings onBack={() => setScreen('event')} />
+      return <PageSettings onBack={() => setScreen('event')}
+        onOpenPreview={() => setScreen('landing')}
+      />
     case 'landing':
-      return <EventLanding onBack={() => setScreen('event')} />
+      return <EventLanding onBack={() => setScreen('event')}
+        onOpenSettings={() => setScreen('settings')}
+      />
     case 'formatura':
       return (
         <FormaturaPanel
@@ -67,9 +77,15 @@ function renderScreen(
         />
       )
     case 'formandos':
-      return <Formandos onBack={() => setScreen('formatura')} />
+      return <Formandos onBack={() => setScreen('formatura')}
+        onOpenSettings={() => setScreen('settings')}
+        onOpenPreview={() => setScreen('landing')}
+      />
     case 'rateio':
-      return <Rateio onBack={() => setScreen('formatura')} />
+      return <Rateio onBack={() => setScreen('formatura')}
+        onOpenSettings={() => setScreen('settings')}
+        onOpenPreview={() => setScreen('landing')}
+      />
     default:
       return <Login onLogin={() => setScreen('dashboard')} />
   }

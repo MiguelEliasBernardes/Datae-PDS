@@ -24,19 +24,24 @@ export function CreateEvent({ onBack }: { onBack?: () => void }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[402px] flex-col px-6 pt-12">
-      <NavBack onBack={onBack} />
+    <div className="flex min-h-screen w-full justify-center lg:items-center lg:p-10">
+      <div className="flex min-h-screen w-full max-w-[402px] flex-col bg-surface px-6 pt-12 lg:min-h-0 lg:max-w-2xl lg:rounded-3xl lg:px-10 lg:py-10 lg:shadow-[0_10px_40px_rgba(38,33,92,0.12)]">
+        <NavBack onBack={onBack} />
 
-      <form onSubmit={handleSubmit} className="mt-4 flex flex-1 flex-col gap-5">
-        <Input
-          label="Nome do evento"
-          placeholder="Ex: Casamento de Ana e Pedro"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-        />
+        <form
+          onSubmit={handleSubmit}
+          className="mt-4 flex flex-1 flex-col gap-5 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-5"
+        >
+          <Input
+            className="lg:col-span-2"
+            label="Nome do evento"
+            placeholder="Ex: Casamento de Ana e Pedro"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+          />
 
-        <div className="flex flex-col gap-2">
-          <span className={labelClass}>Tipo de evento</span>
+          <div className="flex flex-col gap-2 lg:col-span-2">
+            <span className={labelClass}>Tipo de evento</span>
           <div className="grid grid-cols-2 gap-3">
             {eventTypes.map((type) => (
               <OptionButton
@@ -63,25 +68,30 @@ export function CreateEvent({ onBack }: { onBack?: () => void }) {
           onChange={(e) => setLocal(e.target.value)}
         />
 
-        <div className="flex flex-col gap-2">
-          <span className={labelClass}>Cor do tema</span>
-          <div className="flex gap-2">
-            {themeColors.map((c) => (
-              <ColorSwatch
-                key={c.value}
-                color={c.value}
-                label={c.name}
-                selected={cor === c.value}
-                onClick={() => setCor(c.value)}
-              />
-            ))}
+          <div className="flex flex-col gap-2 lg:col-span-2">
+            <span className={labelClass}>Cor do tema</span>
+            <div className="flex gap-2">
+              {themeColors.map((c) => (
+                <ColorSwatch
+                  key={c.value}
+                  color={c.value}
+                  label={c.name}
+                  selected={cor === c.value}
+                  onClick={() => setCor(c.value)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
 
-        <Button type="submit" font="sans" className="mt-auto mb-8 h-[52px]">
-          Criar evento
-        </Button>
-      </form>
+          <Button
+            type="submit"
+            font="sans"
+            className="mt-auto mb-8 h-[52px] lg:col-span-2 lg:mt-2 lg:mb-0"
+          >
+            Criar evento
+          </Button>
+        </form>
+      </div>
     </div>
   )
 }

@@ -16,18 +16,43 @@ export function Login({ onLogin }: { onLogin?: () => void }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[390px] flex-col px-6 pt-20 pb-10">
-      {/* Cabeçalho */}
-      <header className="flex flex-col items-center text-center">
-        <Logo />
-        <h1 className="mt-4 text-[28px] font-bold text-heading">Dataê</h1>
-        <p className="mt-1 text-[13px] text-muted">
-          Entre para organizar seu evento
+    <div className="flex min-h-screen w-full">
+      {/* Painel de marca (desktop) */}
+      <aside className="hidden w-1/2 flex-col justify-center gap-6 bg-primary-strong px-16 text-white lg:flex">
+        <div className="flex items-center gap-3">
+          <Logo />
+          <span className="font-heading text-[40px] font-bold">Dataê</span>
+        </div>
+        <p className="max-w-sm text-[18px] leading-relaxed text-white/80">
+          Organize seu evento num lugar só — convidados, presentes, mural de
+          fotos e muito mais.
         </p>
-      </header>
+      </aside>
 
-      {/* Formulário */}
-      <form onSubmit={handleSubmit} className="mt-12 flex flex-col gap-5">
+      {/* Coluna do formulário */}
+      <div className="flex min-h-screen w-full flex-col justify-center bg-surface px-6 py-12 lg:w-1/2 lg:px-16">
+        <div className="mx-auto flex w-full max-w-[390px] flex-col">
+          {/* Cabeçalho */}
+          <header className="flex flex-col items-center text-center lg:hidden">
+            <Logo />
+            <h1 className="mt-4 text-[28px] font-bold text-heading">Dataê</h1>
+            <p className="mt-1 text-[13px] text-muted">
+              Entre para organizar seu evento
+            </p>
+          </header>
+
+          {/* Título (desktop) */}
+          <div className="hidden lg:block">
+            <h1 className="text-[28px] font-bold text-heading">
+              Entrar
+            </h1>
+            <p className="mt-1 text-[14px] text-muted">
+              Entre para organizar seu evento
+            </p>
+          </div>
+
+          {/* Formulário */}
+          <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-5 lg:mt-8">
         <Input
           label="E-mail"
           type="email"
@@ -67,15 +92,17 @@ export function Login({ onLogin }: { onLogin?: () => void }) {
           <span className="h-px flex-1 bg-field-border" />
         </div>
 
-        <Button type="button" variant="secondary">
-          Entrar com Google
-        </Button>
-      </form>
+            <Button type="button" variant="secondary">
+              Entrar com Google
+            </Button>
+          </form>
 
-      {/* Rodapé */}
-      <p className="mt-auto pt-10 text-center text-[13px] font-medium text-primary">
-        <a href="#">Não tem conta? Criar conta</a>
-      </p>
+          {/* Rodapé */}
+          <p className="pt-10 text-center text-[13px] font-medium text-primary">
+            <a href="#">Não tem conta? Criar conta</a>
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
