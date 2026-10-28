@@ -24,7 +24,15 @@ const members: Member[] = [
 type Filter = 'membro' | 'administrador'
 
 /** Tela F2 - Formandos. */
-export function Formandos({ onBack }: { onBack?: () => void }) {
+export function Formandos({
+  onBack,
+  onOpenSettings,
+  onOpenPreview 
+  }: {
+  onBack?: () => void
+  onOpenSettings?: () => void
+  onOpenPreview?: () => void
+  }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter | null>(null)
 
@@ -40,8 +48,8 @@ export function Formandos({ onBack }: { onBack?: () => void }) {
 
   const nav = [
     { icon: houseWhite, label: 'Inicio', onClick: onBack },
-    { icon: eye, label: 'Visualizar' },
-    { icon: settings, label: 'Configurações' },
+    { icon: eye, label: 'Visualizar', onClick: onOpenPreview },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
   ]
 
   return (

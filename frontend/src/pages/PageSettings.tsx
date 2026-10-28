@@ -13,7 +13,13 @@ import { Textarea } from '../components/Textarea'
 import { themeColors } from '../data/themeColors'
 
 /** Tela O7 - Configurações da página. */
-export function PageSettings({ onBack }: { onBack?: () => void }) {
+export function PageSettings({ 
+  onBack,
+  onOpenPreview 
+  }: {
+  onBack?: () => void
+  onOpenPreview?: () => void
+  }) {
   const [firstName, setFirstName] = useState('')
   const [secondName, setSecondName] = useState('')
   const [message, setMessage] = useState('')
@@ -23,7 +29,7 @@ export function PageSettings({ onBack }: { onBack?: () => void }) {
 
   const nav = [
     { icon: houseWhite, label: 'Inicio', onClick: onBack },
-    { icon: eye, label: 'Visualizar' },
+    { icon: eye, label: 'Visualizar', onClick: onOpenPreview },
     { icon: settingsActive, label: 'Configurações', active: true },
   ]
 

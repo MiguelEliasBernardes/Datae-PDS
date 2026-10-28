@@ -23,7 +23,15 @@ const payments: Payment[] = [
 type Filter = 'pago' | 'pendente'
 
 /** Tela F4 - Rateio de Pagamentos. */
-export function Rateio({ onBack }: { onBack?: () => void }) {
+export function Rateio({ 
+  onBack,
+  onOpenSettings,
+  onOpenPreview 
+  }: {
+  onBack?: () => void
+  onOpenSettings?: () => void
+  onOpenPreview?: () => void
+  }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter | null>(null)
 
@@ -39,8 +47,8 @@ export function Rateio({ onBack }: { onBack?: () => void }) {
 
   const nav = [
     { icon: houseWhite, label: 'Inicio', onClick: onBack },
-    { icon: eye, label: 'Visualizar' },
-    { icon: settings, label: 'Configurações' },
+    { icon: eye, label: 'Visualizar', onClick: onOpenPreview },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
   ]
 
   return (

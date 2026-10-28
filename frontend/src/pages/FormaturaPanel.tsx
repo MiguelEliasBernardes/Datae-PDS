@@ -17,17 +17,19 @@ export function FormaturaPanel({
   onBack,
   onOpenFormandos,
   onOpenRateio,
+  onOpenSettings
 }: {
   onBack?: () => void
   onOpenFormandos?: () => void
   onOpenRateio?: () => void
+  onOpenSettings?: () => void
 }) {
   const [subdomain, setSubdomain] = useState('')
 
   const nav = [
     { icon: house, label: 'Inicio', active: true, onClick: onBack },
     { icon: eye, label: 'Visualizar' },
-    { icon: settings, label: 'Configurações' },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
   ]
 
   return (

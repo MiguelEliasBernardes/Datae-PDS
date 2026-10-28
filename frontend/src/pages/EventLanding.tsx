@@ -42,7 +42,15 @@ const wrap = 'mx-auto w-full max-w-5xl px-6 lg:px-10'
 const twoCol = `${wrap} lg:grid lg:grid-cols-2 lg:gap-10`
 
 /** Tela G1 - Landing Page pública do Evento (tema roxo). */
-export function EventLanding({ onBack }: { onBack?: () => void }) {
+export function EventLanding({
+  onBack,
+  onOpenSettings
+  }: 
+  { 
+    onBack?: () => void ,
+    onOpenSettings?: () => void
+
+  }) {
   const [rsvp, setRsvp] = useState<'vou' | 'nao' | null>(null)
   const [name, setName] = useState('')
   const [companions, setCompanions] = useState('')
@@ -52,7 +60,7 @@ export function EventLanding({ onBack }: { onBack?: () => void }) {
   const nav = [
     { icon: houseWhite, label: 'Inicio', onClick: onBack },
     { icon: eyeActive, label: 'Visualizar', active: true },
-    { icon: settings, label: 'Configurações' },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
   ]
 
   return (

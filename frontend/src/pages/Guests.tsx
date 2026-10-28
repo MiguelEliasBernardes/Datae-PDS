@@ -27,7 +27,15 @@ const guests: Guest[] = [
 type Filter = 'confirmados' | 'recusados' | 'observacoes'
 
 /** Tela O5 - Gestão de Convidados. */
-export function Guests({ onBack }: { onBack?: () => void }) {
+export function Guests({ 
+  onBack,
+  onOpenSettings,
+  onOpenPreview 
+  }: {
+  onBack?: () => void
+  onOpenSettings?: () => void
+  onOpenPreview?: () => void
+  }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter | null>(null)
 
@@ -45,8 +53,8 @@ export function Guests({ onBack }: { onBack?: () => void }) {
 
   const nav = [
     { icon: houseWhite, label: 'Inicio', onClick: onBack },
-    { icon: eye, label: 'Visualizar' },
-    { icon: settings, label: 'Configurações' },
+    { icon: eye, label: 'Visualizar', onClick: onOpenPreview },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
   ]
 
   return (

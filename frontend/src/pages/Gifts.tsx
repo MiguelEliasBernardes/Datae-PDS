@@ -28,7 +28,15 @@ const products: Product[] = [
 type Filter = 'disponiveis' | 'reservados' | 'cotas'
 
 /** Tela O6 - Gestão da Lista de Presentes. */
-export function Gifts({ onBack }: { onBack?: () => void }) {
+export function Gifts({ 
+  onBack,
+  onOpenSettings,
+  onOpenPreview 
+  }: {
+  onBack?: () => void
+  onOpenSettings?: () => void
+  onOpenPreview?: () => void
+  }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter | null>(null)
 
@@ -46,8 +54,8 @@ export function Gifts({ onBack }: { onBack?: () => void }) {
 
   const nav = [
     { icon: houseWhite, label: 'Inicio', onClick: onBack },
-    { icon: eye, label: 'Visualizar' },
-    { icon: settings, label: 'Configurações' },
+    { icon: eye, label: 'Visualizar', onClick: onOpenPreview },
+    { icon: settings, label: 'Configurações', onClick: onOpenSettings },
   ]
 
   return (
