@@ -1,0 +1,30 @@
+# ===== .NET (Backend) =====
+# Saída de compilação
+[Bb]in/
+[Oo]bj/
+
+# Bancos locais (SQLite antigo)
+*.db
+*.db-shm
+*.db-wal
+
+# Arquivos de usuário do Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.rsuser
+
+# Configurações locais com segredos (use para sobrescrever o appsettings sem commitar)
+appsettings.Local.json
+
+# ===== Sistema operacional =====
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ===== Editor =====
+.vscode/*
+!.vscode/extensions.json
+
+# O frontend tem seu próprio .gitignore em frontend/.gitignore
