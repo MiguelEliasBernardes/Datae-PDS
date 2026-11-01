@@ -1,8 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Backend.Dtos;
 using Backend.Modelos;
 using Backend.Servicos;
+using static Backend.Rotas.AuxiliaresRotas;
 
 namespace Backend.Rotas;
 
@@ -64,25 +64,6 @@ public static class RotasUsuario
 
         var resultado = await servicoUsuario.ExcluirAsync(id);
         return ParaHttp(resultado, _ => Results.NoContent());
-    }
-
-    /// <summary>Converte o Resultado do serviço no status HTTP correspondente.</summary>
-    private static IResult ParaHttp<T>(Resultado<T> resultado, Func<T, IResult> aoSucesso) => resultado.Erro switch
-    {
-        TipoErro.Nenhum => aoSucesso(resultado.Valor!),
-        TipoErro.Validacao => Results.ValidationProblem(resultado.ErrosValidacao),
-        TipoErro.Conflito => Results.Conflict(new { mensagem = resultado.Mensagem }),
-        TipoErro.NaoEncontrado => Results.NotFound(new { mensagem = resultado.Mensagem }),
-        TipoErro.NaoAutorizado => Results.Json(new { mensagem = resultado.Mensagem }, statusCode: StatusCodes.Status401Unauthorized),
-        _ => Results.Problem(),
-    };
-
-    private static int? ObterIdUsuarioLogado(ClaimsPrincipal principal)
-    {
-        var idTexto = principal.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
-
-        return int.TryParse(idTexto, out var id) ? id : null;
     }
 
     private static UsuarioResposta ParaResposta(Usuario usuario) =>

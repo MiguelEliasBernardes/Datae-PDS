@@ -3,6 +3,7 @@ using Backend.Dtos;
 using Backend.Modelos;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using static Backend.Servicos.Validacoes;
 
 namespace Backend.Servicos;
 
@@ -127,11 +128,6 @@ public class ServicoUsuario(ContextoBanco banco, IPasswordHasher<Usuario> hasher
     }
 
     private Task<bool> EmailEmUsoAsync(string email) => banco.Usuarios.AnyAsync(u => u.Email == email);
-
-    private static string NormalizarEmail(string? email) => (email ?? string.Empty).Trim().ToLowerInvariant();
-
-    private static bool EmailValido(string email) =>
-        email.Length > 3 && email.Contains('@') && !email.StartsWith('@') && !email.EndsWith('@');
 
     private static bool SenhaValida(string? senha) => senha is not null && senha.Length >= TamanhoMinimoSenha;
 

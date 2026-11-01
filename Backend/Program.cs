@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Backend.Dados;
 using Backend.Modelos;
 using Backend.Rotas;
@@ -39,6 +40,13 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<ServicoToken>();
 builder.Services.AddScoped<ServicoUsuario>();
+builder.Services.AddScoped<ServicoEvento>();
+builder.Services.AddScoped<ServicoConvidado>();
+builder.Services.AddScoped<ServicoPresente>();
+
+// Enums trafegam como texto no JSON ("Confirmado" em vez de 1)
+builder.Services.ConfigureHttpJsonOptions(opcoes =>
+    opcoes.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // Libera o frontend (Vite) para chamar a API
 builder.Services.AddCors(opcoes =>
@@ -66,5 +74,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapearRotasUsuario();
+app.MapearRotasEvento();
+app.MapearRotasConvidado();
+app.MapearRotasPresente();
 
 app.Run();
