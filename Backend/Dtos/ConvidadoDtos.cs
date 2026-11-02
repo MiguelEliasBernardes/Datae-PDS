@@ -5,7 +5,7 @@ namespace Backend.Dtos;
 public record CriarConvidadoRequisicao(
     string Nome,
     string? Email,
-    StatusPresen    ca? StatusPresenca,
+    StatusPresenca? StatusPresenca,
     int? QuantidadeAcompanhantes,
     string? Observacao);
 

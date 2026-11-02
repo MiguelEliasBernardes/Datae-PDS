@@ -67,8 +67,12 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    // Em desenvolvimento o frontend chama a API por http (proxy do Vite);
+    // o redirecionamento para https quebraria essas chamadas
+    app.UseHttpsRedirection();
+}
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

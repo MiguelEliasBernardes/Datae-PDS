@@ -14,7 +14,7 @@ public static class RotasConvidado
 {
     public static void MapearRotasConvidado(this WebApplication app)
     {
-        var convidados = app.MapGroup(" ")
+        var convidados = app.MapGroup("/api/eventos/{eventoId:int}/convidados")
             .WithTags("Convidados")
             .RequireAuthorization();
 

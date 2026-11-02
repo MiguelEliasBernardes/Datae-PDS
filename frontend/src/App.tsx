@@ -1,100 +1,181 @@
-import { useState } from 'react'
-import { CreateEvent } from './pages/CreateEvent'
-import { Dashboard } from './pages/Dashboard'
-import { EventLanding } from './pages/EventLanding'
-import { EventPanel } from './pages/EventPanel'
-import { Formandos } from './pages/Formandos'
-import { FormaturaPanel } from './pages/FormaturaPanel'
-import { Gifts } from './pages/Gifts'
-import { Guests } from './pages/Guests'
-import { Login } from './pages/Login'
-import { PageSettings } from './pages/PageSettings'
-import { Rateio } from './pages/Rateio'
+import { useEffect, useState } from 'react'
+import { sair } from './api/autenticacao'
+import { definirAoExpirarSessao } from './api/cliente'
+import { obterUsuario } from './api/sessao'
+import type { Evento, Usuario } from './api/tipos'
+import { ConfiguracoesPagina } from './paginas/ConfiguracoesPagina'
+import { Convidados } from './paginas/Convidados'
+import { CriarEvento } from './paginas/CriarEvento'
+import { Formandos } from './paginas/Formandos'
+import { Login } from './paginas/Login'
+import { MeusEventos } from './paginas/MeusEventos'
+import { PaginaEvento } from './paginas/PaginaEvento'
+import { PainelEvento } from './paginas/PainelEvento'
+import { PainelFormatura } from './paginas/PainelFormatura'
+import { Presentes } from './paginas/Presentes'
+import { Rateio } from './paginas/Rateio'
 
-type Screen =
+type Tela =
   | 'login'
-  | 'dashboard'
-  | 'create'
-  | 'event'
-  | 'guests'
-  | 'gifts'
-  | 'settings'
-  | 'landing'
-  | 'formatura'
+  | 'meus-eventos'
+  | 'criar-evento'
+  | 'painel-evento'
+  | 'painel-formatura'
+  | 'convidados'
+  | 'presentes'
+  | 'configuracoes'
+  | 'pagina-evento'
   | 'formandos'
   | 'rateio'
 
-function renderScreen(
-  screen: Screen,
-  setScreen: (s: Screen) => void,
-) {
-  switch (screen) {
-    case 'dashboard':
-      return (
-        <Dashboard
-          onCreate={() => setScreen('create')}
-          onAccessEvent={(event) =>
-            setScreen(event.category === 'Formatura' ? 'formatura' : 'event')
-          }
-        />
-      )
-    case 'create':
-      return <CreateEvent onBack={() => setScreen('dashboard')} />
-    case 'event':
-      return (
-        <EventPanel
-          onBack={() => setScreen('dashboard')}
-          onOpenGuests={() => setScreen('guests')}
-          onOpenGifts={() => setScreen('gifts')}
-          onOpenSettings={() => setScreen('settings')}
-          onOpenPreview={() => setScreen('landing')}
-        />
-      )
-    case 'guests':
-      return <Guests onBack={() => setScreen('event')}
-        onOpenSettings={() => setScreen('settings')}
-        onOpenPreview={() => setScreen('landing')}
-      />
-    case 'gifts':
-      return <Gifts onBack={() => setScreen('event')} 
-        onOpenSettings={() => setScreen('settings')}
-        onOpenPreview={() => setScreen('landing')}
-      />
-    case 'settings':
-      return <PageSettings onBack={() => setScreen('event')}
-        onOpenPreview={() => setScreen('landing')}
-      />
-    case 'landing':
-      return <EventLanding onBack={() => setScreen('event')}
-        onOpenSettings={() => setScreen('settings')}
-      />
-    case 'formatura':
-      return (
-        <FormaturaPanel
-          onBack={() => setScreen('dashboard')}
-          onOpenFormandos={() => setScreen('formandos')}
-          onOpenRateio={() => setScreen('rateio')}
-        />
-      )
-    case 'formandos':
-      return <Formandos onBack={() => setScreen('formatura')}
-        onOpenSettings={() => setScreen('settings')}
-        onOpenPreview={() => setScreen('landing')}
-      />
-    case 'rateio':
-      return <Rateio onBack={() => setScreen('formatura')}
-        onOpenSettings={() => setScreen('settings')}
-        onOpenPreview={() => setScreen('landing')}
-      />
-    default:
-      return <Login onLogin={() => setScreen('dashboard')} />
-  }
+/** Evento aberto no momento e qual painel ele usa (formatura tem um painel próprio). */
+interface EventoAberto {
+  id: number
+  painel: 'painel-evento' | 'painel-formatura'
 }
 
 function App() {
-  const [screen, setScreen] = useState<Screen>('login')
+  const [usuario, setUsuario] = useState<Usuario | null>(obterUsuario)
+  const [tela, setTela] = useState<Tela>(() => (obterUsuario() ? 'meus-eventos' : 'login'))
+  const [evento, setEvento] = useState<EventoAberto | null>(null)
 
-  return <div className="app-shell">{renderScreen(screen, setScreen)}</div>
+  // Se a API responder 401 (token expirado), volta para o login
+  useEffect(() => {
+    definirAoExpirarSessao(() => {
+      setUsuario(null)
+      setEvento(null)
+      setTela('login')
+    })
+    return () => definirAoExpirarSessao(null)
+  }, [])
+
+  function abrirEvento(e: Evento) {
+    const painel = e.tipo === 'Formatura' ? 'painel-formatura' : 'painel-evento'
+    setEvento({ id: e.id, painel })
+    setTela(painel)
+  }
+
+  function encerrarSessao() {
+    sair()
+    setUsuario(null)
+    setEvento(null)
+    setTela('login')
+  }
+
+  const irPara = (t: Tela) => () => setTela(t)
+
+  function renderizarTela() {
+    if (!usuario || tela === 'login') {
+      return (
+        <Login
+          onEntrar={(u) => {
+            setUsuario(u)
+            setTela('meus-eventos')
+          }}
+        />
+      )
+    }
+
+    // Telas que não dependem de um evento aberto
+    if (tela === 'criar-evento') {
+      return <CriarEvento onVoltar={irPara('meus-eventos')} onCriado={abrirEvento} />
+    }
+    if (!evento || tela === 'meus-eventos') {
+      return (
+        <MeusEventos
+          nomeUsuario={usuario.nome}
+          onCriar={irPara('criar-evento')}
+          onAcessarEvento={abrirEvento}
+          onSair={encerrarSessao}
+        />
+      )
+    }
+
+    // Telas "dentro" de um evento
+    const voltarAoPainel = irPara(evento.painel)
+    const voltarAosEventos = () => {
+      setEvento(null)
+      setTela('meus-eventos')
+    }
+
+    switch (tela) {
+      case 'painel-evento':
+        return (
+          <PainelEvento
+            eventoId={evento.id}
+            onVoltar={voltarAosEventos}
+            onAbrirConvidados={irPara('convidados')}
+            onAbrirPresentes={irPara('presentes')}
+            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'painel-formatura':
+        return (
+          <PainelFormatura
+            eventoId={evento.id}
+            onVoltar={voltarAosEventos}
+            onAbrirFormandos={irPara('formandos')}
+            onAbrirRateio={irPara('rateio')}
+            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'convidados':
+        return (
+          <Convidados
+            eventoId={evento.id}
+            onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'presentes':
+        return (
+          <Presentes
+            eventoId={evento.id}
+            onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'configuracoes':
+        return (
+          <ConfiguracoesPagina
+            eventoId={evento.id}
+            onVoltar={voltarAoPainel}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+            onExcluido={voltarAosEventos}
+          />
+        )
+      case 'pagina-evento':
+        return (
+          <PaginaEvento
+            eventoId={evento.id}
+            onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={irPara('configuracoes')}
+          />
+        )
+      case 'formandos':
+        return (
+          <Formandos
+            onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'rateio':
+        return (
+          <Rateio
+            onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+    }
+  }
+
+  return <div className="app-shell">{renderizarTela()}</div>
 }
 
 export default App
