@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import setaDireita from '../assets/arrow-big-right.svg'
-import { cadastrar, entrar } from '../api/autenticacao'
+import { cadastrar, entrar, entrarComGoogle } from '../api/autenticacao'
 import { ErroApi, mensagemDeErro } from '../api/cliente'
 import type { Usuario } from '../api/tipos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { Botao } from '../componentes/Botao'
+import { BotaoGoogle } from '../componentes/BotaoGoogle'
 import { CampoTexto } from '../componentes/CampoTexto'
 import { Logo } from '../componentes/Logo'
 
@@ -51,7 +52,20 @@ export function Login({ onEntrar }: { onEntrar: (usuario: Usuario) => void }) {
     }
   }
 
-  const subtitulo = cadastrando ? 'Crie sua conta para organizar seu evento' : 'Entre para organizar seu evento'
+  /** Login com Google: se for o primeiro acesso, o backend já cria a conta. */
+  async function aoReceberCredencialGoogle(credencial: string) {
+    setErro(null)
+    setMensagemGeral(null)
+    setEnviando(true)
+    try {
+      onEntrar(await entrarComGoogle(credencial))
+    } catch (e) {
+      setMensagemGeral(mensagemDeErro(e))
+      setEnviando(false)
+    }
+  }
+
+  const subtitulo =cadastrando ? 'Crie sua conta para organizar seu evento' : 'Entre para organizar seu evento'
 
   return (
     <div className="flex min-h-screen w-full">
@@ -143,9 +157,11 @@ export function Login({ onEntrar }: { onEntrar: (usuario: Usuario) => void }) {
               <span className="h-px flex-1 bg-field-border" />
             </div>
 
-            <Botao type="button" variante="secundario">
-              Entrar com Google
-            </Botao>
+            <BotaoGoogle
+              desabilitado={enviando}
+              onCredencial={(credencial) => void aoReceberCredencialGoogle(credencial)}
+              onErro={setMensagemGeral}
+            />
           </form>
 
           {/* Rodapé */}

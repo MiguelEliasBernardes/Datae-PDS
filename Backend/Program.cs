@@ -39,6 +39,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<ServicoToken>();
+builder.Services.AddScoped<ServicoGoogle>();
 builder.Services.AddScoped<ServicoUsuario>();
 builder.Services.AddScoped<ServicoEvento>();
 builder.Services.AddScoped<ServicoConvidado>();

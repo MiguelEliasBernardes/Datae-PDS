@@ -15,6 +15,7 @@ public static class AuxiliaresRotas
         TipoErro.Conflito => Results.Conflict(new { mensagem = resultado.Mensagem }),
         TipoErro.NaoEncontrado => Results.NotFound(new { mensagem = resultado.Mensagem }),
         TipoErro.NaoAutorizado => Results.Json(new { mensagem = resultado.Mensagem }, statusCode: StatusCodes.Status401Unauthorized),
+        TipoErro.Indisponivel => Results.Json(new { mensagem = resultado.Mensagem }, statusCode: StatusCodes.Status503ServiceUnavailable),
         _ => Results.Problem(),
     };
 

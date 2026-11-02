@@ -15,9 +15,10 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
         modelo.Entity<Usuario>(usuario =>
         {
             usuario.HasIndex(u => u.Email).IsUnique();
+            usuario.HasIndex(u => u.GoogleId).IsUnique();
             usuario.Property(u => u.Nome).HasMaxLength(120).IsRequired();
             usuario.Property(u => u.Email).HasMaxLength(200).IsRequired();
-            usuario.Property(u => u.SenhaHash).IsRequired();
+            usuario.Property(u => u.GoogleId).HasMaxLength(64);
         });
 
         modelo.Entity<Evento>(evento =>

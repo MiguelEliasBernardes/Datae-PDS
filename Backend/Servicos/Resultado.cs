@@ -7,6 +7,7 @@ public enum TipoErro
     Conflito,
     NaoEncontrado,
     NaoAutorizado,
+    Indisponivel,
 }
 
 /// <summary>

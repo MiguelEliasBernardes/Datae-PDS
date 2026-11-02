@@ -116,6 +116,27 @@ try {
     verificar(!expirou, 'não deveria disparar "sessão expirada" no login')
     cliente.definirAoExpirarSessao(null)
   })
+  await testar('Google com credencial falsa → recusado (401, ou 503 se o servidor não tiver Client ID)', async () => {
+    sessao.limparSessao()
+    let erro
+    try {
+      await autenticacao.entrarComGoogle('credencial-falsa')
+    } catch (e) {
+      erro = e
+    }
+    verificar(erro instanceof cliente.ErroApi, 'a credencial falsa foi aceita!')
+    verificar([401, 503].includes(erro.status), `status ${erro.status}: "${erro.message}"`)
+    verificar(sessao.obterToken() === null, 'não deveria ter salvo sessão')
+  })
+  await testar('Google sem credencial → recusado', async () => {
+    let erro
+    try {
+      await autenticacao.entrarComGoogle('')
+    } catch (e) {
+      erro = e
+    }
+    verificar(erro instanceof cliente.ErroApi && [401, 503].includes(erro.status), `resultado: ${erro?.status}`)
+  })
   await testar('login válido', async () => {
     await autenticacao.entrar(emailA, senha)
     tokenA = sessao.obterToken()

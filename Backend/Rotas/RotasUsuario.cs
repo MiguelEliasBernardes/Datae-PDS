@@ -16,6 +16,7 @@ public static class RotasUsuario
         var autenticacao = app.MapGroup("/api/autenticacao").WithTags("Autenticação");
         autenticacao.MapPost("/cadastro", Cadastrar);
         autenticacao.MapPost("/login", Entrar);
+        autenticacao.MapPost("/google", EntrarComGoogle);
 
         var usuario = app.MapGroup("/api/usuarios/eu").WithTags("Usuário").RequireAuthorization();
         usuario.MapGet("/", ObterUsuarioLogado);
@@ -35,6 +36,13 @@ public static class RotasUsuario
         LoginRequisicao requisicao, ServicoUsuario servicoUsuario, ServicoToken servicoToken)
     {
         var resultado = await servicoUsuario.AutenticarAsync(requisicao);
+        return ParaHttp(resultado, usuario => Results.Ok(CriarLoginResposta(usuario, servicoToken)));
+    }
+
+    private static async Task<IResult> EntrarComGoogle(
+        LoginGoogleRequisicao requisicao, ServicoUsuario servicoUsuario, ServicoToken servicoToken)
+    {
+        var resultado = await servicoUsuario.AutenticarComGoogleAsync(requisicao);
         return ParaHttp(resultado, usuario => Results.Ok(CriarLoginResposta(usuario, servicoToken)));
     }
 

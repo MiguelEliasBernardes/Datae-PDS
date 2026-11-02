@@ -7,7 +7,7 @@ using static Backend.Servicos.Validacoes;
 
 namespace Backend.Servicos;
 
-public class ServicoUsuario(ContextoBanco banco, IPasswordHasher<Usuario> hasher)
+public class ServicoUsuario(ContextoBanco banco, IPasswordHasher<Usuario> hasher, ServicoGoogle servicoGoogle)
 {
     private const int TamanhoMinimoSenha = 6;
 
@@ -46,8 +46,9 @@ public class ServicoUsuario(ContextoBanco banco, IPasswordHasher<Usuario> hasher
         var email = NormalizarEmail(requisicao.Email);
         var usuario = await banco.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
 
-        // Mesma mensagem para e-mail inexistente e senha errada, para não revelar quais e-mails têm conta
-        if (usuario is null)
+        // Mesma mensagem para e-mail inexistente e senha errada, para não revelar quais e-mails têm conta.
+        // Conta criada pelo Google sem senha definida também cai aqui.
+        if (usuario?.SenhaHash is null)
             return CredenciaisInvalidas();
 
         var verificacao = hasher.VerifyHashedPassword(usuario, usuario.SenhaHash, requisicao.Senha);
@@ -60,6 +61,53 @@ public class ServicoUsuario(ContextoBanco banco, IPasswordHasher<Usuario> hasher
             await banco.SaveChangesAsync();
         }
 
+        return Resultado<Usuario>.Ok(usuario);
+    }
+
+    /// <summary>
+    /// Entra com a conta Google. Se ainda não existir conta, cria uma (sem senha).
+    /// Se já existir conta com o mesmo e-mail, vincula o Google a ela.
+    /// </summary>
+    public async Task<Resultado<Usuario>> AutenticarComGoogleAsync(LoginGoogleRequisicao requisicao)
+    {
+        if (servicoGoogle.ClientId is null)
+            return Resultado<Usuario>.Falha(TipoErro.Indisponivel, "O login com Google não está configurado no servidor.");
+
+        var conta = await servicoGoogle.ValidarCredencialAsync(requisicao.Credencial);
+        if (conta is null)
+            return Resultado<Usuario>.Falha(TipoErro.NaoAutorizado, "Não foi possível validar o login com Google. Tente novamente.");
+
+        // Sem e-mail verificado, qualquer um poderia se passar pelo dono do e-mail
+        if (!conta.EmailVerificado)
+            return Resultado<Usuario>.Falha(TipoErro.NaoAutorizado, "O e-mail desta conta Google não está verificado.");
+
+        var usuario = await banco.Usuarios.FirstOrDefaultAsync(u => u.GoogleId == conta.GoogleId);
+        if (usuario is not null)
+            return Resultado<Usuario>.Ok(usuario);
+
+        var email = NormalizarEmail(conta.Email);
+        usuario = await banco.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+
+        if (usuario is not null)
+        {
+            // Conta já existia (cadastro com senha): passa a aceitar também o Google
+            if (usuario.GoogleId is not null)
+                return Resultado<Usuario>.Falha(TipoErro.Conflito, "Este e-mail já está vinculado a outra conta Google.");
+
+            usuario.GoogleId = conta.GoogleId;
+        }
+        else
+        {
+            usuario = new Usuario
+            {
+                Nome = string.IsNullOrWhiteSpace(conta.Nome) ? email.Split('@')[0] : conta.Nome.Trim(),
+                Email = email,
+                GoogleId = conta.GoogleId,
+            };
+            banco.Usuarios.Add(usuario);
+        }
+
+        await banco.SaveChangesAsync();
         return Resultado<Usuario>.Ok(usuario);
     }
 
@@ -98,8 +146,9 @@ public class ServicoUsuario(ContextoBanco banco, IPasswordHasher<Usuario> hasher
 
         if (requisicao.NovaSenha is not null)
         {
-            var senhaAtualCorreta = requisicao.SenhaAtual is not null &&
-                hasher.VerifyHashedPassword(usuario, usuario.SenhaHash, requisicao.SenhaAtual) != PasswordVerificationResult.Failed;
+            // Conta criada pelo Google ainda não tem senha: pode definir a primeira sem informar a atual
+            var senhaAtualCorreta = usuario.SenhaHash is null || (requisicao.SenhaAtual is not null &&
+                hasher.VerifyHashedPassword(usuario, usuario.SenhaHash, requisicao.SenhaAtual) != PasswordVerificationResult.Failed);
 
             if (!senhaAtualCorreta)
                 erros["senhaAtual"] = ["A senha atual está incorreta."];

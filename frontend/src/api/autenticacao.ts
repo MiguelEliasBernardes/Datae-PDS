@@ -14,6 +14,13 @@ export async function cadastrar(nome: string, email: string, senha: string) {
   return resposta.usuario
 }
 
+/** Entra (ou cria a conta, se ainda não existir) com a credencial devolvida pelo botão do Google. */
+export async function entrarComGoogle(credencial: string) {
+  const resposta = await requisicao<RespostaLogin>('/api/autenticacao/google', 'POST', { credencial })
+  salvarSessao(resposta)
+  return resposta.usuario
+}
+
 export function sair() {
   limparSessao()
 }
