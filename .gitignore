@@ -2,11 +2,8 @@
 # Saída de compilação
 [Bb]in/
 [Oo]bj/
-
-# Bancos locais (SQLite antigo)
-*.db
-*.db-shm
-*.db-wal
+bin/
+obj/
 
 # Arquivos de usuário do Visual Studio / Rider
 .vs/
