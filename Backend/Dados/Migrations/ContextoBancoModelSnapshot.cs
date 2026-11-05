@@ -69,6 +69,14 @@ namespace Backend.Dados.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ChavePix")
+                        .HasMaxLength(77)
+                        .HasColumnType("character varying(77)");
+
+                    b.Property<string>("CidadePix")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
                     b.Property<string>("CorPrincipal")
                         .HasMaxLength(7)
                         .HasColumnType("character varying(7)");
@@ -96,6 +104,10 @@ namespace Backend.Dados.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<string>("NomeRecebedorPix")
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)");
+
                     b.Property<int?>("PlanoAtualId")
                         .HasColumnType("integer");
 
@@ -122,6 +134,41 @@ namespace Backend.Dados.Migrations
                     b.ToTable("Eventos");
                 });
 
+            modelBuilder.Entity("Backend.Modelos.FotoMural", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Arquivo")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("EnviadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EventoId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NomeAutor")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventoId");
+
+                    b.ToTable("FotosMural");
+                });
+
             modelBuilder.Entity("Backend.Modelos.ItemPresente", b =>
                 {
                     b.Property<int>("Id")
@@ -129,6 +176,10 @@ namespace Backend.Dados.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodigoReserva")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<int?>("ConvidadoId")
                         .HasColumnType("integer");
@@ -224,6 +275,15 @@ namespace Backend.Dados.Migrations
                     b.HasOne("Backend.Modelos.Usuario", null)
                         .WithMany()
                         .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Backend.Modelos.FotoMural", b =>
+                {
+                    b.HasOne("Backend.Modelos.Evento", null)
+                        .WithMany()
+                        .HasForeignKey("EventoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

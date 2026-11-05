@@ -7,7 +7,11 @@ using static Backend.Servicos.Validacoes;
 
 namespace Backend.Servicos;
 
-public class ServicoUsuario(ContextoBanco banco, IPasswordHasher<Usuario> hasher, ServicoGoogle servicoGoogle)
+public class ServicoUsuario(
+    ContextoBanco banco,
+    IPasswordHasher<Usuario> hasher,
+    ServicoGoogle servicoGoogle,
+    ArmazenamentoArquivos armazenamento)
 {
     private const int TamanhoMinimoSenha = 6;
 
@@ -171,8 +175,15 @@ public class ServicoUsuario(ContextoBanco banco, IPasswordHasher<Usuario> hasher
         if (usuario is null)
             return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Usuário não encontrado.");
 
+        // Os eventos saem junto (cascata no banco); as fotos do mural deles ficam em disco e são apagadas à parte
+        var idsEventos = await banco.Eventos.Where(e => e.UsuarioId == id).Select(e => e.Id).ToListAsync();
+
         banco.Usuarios.Remove(usuario);
         await banco.SaveChangesAsync();
+
+        foreach (var eventoId in idsEventos)
+            armazenamento.ExcluirPastaEvento(eventoId);
+
         return Resultado<bool>.Ok(true);
     }
 

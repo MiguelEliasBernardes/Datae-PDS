@@ -7,6 +7,7 @@ import casaBranca from '../assets/house-white.svg'
 import imagemPadrao from '../assets/product-sample.png'
 import engrenagem from '../assets/settings.svg'
 import sacola from '../assets/shopping-bag.svg'
+import { listarConvidados } from '../api/convidados'
 import { atualizarPresente, criarPresente, excluirPresente, listarPresentes } from '../api/presentes'
 import type { DadosPresente, Presente } from '../api/tipos'
 import { AvisoErro } from '../componentes/AvisoErro'
@@ -24,7 +25,7 @@ import { TituloDestaque } from '../componentes/TituloDestaque'
 import { formatarMoeda } from '../dados/formatacao'
 import { useCarregamento } from '../hooks/useCarregamento'
 
-type Filtro = 'disponiveis' | 'reservados' | 'cotas'
+type Filtro = 'disponiveis' | 'reservados' | 'comprados' | 'cotas'
 
 /** Presente em edição: null = janela fechada, 'novo' = adicionando. */
 type Edicao = Presente | 'novo' | null
@@ -41,8 +42,14 @@ export function Presentes({
   onAbrirConfiguracoes: () => void
   onAbrirVisualizacao: () => void
 }) {
-  const carregar = useCallback(() => listarPresentes(eventoId), [eventoId])
-  const { dados: presentes, erro, carregando, recarregar } = useCarregamento(carregar)
+  // Os convidados vêm junto só para mostrar o nome de quem reservou cada presente
+  const carregar = useCallback(
+    () => Promise.all([listarPresentes(eventoId), listarConvidados(eventoId)]),
+    [eventoId],
+  )
+  const { dados, erro, carregando, recarregar } = useCarregamento(carregar)
+  const presentes = dados?.[0] ?? null
+  const nomesConvidados = useMemo(() => new Map((dados?.[1] ?? []).map((c) => [c.id, c.nome])), [dados])
 
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState<Filtro | null>(null)
@@ -56,6 +63,7 @@ export function Presentes({
       if (!p.nome.toLowerCase().includes(busca.toLowerCase())) return false
       if (filtro === 'disponiveis') return p.status === 'Disponivel'
       if (filtro === 'reservados') return p.status === 'Reservado'
+      if (filtro === 'comprados') return p.status === 'Comprado'
       // Cotas ainda não existem no backend
       if (filtro === 'cotas') return false
       return true
@@ -63,7 +71,9 @@ export function Presentes({
   }, [presentes, busca, filtro])
 
   const lista = presentes ?? []
+  const disponiveis = lista.filter((p) => p.status === 'Disponivel').length
   const reservados = lista.filter((p) => p.status === 'Reservado').length
+  const comprados = lista.filter((p) => p.status === 'Comprado').length
 
   async function salvar(dados: DadosPresente) {
     if (edicao === 'novo') await criarPresente(eventoId, dados)
@@ -93,8 +103,18 @@ export function Presentes({
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
       <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
         <CartaoEstatistica icone={presenteIcone} valor={String(lista.length)} tom="lilas" rotulo="Presentes" />
-        <CartaoEstatistica icone={sacola} valor={String(reservados)} tom="rosa" rotulo="Reservados" />
-        <CartaoEstatistica icone={circuloCheck} valor={String(lista.length - reservados)} tom="pessego" rotulo="Disponíveis" />
+        <CartaoEstatistica
+          icone={sacola}
+          valor={String(reservados + comprados)}
+          tom="rosa"
+          rotulo={
+            <>
+              Reservados{' '}
+              <span className="text-[9px] font-normal">({comprados} já {comprados === 1 ? 'comprado' : 'comprados'})</span>
+            </>
+          }
+        />
+        <CartaoEstatistica icone={circuloCheck} valor={String(disponiveis)} tom="pessego" rotulo="Disponíveis" />
       </div>
 
       {/* Adicionar presente */}
@@ -119,6 +139,7 @@ export function Presentes({
       <div className="mt-3 flex gap-2">
         <ChipFiltro rotulo="Disponíveis" ativo={filtro === 'disponiveis'} onClick={() => alternarFiltro('disponiveis')} />
         <ChipFiltro rotulo="Reservados" ativo={filtro === 'reservados'} onClick={() => alternarFiltro('reservados')} />
+        <ChipFiltro rotulo="Comprados" ativo={filtro === 'comprados'} onClick={() => alternarFiltro('comprados')} />
         <ChipFiltro rotulo="Cotas" ativo={filtro === 'cotas'} onClick={() => alternarFiltro('cotas')} />
       </div>
 
@@ -136,6 +157,7 @@ export function Presentes({
               nome={p.nome}
               preco={formatarMoeda(p.valorEstimado)}
               status={p.status}
+              reservadoPor={p.convidadoId ? nomesConvidados.get(p.convidadoId) : null}
               onEditar={() => setEdicao(p)}
             />
           ))

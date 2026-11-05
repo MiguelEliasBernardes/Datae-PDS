@@ -8,6 +8,10 @@ public class ItemPresente
     // Convidado que reservou o presente (nulo enquanto estiver disponível)
     public int? ConvidadoId { get; set; }
 
+    // Código entregue ao convidado ao reservar pela página pública; só quem tem o código
+    // pode marcar o presente como comprado ou cancelar a reserva
+    public string? CodigoReserva { get; set; }
+
     public string Nome { get; set; } = string.Empty;
     public string? Descricao { get; set; }
     public decimal? ValorEstimado { get; set; }

@@ -6,6 +6,9 @@ import { limparSessao, obterToken } from './sessao'
  */
 const URL_API = import.meta.env.VITE_API_URL ?? ''
 
+/** Endereço completo de um caminho da API, para usar fora do fetch (ex.: <img src> das fotos do mural). */
+export const urlApi = (caminho: string) => `${URL_API}${caminho}`
+
 /** Erros de validação por campo, ex.: { email: ['Informe um e-mail válido.'] }. */
 export type ErrosCampos = Record<string, string[]>
 
@@ -37,18 +40,23 @@ export function definirAoExpirarSessao(callback: (() => void) | null) {
 
 type Metodo = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
+/**
+ * Chama a API. O corpo vai como JSON; se for um FormData (envio de arquivo),
+ * vai como multipart e o próprio navegador define o Content-Type.
+ */
 export async function requisicao<T>(caminho: string, metodo: Metodo = 'GET', corpo?: unknown): Promise<T> {
   const token = obterToken()
+  const ehFormulario = corpo instanceof FormData
   const cabecalhos: Record<string, string> = {}
-  if (corpo !== undefined) cabecalhos['Content-Type'] = 'application/json'
+  if (corpo !== undefined && !ehFormulario) cabecalhos['Content-Type'] = 'application/json'
   if (token) cabecalhos['Authorization'] = `Bearer ${token}`
 
   let resposta: Response
   try {
-    resposta = await fetch(`${URL_API}${caminho}`, {
+    resposta = await fetch(urlApi(caminho), {
       method: metodo,
       headers: cabecalhos,
-      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+      body: corpo === undefined ? undefined : ehFormulario ? corpo : JSON.stringify(corpo),
     })
   } catch {
     throw new ErroApi('Não foi possível conectar ao servidor. Verifique se o backend está rodando.', 0)
@@ -98,6 +106,10 @@ function mensagemDoErro(status: number, dados: CorpoErro | null): string {
       return 'Não encontrado.'
     case 409:
       return 'Esse registro entra em conflito com outro já existente.'
+    case 413:
+      return 'O arquivo é grande demais.'
+    case 429:
+      return 'Muitas tentativas seguidas. Aguarde um minuto e tente novamente.'
     default:
       return status >= 500
         ? 'Erro no servidor. Tente novamente em instantes.'

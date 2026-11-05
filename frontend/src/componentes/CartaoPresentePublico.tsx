@@ -1,22 +1,18 @@
 import { SeloStatus, type TomSelo } from './SeloStatus'
 
-export interface PresentePublico {
+export interface CartaoPresentePublicoProps {
   nome: string
   preco: string
   status: { rotulo: string; tom: TomSelo }
   acao?: string
   imagem?: string
+  /** Link da loja cadastrado pelo organizador. */
+  link?: string
+  onAcao?: () => void
 }
 
 /** Cartão de presente na página pública do evento. */
-export function CartaoPresentePublico({
-  nome,
-  preco,
-  status,
-  acao,
-  imagem,
-  onAcao,
-}: PresentePublico & { onAcao?: () => void }) {
+export function CartaoPresentePublico({ nome, preco, status, acao, imagem, link, onAcao }: CartaoPresentePublicoProps) {
   return (
     <div className="flex gap-3 rounded-[12px] bg-surface p-3 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.12)]">
       <div
@@ -29,7 +25,17 @@ export function CartaoPresentePublico({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <h3 className="truncate text-[14px] font-bold text-heading">{nome}</h3>
-        <p className="text-[13px] text-muted">{preco}</p>
+        <p className="text-[13px] text-muted">
+          {preco}
+          {link && (
+            <>
+              {' · '}
+              <a href={link} target="_blank" rel="noreferrer" className="font-medium text-primary underline">
+                Ver na loja
+              </a>
+            </>
+          )}
+        </p>
         <div className="mt-auto flex items-center justify-between gap-2">
           <SeloStatus tom={status.tom}>{status.rotulo}</SeloStatus>
           {acao && (

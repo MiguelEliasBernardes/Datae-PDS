@@ -1,24 +1,38 @@
-import { useCallback, useState, type CSSProperties } from 'react'
-import setaDireita from '../assets/arrow-big-right.svg'
-import setaCheck from '../assets/arrow-check.svg'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import calendario from '../assets/calendar.svg'
 import imagemCapa from '../assets/event-hero.png'
 import olhoAtivo from '../assets/eye-active.svg'
 import presenteBotao from '../assets/gift-btn.svg'
 import casaBranca from '../assets/house-white.svg'
 import engrenagem from '../assets/settings.svg'
+import { urlApi } from '../api/cliente'
 import { obterEvento } from '../api/eventos'
-import { listarPresentes } from '../api/presentes'
+import { listarFotosPublicas, listarPresentesPublicos, obterEventoPublico } from '../api/publico'
+import type { PresentePublico, StatusPresente } from '../api/tipos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { BarraLateral } from '../componentes/BarraLateral'
 import { Botao } from '../componentes/Botao'
-import { CampoTexto } from '../componentes/CampoTexto'
+import { CartaoPix } from '../componentes/CartaoPix'
 import { CartaoPresentePublico } from '../componentes/CartaoPresentePublico'
 import { ContagemRegressiva } from '../componentes/ContagemRegressiva'
+import { EnvioFotosMural } from '../componentes/EnvioFotosMural'
+import { FormularioPresenca } from '../componentes/FormularioPresenca'
+import { FormularioReserva } from '../componentes/FormularioReserva'
+import { JanelaModal } from '../componentes/JanelaModal'
 import { MensagemLista } from '../componentes/MensagemLista'
-import { NavegacaoInferior } from '../componentes/NavegacaoInferior'
+import { NavegacaoInferior, type ItemNavegacao } from '../componentes/NavegacaoInferior'
 import { RotuloSecao } from '../componentes/RotuloSecao'
-import { formatarDataPorExtenso, formatarMoeda, rotulosTipoEvento } from '../dados/formatacao'
+import type { TomSelo } from '../componentes/SeloStatus'
+import {
+  formatarDataPorExtenso,
+  formatarMoeda,
+  rotulosStatusPresente,
+  rotulosTipoEvento,
+  tempoRestante,
+} from '../dados/formatacao'
+import { codigoReserva } from '../dados/reservas'
+import { linkPublicoEvento } from '../dados/rotas'
+import { useAgora } from '../hooks/useAgora'
 import { useCarregamento } from '../hooks/useCarregamento'
 
 const titulo = 'font-heading text-[19px] font-bold text-heading lg:text-[28px]'
@@ -27,76 +41,100 @@ const envoltorio = 'mx-auto w-full max-w-5xl px-6 lg:px-10'
 /** Linha de 2 colunas no desktop. */
 const duasColunas = `${envoltorio} lg:grid lg:grid-cols-2 lg:gap-10`
 
-/** Quanto falta até a data do evento, em dias/horas/minutos. */
-function tempoRestante(dataIso: string, agora: number) {
-  const restante = Math.max(0, new Date(dataIso).getTime() - agora)
-  const minutosTotais = Math.floor(restante / 60_000)
-  return [
-    { valor: String(Math.floor(minutosTotais / 1440)), rotulo: 'dias' },
-    { valor: String(Math.floor((minutosTotais % 1440) / 60)).padStart(2, '0'), rotulo: 'horas' },
-    { valor: String(minutosTotais % 60).padStart(2, '0'), rotulo: 'min' },
-  ]
+const PRESENTES_INICIAIS = 3
+const FOTOS_INICIAIS = 12
+
+const tomStatusPresente: Record<StatusPresente, TomSelo> = {
+  Disponivel: 'sucesso',
+  Reservado: 'neutro',
+  Comprado: 'destaque',
 }
 
 /**
- * Tela G1 - Página pública do Evento (pré-visualização do organizador).
- * Mostra os dados reais do evento; confirmação de presença, Pix e mural
- * ainda não têm rotas públicas no backend.
+ * Tela G1 - Página pública do Evento, aberta pelos convidados em /e/{slug} (sem login).
+ * O organizador vê a mesma página na pré-visualização, com a navegação do painel
+ * e os formulários desativados.
  */
 export function PaginaEvento({
-  eventoId,
-  onVoltar,
-  onAbrirConfiguracoes,
+  slug,
+  navegacao,
+  preVisualizacao = false,
 }: {
-  eventoId: number
-  onVoltar: () => void
-  onAbrirConfiguracoes: () => void
+  slug: string
+  navegacao?: ItemNavegacao[]
+  preVisualizacao?: boolean
 }) {
   const carregar = useCallback(
-    () => Promise.all([obterEvento(eventoId), listarPresentes(eventoId)]),
-    [eventoId],
+    () => Promise.all([obterEventoPublico(slug), listarPresentesPublicos(slug), listarFotosPublicas(slug)]),
+    [slug],
   )
   const { dados, erro, carregando, recarregar } = useCarregamento(carregar)
-  const [agora] = useState(() => Date.now())
+  const agora = useAgora()
 
-  const [presenca, setPresenca] = useState<'vou' | 'nao' | null>(null)
-  const [nome, setNome] = useState('')
-  const [acompanhantes, setAcompanhantes] = useState('')
-  const [restricao, setRestricao] = useState('')
-  const [valorPix, setValorPix] = useState('')
+  const [presenteAberto, setPresenteAberto] = useState<PresentePublico | null>(null)
+  const [avisoPresentes, setAvisoPresentes] = useState<string | null>(null)
+  const [todosPresentes, setTodosPresentes] = useState(false)
+  const [todasFotos, setTodasFotos] = useState(false)
+  const fecharPresente = useCallback(() => setPresenteAberto(null), [])
 
-  const navegacao = [
-    { icone: casaBranca, rotulo: 'Inicio', onClick: onVoltar },
-    { icone: olhoAtivo, rotulo: 'Visualizar', ativo: true },
-    { icone: engrenagem, rotulo: 'Configurações', onClick: onAbrirConfiguracoes },
-  ]
+  const nomeEvento = dados?.[0].nomeEvento
+  useEffect(() => {
+    if (nomeEvento && !preVisualizacao) document.title = `${nomeEvento} · Dataê`
+  }, [nomeEvento, preVisualizacao])
 
   if (!dados) {
     return (
       <div className="flex min-h-screen w-full bg-page">
-        <BarraLateral itens={navegacao} />
+        {navegacao && <BarraLateral itens={navegacao} />}
         <main className="flex min-h-screen w-full flex-1 flex-col px-6 pt-10 pb-6">
           <AvisoErro mensagem={erro} onTentarNovamente={recarregar} />
           {carregando && <MensagemLista>Carregando página...</MensagemLista>}
-          <NavegacaoInferior className="mx-auto w-[min(100%-3rem,28rem)] lg:hidden" itens={navegacao} />
+          {navegacao && <NavegacaoInferior className="mx-auto w-[min(100%-3rem,28rem)] lg:hidden" itens={navegacao} />}
         </main>
       </div>
     )
   }
 
-  const [evento, presentes] = dados
+  const [evento, presentesDaApi, fotos] = dados
+  // As reservas feitas neste aparelho vêm primeiro, para o convidado achar "Minha reserva" sem procurar.
+  // O resto mantém a ordem da API (disponíveis antes dos reservados).
+  const presentes = [...presentesDaApi].sort(
+    (a, b) => Number(codigoReserva(b.id) !== null) - Number(codigoReserva(a.id) !== null),
+  )
   const dataPorExtenso = formatarDataPorExtenso(evento.dataEvento)
+  const eventoJaComecou = new Date(evento.dataEvento).getTime() <= agora
+  const presentesVisiveis = todosPresentes ? presentes : presentes.slice(0, PRESENTES_INICIAIS)
+  const fotosVisiveis = todasFotos ? fotos : fotos.slice(0, FOTOS_INICIAIS)
 
   // A cor escolhida nas configurações substitui o roxo padrão nesta página
   const estiloTema = evento.corPrincipal
     ? ({ '--color-primary': evento.corPrincipal } as CSSProperties)
     : undefined
 
+  function acaoDoPresente(p: PresentePublico) {
+    if (p.status === 'Disponivel') return 'Reservar'
+    if (codigoReserva(p.id)) return 'Minha reserva'
+    return undefined
+  }
+
   return (
     <div className="flex min-h-screen w-full bg-page" style={estiloTema}>
-      <BarraLateral itens={navegacao} />
+      {navegacao && <BarraLateral itens={navegacao} />}
 
       <main className="relative min-h-screen w-full flex-1 pb-6">
+        {preVisualizacao && (
+          <div className={`${envoltorio} pt-6`}>
+            <p className="rounded-[10px] bg-badge px-4 py-3 text-[12px] text-heading lg:text-[13px]">
+              <strong>Pré-visualização:</strong> é assim que seus convidados veem a página. Aqui os formulários
+              ficam desativados; para testar, abra o{' '}
+              <a href={linkPublicoEvento(slug)} target="_blank" rel="noreferrer" className="font-medium text-primary underline">
+                link público
+              </a>
+              .
+            </p>
+          </div>
+        )}
+
         {/* Capa + Convite (2 colunas no desktop) */}
         <section className="pt-8 lg:pt-14">
           <div className={`${duasColunas} lg:items-center`}>
@@ -111,7 +149,13 @@ export function PaginaEvento({
                 {evento.nomeEvento}
               </h1>
               <div className="absolute inset-x-6 bottom-6 lg:max-w-xs">
-                <ContagemRegressiva unidades={tempoRestante(evento.dataEvento, agora)} />
+                {eventoJaComecou ? (
+                  <p className="rounded-[12px] bg-white/25 px-2 py-3 text-center text-[15px] font-bold text-white backdrop-blur-sm">
+                    O grande dia chegou!
+                  </p>
+                ) : (
+                  <ContagemRegressiva unidades={tempoRestante(evento.dataEvento, agora)} />
+                )}
               </div>
             </div>
 
@@ -162,60 +206,7 @@ export function PaginaEvento({
             </div>
 
             <div className="mt-4 lg:mt-0">
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPresenca('vou')}
-                  aria-pressed={presenca === 'vou'}
-                  className={`h-[46px] rounded-[10px] border-[1.5px] text-[13px] font-bold transition-colors ${
-                    presenca === 'vou'
-                      ? 'border-primary bg-primary text-surface'
-                      : 'border-field-border bg-surface text-muted'
-                  }`}
-                >
-                  Vou
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPresenca('nao')}
-                  aria-pressed={presenca === 'nao'}
-                  className={`h-[46px] rounded-[10px] border-[1.5px] text-[13px] font-medium transition-colors ${
-                    presenca === 'nao'
-                      ? 'border-primary bg-primary text-surface'
-                      : 'border-field-border bg-surface text-muted'
-                  }`}
-                >
-                  Não vou
-                </button>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <CampoTexto
-                  name="presenca-nome"
-                  placeholder="Seu nome"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                />
-                <CampoTexto
-                  name="presenca-acompanhantes"
-                  placeholder="Acompanhantes: 0"
-                  value={acompanhantes}
-                  onChange={(e) => setAcompanhantes(e.target.value)}
-                />
-              </div>
-              <CampoTexto
-                className="mt-3"
-                name="presenca-restricao"
-                placeholder="Restrição alimentar? (opcional)"
-                value={restricao}
-                onChange={(e) => setRestricao(e.target.value)}
-              />
-              <Botao
-                className="mt-4"
-                icone={<img src={setaDireita} alt="" width={24} height={24} />}
-              >
-                Enviar confirmação
-              </Botao>
+              <FormularioPresenca slug={slug} somenteLeitura={preVisualizacao} />
             </div>
           </div>
         </section>
@@ -226,68 +217,66 @@ export function PaginaEvento({
             <RotuloSecao className="text-center">PRESENTES</RotuloSecao>
             <h2 className={`mt-4 ${titulo} lg:text-center`}>Lista de presentes</h2>
             <p className="mt-1 text-[12px] text-muted lg:text-center lg:text-[14px]">
-              Reserve um item ou contribua com uma cota.
+              Reserve um item para ninguém dar o mesmo presente.
             </p>
+            {avisoPresentes && (
+              <p role="status" className="mt-4 rounded-[10px] bg-stat-mint px-4 py-3 text-[13px] text-success lg:text-center">
+                {avisoPresentes}
+              </p>
+            )}
             <div className="mt-5 flex flex-col gap-4 lg:mt-8 lg:grid lg:grid-cols-3 lg:gap-6">
               {presentes.length === 0 && <MensagemLista>Nenhum presente cadastrado ainda.</MensagemLista>}
-              {presentes.slice(0, 3).map((p) => (
+              {presentesVisiveis.map((p) => (
                 <CartaoPresentePublico
                   key={p.id}
                   nome={p.nome}
                   preco={formatarMoeda(p.valorEstimado)}
                   imagem={p.foto ?? undefined}
-                  status={
-                    p.status === 'Disponivel'
-                      ? { rotulo: 'Disponível', tom: 'sucesso' }
-                      : { rotulo: 'Reservado', tom: 'neutro' }
-                  }
-                  acao={p.status === 'Disponivel' ? 'Reservar' : undefined}
+                  link={p.linkAfiliado ?? undefined}
+                  status={{ rotulo: rotulosStatusPresente[p.status], tom: tomStatusPresente[p.status] }}
+                  acao={acaoDoPresente(p)}
+                  onAcao={() => setPresenteAberto(p)}
                 />
               ))}
             </div>
-            {presentes.length > 3 && (
+            {presentes.length > PRESENTES_INICIAIS && (
               <Botao
                 className="mt-5 lg:mx-auto lg:mt-8 lg:max-w-xs"
+                onClick={() => setTodosPresentes((atual) => !atual)}
                 icone={<img src={presenteBotao} alt="" width={24} height={24} />}
               >
-                Todos presentes
+                {todosPresentes ? 'Mostrar menos' : `Todos presentes (${presentes.length})`}
               </Botao>
             )}
           </div>
         </section>
 
         {/* Presente em dinheiro / Pix (introdução | card) */}
-        <section className="pt-10 lg:pt-16">
-          <div className={`${duasColunas} lg:items-center`}>
-            <div>
-              <RotuloSecao className="text-center lg:text-left">
-                PRESENTE EM DINHEIRO
-              </RotuloSecao>
-              <h2 className={`mt-4 ${titulo}`}>Prefere ajudar com Pix?</h2>
-              <p className="mt-2 hidden text-[14px] text-muted lg:block">
-                Contribua com qualquer valor e gere um QR Code na hora.
-              </p>
+        {(evento.pixDisponivel || preVisualizacao) && (
+          <section className="pt-10 lg:pt-16">
+            <div className={`${duasColunas} lg:items-center`}>
+              <div>
+                <RotuloSecao className="text-center lg:text-left">
+                  PRESENTE EM DINHEIRO
+                </RotuloSecao>
+                <h2 className={`mt-4 ${titulo}`}>Prefere ajudar com Pix?</h2>
+                <p className="mt-2 hidden text-[14px] text-muted lg:block">
+                  Contribua com qualquer valor e gere um QR Code na hora.
+                </p>
+              </div>
+              <div className="mt-4 lg:mt-0">
+                {evento.pixDisponivel ? (
+                  <CartaoPix slug={slug} nomeRecebedor={evento.nomeRecebedorPix} />
+                ) : (
+                  // Só aparece para o organizador: convidados não veem a seção sem Pix configurado
+                  <p className="rounded-[12px] border-[1.5px] border-dashed border-field-border p-5 text-[13px] text-muted">
+                    Esta seção fica escondida dos convidados até você cadastrar uma chave Pix em Configurações.
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="mt-4 rounded-[12px] bg-heading p-5 lg:mt-0 lg:p-7">
-              <p className="text-[13px] font-medium text-white">
-                Digite o valor para gerar o QRcode
-              </p>
-              <CampoTexto
-                className="mt-3"
-                name="pix-valor"
-                placeholder="R$: 50"
-                value={valorPix}
-                onChange={(e) => setValorPix(e.target.value)}
-              />
-              <Botao
-                className="mt-3"
-                icone={<img src={setaCheck} alt="" width={24} height={24} />}
-              >
-                Gerar QrCode
-              </Botao>
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Mural de fotos */}
         <section className="mt-10 bg-badge py-10 lg:mt-16 lg:py-16">
@@ -298,21 +287,39 @@ export function PaginaEvento({
               Suas fotos aparecem aqui depois de aprovadas.
             </p>
             <div className="mt-5 grid grid-cols-3 gap-2 lg:mt-8 lg:grid-cols-6 lg:gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`aspect-square rounded-[10px] ${
-                    i % 2 === 0 ? 'bg-surface' : 'bg-theme-lilac'
-                  }`}
-                />
-              ))}
+              {fotos.length === 0
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`aspect-square rounded-[10px] ${i % 2 === 0 ? 'bg-surface' : 'bg-theme-lilac'}`}
+                    />
+                  ))
+                : fotosVisiveis.map((f) => (
+                    <a
+                      key={f.id}
+                      href={urlApi(f.url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="aspect-square overflow-hidden rounded-[10px] bg-surface"
+                      title={f.nomeAutor ? `Enviada por ${f.nomeAutor}` : undefined}
+                    >
+                      <img src={urlApi(f.url)} alt={f.nomeAutor ? `Foto de ${f.nomeAutor}` : 'Foto do mural'} loading="lazy" className="size-full object-cover" />
+                    </a>
+                  ))}
             </div>
-            <Botao
-              className="mt-5 lg:mx-auto lg:mt-8 lg:max-w-xs"
-              icone={<img src={setaDireita} alt="" width={24} height={24} />}
-            >
-              Enviar fotos
-            </Botao>
+            {fotos.length === 0 && (
+              <p className="mt-3 text-center text-[12px] text-muted">Ainda não há fotos. Seja o primeiro a enviar!</p>
+            )}
+            {fotos.length > FOTOS_INICIAIS && (
+              <button
+                type="button"
+                onClick={() => setTodasFotos((atual) => !atual)}
+                className="mt-4 block w-full text-center text-[13px] font-medium text-primary underline"
+              >
+                {todasFotos ? 'Mostrar menos fotos' : `Ver todas as ${fotos.length} fotos`}
+              </button>
+            )}
+            <EnvioFotosMural slug={slug} somenteLeitura={preVisualizacao} />
           </div>
         </section>
 
@@ -326,10 +333,63 @@ export function PaginaEvento({
         </footer>
 
         {/* Navegação flutuante (só mobile; no desktop usa-se a barra lateral) */}
-        <NavegacaoInferior
-          className="mx-auto w-[min(100%-3rem,28rem)] lg:hidden"
-          itens={navegacao}
-        />
+        {navegacao && (
+          <NavegacaoInferior
+            className="mx-auto w-[min(100%-3rem,28rem)] lg:hidden"
+            itens={navegacao}
+          />
+        )}
+      </main>
+
+      <JanelaModal titulo={presenteAberto?.nome ?? ''} aberta={presenteAberto !== null} onFechar={fecharPresente}>
+        {presenteAberto && (
+          <FormularioReserva
+            // key recria o formulário ao trocar de presente
+            key={presenteAberto.id}
+            slug={slug}
+            presente={presenteAberto}
+            codigo={codigoReserva(presenteAberto.id)}
+            somenteLeitura={preVisualizacao}
+            onConcluido={(mensagem) => {
+              setPresenteAberto(null)
+              setAvisoPresentes(mensagem)
+              recarregar()
+            }}
+          />
+        )}
+      </JanelaModal>
+    </div>
+  )
+}
+
+/** Pré-visualização da página pública dentro do painel do organizador. */
+export function PreVisualizacaoEvento({
+  eventoId,
+  onVoltar,
+  onAbrirConfiguracoes,
+}: {
+  eventoId: number
+  onVoltar: () => void
+  onAbrirConfiguracoes: () => void
+}) {
+  const carregar = useCallback(() => obterEvento(eventoId), [eventoId])
+  const { dados: evento, erro, carregando, recarregar } = useCarregamento(carregar)
+
+  const navegacao = [
+    { icone: casaBranca, rotulo: 'Inicio', onClick: onVoltar },
+    { icone: olhoAtivo, rotulo: 'Visualizar', ativo: true },
+    { icone: engrenagem, rotulo: 'Configurações', onClick: onAbrirConfiguracoes },
+  ]
+
+  if (evento) return <PaginaEvento slug={evento.slugPublico} navegacao={navegacao} preVisualizacao />
+
+  return (
+    <div className="flex min-h-screen w-full bg-page">
+      <BarraLateral itens={navegacao} />
+      <main className="flex min-h-screen w-full flex-1 flex-col px-6 pt-10 pb-6">
+        <AvisoErro mensagem={erro} onTentarNovamente={recarregar} />
+        {carregando && <MensagemLista>Carregando página...</MensagemLista>}
+        <NavegacaoInferior className="mx-auto w-[min(100%-3rem,28rem)] lg:hidden" itens={navegacao} />
       </main>
     </div>
   )

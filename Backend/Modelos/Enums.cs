@@ -19,4 +19,12 @@ public enum StatusPresente
 {
     Disponivel,
     Reservado,
+    Comprado,
+}
+
+public enum StatusFoto
+{
+    Pendente,
+    Aprovada,
+    Recusada,
 }

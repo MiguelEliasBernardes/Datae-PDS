@@ -110,8 +110,9 @@ public class ServicoPresente(ContextoBanco banco)
     }
 
     /// <summary>
-    /// Regras de reserva: informar um convidado reserva o presente para ele;
-    /// voltar para Disponivel remove o convidado.
+    /// Regras de reserva: informar um convidado reserva o presente para ele (ou marca como
+    /// comprado por ele, se o status for Comprado); voltar para Disponivel remove o convidado
+    /// e invalida o código de reserva que o convidado recebeu na página pública.
     /// </summary>
     private async Task AplicarReservaAsync(
         ItemPresente presente, StatusPresente? status, int? convidadoId, Dictionary<string, string[]> erros)
@@ -139,18 +140,19 @@ public class ServicoPresente(ContextoBanco banco)
             }
 
             presente.ConvidadoId = idConvidado;
-            presente.Status = StatusPresente.Reservado;
+            presente.Status = status == StatusPresente.Comprado ? StatusPresente.Comprado : StatusPresente.Reservado;
             return;
         }
 
         if (status == StatusPresente.Disponivel)
         {
             presente.ConvidadoId = null;
+            presente.CodigoReserva = null;
             presente.Status = StatusPresente.Disponivel;
         }
-        else if (status == StatusPresente.Reservado)
+        else if (status is StatusPresente novo)
         {
-            presente.Status = StatusPresente.Reservado;
+            presente.Status = novo;
         }
     }
 

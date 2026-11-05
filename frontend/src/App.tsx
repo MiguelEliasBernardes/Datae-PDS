@@ -8,8 +8,10 @@ import { Convidados } from './paginas/Convidados'
 import { CriarEvento } from './paginas/CriarEvento'
 import { Formandos } from './paginas/Formandos'
 import { Login } from './paginas/Login'
+import { slugDaUrl } from './dados/rotas'
 import { MeusEventos } from './paginas/MeusEventos'
-import { PaginaEvento } from './paginas/PaginaEvento'
+import { Mural } from './paginas/Mural'
+import { PaginaEvento, PreVisualizacaoEvento } from './paginas/PaginaEvento'
 import { PainelEvento } from './paginas/PainelEvento'
 import { PainelFormatura } from './paginas/PainelFormatura'
 import { Presentes } from './paginas/Presentes'
@@ -23,6 +25,7 @@ type Tela =
   | 'painel-formatura'
   | 'convidados'
   | 'presentes'
+  | 'mural'
   | 'configuracoes'
   | 'pagina-evento'
   | 'formandos'
@@ -34,7 +37,17 @@ interface EventoAberto {
   painel: 'painel-evento' | 'painel-formatura'
 }
 
+/**
+ * Endereços /e/{slug} abrem a página pública do evento, para convidados (sem login).
+ * Qualquer outro endereço abre a área do organizador.
+ */
 function App() {
+  const slug = slugDaUrl()
+  if (slug) return <div className="app-shell"><PaginaEvento slug={slug} /></div>
+  return <AreaOrganizador />
+}
+
+function AreaOrganizador() {
   const [usuario, setUsuario] = useState<Usuario | null>(obterUsuario)
   const [tela, setTela] = useState<Tela>(() => (obterUsuario() ? 'meus-eventos' : 'login'))
   const [evento, setEvento] = useState<EventoAberto | null>(null)
@@ -106,6 +119,7 @@ function App() {
             onVoltar={voltarAosEventos}
             onAbrirConvidados={irPara('convidados')}
             onAbrirPresentes={irPara('presentes')}
+            onAbrirMural={irPara('mural')}
             onAbrirConfiguracoes={irPara('configuracoes')}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -139,6 +153,15 @@ function App() {
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
         )
+      case 'mural':
+        return (
+          <Mural
+            eventoId={evento.id}
+            onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
       case 'configuracoes':
         return (
           <ConfiguracoesPagina
@@ -150,7 +173,7 @@ function App() {
         )
       case 'pagina-evento':
         return (
-          <PaginaEvento
+          <PreVisualizacaoEvento
             eventoId={evento.id}
             onVoltar={voltarAoPainel}
             onAbrirConfiguracoes={irPara('configuracoes')}

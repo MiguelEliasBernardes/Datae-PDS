@@ -64,6 +64,9 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
   const [data, setData] = useState(paraCampoDataHora(evento.dataEvento))
   const [slug, setSlug] = useState(evento.slugPublico)
   const [cor, setCor] = useState(evento.corPrincipal ?? coresTema[0].valor)
+  const [chavePix, setChavePix] = useState(evento.chavePix ?? '')
+  const [nomeRecebedorPix, setNomeRecebedorPix] = useState(evento.nomeRecebedorPix ?? '')
+  const [cidadePix, setCidadePix] = useState(evento.cidadePix ?? '')
 
   const [erro, setErro] = useState<ErroApi | null>(null)
   const [mensagemGeral, setMensagemGeral] = useState<string | null>(null)
@@ -81,6 +84,10 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
       setMensagemGeral('O nome e a data do evento são obrigatórios.')
       return
     }
+    if (chavePix.trim() && (!nomeRecebedorPix.trim() || !cidadePix.trim())) {
+      setMensagemGeral('Para receber via Pix, informe também o nome e a cidade de quem recebe.')
+      return
+    }
 
     setMensagemGeral(null)
     setSalvando(true)
@@ -92,8 +99,15 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
         dataEvento: deCampoDataHora(data),
         slugPublico: slug,
         corPrincipal: cor,
+        chavePix,
+        nomeRecebedorPix,
+        cidadePix,
       })
       setSlug(atualizado.slugPublico)
+      // O servidor padroniza os dados do Pix (ex.: tira pontos do CPF e acentos do nome)
+      setChavePix(atualizado.chavePix ?? '')
+      setNomeRecebedorPix(atualizado.nomeRecebedorPix ?? '')
+      setCidadePix(atualizado.cidadePix ?? '')
       setSucesso('Alterações salvas.')
     } catch (e) {
       if (e instanceof ErroApi) setErro(e)
@@ -189,6 +203,43 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
           {erro?.doCampo('corPrincipal') && <p className="text-[12px] text-danger">{erro.doCampo('corPrincipal')}</p>}
         </div>
 
+        {/* Presente em dinheiro (Pix estático) */}
+        <div className="flex flex-col gap-1 lg:col-span-2">
+          <span className={tonsRotulo.campo}>Presente em dinheiro (Pix)</span>
+          <p className="font-display text-[10px] text-muted lg:text-[11px]">
+            Com a chave preenchida, a página mostra a opção de Pix: o convidado digita o valor e recebe o QR Code.
+            O dinheiro cai direto na sua conta; confira os valores no extrato do banco. Deixe a chave vazia para
+            esconder a opção.
+          </p>
+        </div>
+        <CampoTexto
+          className="lg:col-span-2"
+          rotulo="Chave Pix"
+          tomRotulo="campo"
+          placeholder="CPF, CNPJ, e-mail, telefone (+55...) ou chave aleatória"
+          value={chavePix}
+          onChange={(e) => setChavePix(e.target.value)}
+          erro={erro?.doCampo('chavePix')}
+        />
+        <CampoTexto
+          rotulo="Nome de quem recebe"
+          tomRotulo="campo"
+          placeholder="Como aparece no banco"
+          maxLength={25}
+          value={nomeRecebedorPix}
+          onChange={(e) => setNomeRecebedorPix(e.target.value)}
+          erro={erro?.doCampo('nomeRecebedorPix')}
+        />
+        <CampoTexto
+          rotulo="Cidade de quem recebe"
+          tomRotulo="campo"
+          placeholder="Ex: São Paulo"
+          maxLength={15}
+          value={cidadePix}
+          onChange={(e) => setCidadePix(e.target.value)}
+          erro={erro?.doCampo('cidadePix')}
+        />
+
         <div className="flex flex-col gap-2 lg:col-span-2 lg:max-w-xs">
           <Botao type="submit" carregando={salvando}>
             Salvar alterações
@@ -208,11 +259,6 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
           descricao="Adiciona uma lista de presentes a página, onde convidados podem reservar ou pagar cotas de presentes cadastrados."
         />
         <OpcaoConfiguracao
-          titulo="Pix dinâmico"
-          ativoInicialmente
-          descricao="Adicionar opção de presente via pix, convidado digita o valor e gerar um QRCode para pagamento, com confirmação automática."
-        />
-        <OpcaoConfiguracao
           titulo="Mural de fotos"
           ativoInicialmente
           descricao="Ativar opção de mural de fotos onde convidados podem enviar fotos e você libera se elas podem ou não aparecer no mural."
@@ -224,7 +270,7 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
         {confirmandoExclusao ? (
           <>
             <p className="text-[12px] text-danger">
-              Isso apaga o evento, os convidados e os presentes. Não dá para desfazer.
+              Isso apaga o evento, os convidados, os presentes e as fotos do mural. Não dá para desfazer.
             </p>
             <div className="flex gap-2">
               <Botao type="button" variante="secundario" onClick={() => setConfirmandoExclusao(false)}>

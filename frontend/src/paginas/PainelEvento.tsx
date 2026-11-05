@@ -21,10 +21,8 @@ import { GradeAcessos } from '../componentes/GradeAcessos'
 import { LayoutPainel } from '../componentes/LayoutPainel'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { TituloDestaque } from '../componentes/TituloDestaque'
+import { linkPublicoEvento } from '../dados/rotas'
 import { useCarregamento } from '../hooks/useCarregamento'
-
-/** Endereço público do evento (a página pública ainda não tem rota própria). */
-const linkPublico = (slug: string) => `${window.location.origin}/${slug}`
 
 /** Tela O4 - Painel do Evento. */
 export function PainelEvento({
@@ -32,6 +30,7 @@ export function PainelEvento({
   onVoltar,
   onAbrirConvidados,
   onAbrirPresentes,
+  onAbrirMural,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -39,6 +38,7 @@ export function PainelEvento({
   onVoltar: () => void
   onAbrirConvidados: () => void
   onAbrirPresentes: () => void
+  onAbrirMural: () => void
   onAbrirConfiguracoes: () => void
   onAbrirVisualizacao: () => void
 }) {
@@ -69,8 +69,9 @@ export function PainelEvento({
   const pessoasConfirmadas = convidados
     .filter((c) => c.statusPresenca === 'Confirmado')
     .reduce((total, c) => total + 1 + c.quantidadeAcompanhantes, 0)
-  const reservados = presentes.filter((p) => p.status === 'Reservado').length
-  const link = linkPublico(evento.slugPublico)
+  // Comprados também contam: o item já saiu da lista de disponíveis
+  const reservados = presentes.filter((p) => p.status !== 'Disponivel').length
+  const link = linkPublicoEvento(evento.slugPublico)
 
   async function copiarLink() {
     try {
@@ -104,8 +105,13 @@ export function PainelEvento({
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
       <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
         <CartaoEstatistica icone={emailConfirmado} valor={String(pessoasConfirmadas)} rotulo="Pessoas confirmadas" tom="lilas" />
-        {/* O financeiro (PIX) ainda não tem backend */}
-        <CartaoEstatistica icone={circuloCifrao} valor="—" rotulo="Dinheiro arrecadado" tom="menta" />
+        {/* Pix estático não avisa quando o pagamento cai: o valor recebido só aparece no extrato do banco */}
+        <CartaoEstatistica
+          icone={circuloCifrao}
+          valor={evento.chavePix ? 'Ativo' : 'Desativado'}
+          rotulo="Presente via Pix"
+          tom="menta"
+        />
         <CartaoEstatistica icone={pacote} valor={`${reservados}/${presentes.length}`} rotulo="Itens reservados" tom="pessego" />
       </div>
 
@@ -140,8 +146,9 @@ export function PainelEvento({
           itens={[
             { icone: pessoas, titulo: 'Convidados', onClick: onAbrirConvidados },
             { icone: presente, titulo: 'Presentes', onClick: onAbrirPresentes },
-            { icone: livroImagem, titulo: 'Mural de fotos' },
-            { icone: pix, titulo: 'Financeiro (PIX)' },
+            { icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural },
+            // A chave Pix é cadastrada nas configurações da página
+            { icone: pix, titulo: 'Financeiro (PIX)', onClick: onAbrirConfiguracoes },
           ]}
         />
       </div>

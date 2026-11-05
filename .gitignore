@@ -12,6 +12,9 @@ obj/
 *.suo
 *.rsuser
 
+# Fotos enviadas pelos convidados (mural) — ficam só no servidor
+Backend/Uploads/
+
 # Configurações locais com segredos (use para sobrescrever o appsettings sem commitar)
 appsettings.Local.json
 

@@ -20,7 +20,10 @@ public record AtualizarEventoRequisicao(
     string? SlugPublico,
     string? Descricao,
     string? CorPrincipal,
-    string? CorSecundaria);
+    string? CorSecundaria,
+    string? ChavePix,
+    string? NomeRecebedorPix,
+    string? CidadePix);
 
 public record EventoResposta(
     int Id,
@@ -33,4 +36,7 @@ public record EventoResposta(
     string? Descricao,
     string? CorPrincipal,
     string? CorSecundaria,
+    string? ChavePix,
+    string? NomeRecebedorPix,
+    string? CidadePix,
     DateTime CriadoEm);

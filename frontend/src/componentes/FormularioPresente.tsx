@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { ErroApi, mensagemDeErro } from '../api/cliente'
 import type { DadosPresente, Presente, StatusPresente } from '../api/tipos'
-import { lerValorMonetario } from '../dados/formatacao'
+import { lerValorMonetario, rotulosStatusPresente } from '../dados/formatacao'
 import { AreaTexto } from './AreaTexto'
 import { AvisoErro } from './AvisoErro'
 import { Botao } from './Botao'
 import { BotaoOpcao } from './BotaoOpcao'
 import { CampoTexto } from './CampoTexto'
+
+const statusPresente = Object.keys(rotulosStatusPresente) as StatusPresente[]
 
 /**
  * Formulário de adicionar/editar presente. Quem chama decide o que fazer
@@ -122,10 +124,14 @@ export function FormularioPresente({
       {presente && (
         <div className="flex flex-col gap-2">
           <span className="text-[13px] font-medium text-heading">Situação</span>
-          <div className="grid grid-cols-2 gap-2">
-            <BotaoOpcao rotulo="Disponível" selecionado={status === 'Disponivel'} onClick={() => setStatus('Disponivel')} />
-            <BotaoOpcao rotulo="Reservado" selecionado={status === 'Reservado'} onClick={() => setStatus('Reservado')} />
+          <div className="grid grid-cols-3 gap-2">
+            {statusPresente.map((s) => (
+              <BotaoOpcao key={s} rotulo={rotulosStatusPresente[s]} selecionado={status === s} onClick={() => setStatus(s)} />
+            ))}
           </div>
+          {status === 'Disponivel' && presente.status !== 'Disponivel' && (
+            <p className="text-[12px] text-muted">Ao salvar, a reserva do convidado é desfeita e o presente volta para a lista.</p>
+          )}
           {erro?.doCampo('status') && <p className="text-[12px] text-danger">{erro.doCampo('status')}</p>}
         </div>
       )}

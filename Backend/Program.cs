@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Backend.Dados;
 using Backend.Modelos;
 using Backend.Rotas;
@@ -44,6 +45,19 @@ builder.Services.AddScoped<ServicoUsuario>();
 builder.Services.AddScoped<ServicoEvento>();
 builder.Services.AddScoped<ServicoConvidado>();
 builder.Services.AddScoped<ServicoPresente>();
+builder.Services.AddScoped<ServicoPaginaPublica>();
+builder.Services.AddScoped<ServicoMural>();
+builder.Services.AddSingleton<ArmazenamentoArquivos>();
+
+// Limite de requisições por IP nas rotas públicas que gravam dados (RSVP, reserva, Pix, fotos),
+// para ninguém conseguir encher o banco ou o disco de um evento com um script
+builder.Services.AddRateLimiter(opcoes =>
+{
+    opcoes.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    opcoes.AddPolicy(RotasPublicas.PoliticaLimite, contexto => RateLimitPartition.GetFixedWindowLimiter(
+        contexto.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+});
 
 // Enums trafegam como texto no JSON ("Confirmado" em vez de 1)
 builder.Services.ConfigureHttpJsonOptions(opcoes =>
@@ -75,6 +89,7 @@ else
     app.UseHttpsRedirection();
 }
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -82,5 +97,7 @@ app.MapearRotasUsuario();
 app.MapearRotasEvento();
 app.MapearRotasConvidado();
 app.MapearRotasPresente();
+app.MapearRotasMural();
+app.MapearRotasPublicas();
 
 app.Run();

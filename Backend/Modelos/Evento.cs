@@ -16,5 +16,11 @@ public class Evento
     public string? Descricao { get; set; }
     public string? CorPrincipal { get; set; }
     public string? CorSecundaria { get; set; }
+
+    // Pix estático para presente em dinheiro (nulo = opção desativada na página pública)
+    public string? ChavePix { get; set; }
+    public string? NomeRecebedorPix { get; set; }
+    public string? CidadePix { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }

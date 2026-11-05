@@ -80,5 +80,8 @@ public static class RotasEvento
         evento.Descricao,
         evento.CorPrincipal,
         evento.CorSecundaria,
+        evento.ChavePix,
+        evento.NomeRecebedorPix,
+        evento.CidadePix,
         evento.CriadoEm);
 }

@@ -5,6 +5,7 @@ import { SeloStatus, type TomSelo } from './SeloStatus'
 const infoStatus: Record<StatusPresente, { tom: TomSelo; rotulo: string }> = {
   Disponivel: { tom: 'sucesso', rotulo: 'Disponível' },
   Reservado: { tom: 'perigo', rotulo: 'Reservado' },
+  Comprado: { tom: 'destaque', rotulo: 'Comprado' },
 }
 
 interface LinhaPresenteProps {
@@ -12,11 +13,13 @@ interface LinhaPresenteProps {
   nome: string
   preco: string
   status: StatusPresente
+  /** Nome de quem reservou/comprou, quando houver. */
+  reservadoPor?: string | null
   onEditar?: () => void
 }
 
 /** Linha de produto da lista de presentes. */
-export function LinhaPresente({ imagem, nome, preco, status, onEditar }: LinhaPresenteProps) {
+export function LinhaPresente({ imagem, nome, preco, status, reservadoPor, onEditar }: LinhaPresenteProps) {
   const { tom, rotulo } = infoStatus[status]
   return (
     <div className="flex gap-3 border-b border-field-border pb-3">
@@ -33,6 +36,11 @@ export function LinhaPresente({ imagem, nome, preco, status, onEditar }: LinhaPr
           <SeloStatus tom={tom}>{rotulo}</SeloStatus>
         </div>
         <p className="mt-0.5 font-display text-[12px] text-muted">{preco}</p>
+        {reservadoPor && (
+          <p className="truncate font-display text-[12px] text-muted">
+            {status === 'Comprado' ? 'Comprado por' : 'Reservado por'} {reservadoPor}
+          </p>
+        )}
         <button
           type="button"
           onClick={onEditar}

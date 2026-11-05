@@ -10,7 +10,8 @@ public record CriarPresenteRequisicao(
     string? Foto);
 
 // Campos nulos não são alterados; texto vazio ("") limpa os campos opcionais.
-// Informar ConvidadoId reserva o presente; mudar o Status para Disponivel libera.
+// Informar ConvidadoId reserva o presente; mudar o Status para Disponivel libera;
+// Comprado marca o presente como já comprado (mantendo o convidado, se houver).
 public record AtualizarPresenteRequisicao(
     string? Nome,
     string? Descricao,

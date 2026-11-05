@@ -8,7 +8,7 @@ using static Backend.Servicos.Validacoes;
 
 namespace Backend.Servicos;
 
-public class ServicoEvento(ContextoBanco banco)
+public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazenamento)
 {
     private const int TamanhoMaximoSlug = 150;
 
@@ -99,6 +99,7 @@ public class ServicoEvento(ContextoBanco banco)
         }
 
         ValidarCores(requisicao.CorPrincipal, requisicao.CorSecundaria, erros);
+        AplicarPix(evento, requisicao, erros);
 
         if (erros.Count > 0)
             return Resultado<Evento>.Invalido(erros);
@@ -122,10 +123,49 @@ public class ServicoEvento(ContextoBanco banco)
         if (evento is null)
             return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado.");
 
-        // Convidados e presentes do evento são excluídos junto (cascata no banco)
+        // Convidados, presentes e fotos do evento são excluídos junto (cascata no banco);
+        // os arquivos das fotos precisam ser apagados do disco à parte
         banco.Eventos.Remove(evento);
         await banco.SaveChangesAsync();
+        armazenamento.ExcluirPastaEvento(id);
         return Resultado<bool>.Ok(true);
+    }
+
+    /// <summary>
+    /// Dados do Pix estático. Chave vazia ("") desativa o Pix na página pública;
+    /// com chave, o nome do recebedor e a cidade também são obrigatórios (o BR Code exige).
+    /// </summary>
+    private static void AplicarPix(Evento evento, AtualizarEventoRequisicao requisicao, Dictionary<string, string[]> erros)
+    {
+        if (requisicao.ChavePix is not null)
+        {
+            if (TextoOpcional(requisicao.ChavePix) is null)
+                evento.ChavePix = null;
+            else if (NormalizarChavePix(requisicao.ChavePix) is string chave)
+                evento.ChavePix = chave;
+            else
+                erros["chavePix"] = ["Chave Pix inválida. Use CPF, CNPJ, e-mail, telefone com +55 ou chave aleatória."];
+        }
+
+        if (requisicao.NomeRecebedorPix is not null)
+        {
+            var nome = GeradorPix.TextoSemAcento(requisicao.NomeRecebedorPix, GeradorPix.TamanhoMaximoNome);
+            evento.NomeRecebedorPix = nome.Length == 0 ? null : nome;
+        }
+
+        if (requisicao.CidadePix is not null)
+        {
+            var cidade = GeradorPix.TextoSemAcento(requisicao.CidadePix, GeradorPix.TamanhoMaximoCidade);
+            evento.CidadePix = cidade.Length == 0 ? null : cidade;
+        }
+
+        if (evento.ChavePix is not null && !erros.ContainsKey("chavePix"))
+        {
+            if (evento.NomeRecebedorPix is null)
+                erros["nomeRecebedorPix"] = ["Informe o nome de quem vai receber o Pix."];
+            if (evento.CidadePix is null)
+                erros["cidadePix"] = ["Informe a cidade de quem vai receber o Pix."];
+        }
     }
 
     // Só encontra eventos do próprio usuário; evento de outra pessoa aparece como "não encontrado"

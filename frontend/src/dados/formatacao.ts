@@ -1,4 +1,4 @@
-import type { StatusPresenca, TipoEvento } from '../api/tipos'
+import type { StatusFoto, StatusPresenca, StatusPresente, TipoEvento } from '../api/tipos'
 
 /** Rótulos exibidos para cada tipo de evento do backend. */
 export const rotulosTipoEvento: Record<TipoEvento, string> = {
@@ -14,6 +14,30 @@ export const rotulosStatusPresenca: Record<StatusPresenca, string> = {
   Pendente: 'Pendente',
   Confirmado: 'Confirmado',
   Recusado: 'Recusado',
+}
+
+export const rotulosStatusPresente: Record<StatusPresente, string> = {
+  Disponivel: 'Disponível',
+  Reservado: 'Reservado',
+  Comprado: 'Comprado',
+}
+
+export const rotulosStatusFoto: Record<StatusFoto, string> = {
+  Pendente: 'Pendente',
+  Aprovada: 'Aprovada',
+  Recusada: 'Recusada',
+}
+
+/** Quanto falta até a data, em dias/horas/minutos/segundos (zera quando a data passa). */
+export function tempoRestante(dataIso: string, agora: number) {
+  const segundosTotais = Math.floor(Math.max(0, new Date(dataIso).getTime() - agora) / 1000)
+  const doisDigitos = (n: number) => String(n).padStart(2, '0')
+  return [
+    { valor: String(Math.floor(segundosTotais / 86_400)), rotulo: 'dias' },
+    { valor: doisDigitos(Math.floor((segundosTotais % 86_400) / 3600)), rotulo: 'horas' },
+    { valor: doisDigitos(Math.floor((segundosTotais % 3600) / 60)), rotulo: 'min' },
+    { valor: doisDigitos(segundosTotais % 60), rotulo: 'seg' },
+  ]
 }
 
 /** "2026-12-20T19:00:00Z" → "20/12/2026". */
