@@ -10,11 +10,12 @@ namespace Backend.Servicos;
 
 /// <summary>
 /// Tudo o que o convidado faz na página pública do evento, sem login: ver o evento,
-/// confirmar presença, reservar presente e gerar o Pix. O evento é sempre localizado pelo slug.
+/// confirmar presença, reservar presente, comprar cotas e gerar o Pix. O evento é sempre localizado pelo slug.
 /// </summary>
 public class ServicoPaginaPublica(ContextoBanco banco)
 {
     public const int MaximoAcompanhantes = 10;
+    private const int MaximoCotasPorCompra = 100;
     private const decimal ValorMaximoPix = 100_000m;
 
     public async Task<Resultado<Evento>> ObterEventoAsync(string slug)
@@ -28,6 +29,10 @@ public class ServicoPaginaPublica(ContextoBanco banco)
         var evento = await BuscarPorSlugAsync(slug);
         if (evento is null)
             return EventoNaoEncontrado<List<ItemPresente>>();
+
+        // Lista desativada nas configurações: a página simplesmente não mostra presentes
+        if (!evento.ListaPresentesAtiva)
+            return Resultado<List<ItemPresente>>.Ok([]);
 
         // Disponíveis primeiro, para o convidado achar logo o que ainda pode reservar
         var presentes = await banco.ItensPresente
@@ -87,6 +92,8 @@ public class ServicoPaginaPublica(ContextoBanco banco)
         var evento = await BuscarPorSlugAsync(slug);
         if (evento is null)
             return EventoNaoEncontrado<(ItemPresente, string)>();
+        if (!evento.ListaPresentesAtiva)
+            return ListaDesativada<(ItemPresente, string)>();
 
         var nome = NormalizarNome(requisicao.Nome);
         if (nome.Length == 0)
@@ -98,6 +105,9 @@ public class ServicoPaginaPublica(ContextoBanco banco)
             .FirstOrDefaultAsync(p => p.Id == presenteId && p.EventoId == evento.Id);
         if (presente is null)
             return PresenteNaoEncontrado<(ItemPresente, string)>();
+        if (presente.QuantidadeCotas is not null)
+            return Resultado<(ItemPresente, string)>.Falha(
+                TipoErro.Conflito, "Este presente é dividido em cotas. Escolha quantas cotas você quer dar.");
         if (presente.Status != StatusPresente.Disponivel)
             return PresenteIndisponivel<(ItemPresente, string)>();
 
@@ -155,7 +165,7 @@ public class ServicoPaginaPublica(ContextoBanco banco)
         if (evento is null)
             return EventoNaoEncontrado<PixResposta>();
 
-        if (evento.ChavePix is null || evento.NomeRecebedorPix is null || evento.CidadePix is null)
+        if (!PixDisponivel(evento))
             return Resultado<PixResposta>.Falha(TipoErro.NaoEncontrado, "Este evento não recebe presentes via Pix.");
 
         if (requisicao.Valor is decimal valor && (valor <= 0 || valor > ValorMaximoPix || decimal.Round(valor, 2) != valor))
@@ -164,12 +174,90 @@ public class ServicoPaginaPublica(ContextoBanco banco)
                 ["valor"] = [$"Informe um valor entre R$ 0,01 e R$ {ValorMaximoPix:N0}, com no máximo 2 casas decimais."],
             });
 
-        var copiaECola = GeradorPix.GerarCopiaECola(evento.ChavePix, evento.NomeRecebedorPix, evento.CidadePix, requisicao.Valor);
-        return Resultado<PixResposta>.Ok(new PixResposta(
-            copiaECola,
-            GeradorPix.GerarQrCode(copiaECola),
-            requisicao.Valor,
-            evento.NomeRecebedorPix));
+        return Resultado<PixResposta>.Ok(MontarPix(evento, requisicao.Valor));
+    }
+
+    /// <summary>
+    /// O convidado compra cotas de um presente dividido. A soma é feita num único UPDATE que só
+    /// passa se ainda houver cotas suficientes, então duas compras ao mesmo tempo nunca vendem além do total.
+    /// Se o evento tiver Pix, a resposta já traz o QR Code com o valor das cotas.
+    /// </summary>
+    public async Task<Resultado<(ItemPresente Presente, int Quantidade, decimal? Valor, PixResposta? Pix)>> ComprarCotasAsync(
+        string slug, int presenteId, ComprarCotasRequisicao requisicao)
+    {
+        var evento = await BuscarPorSlugAsync(slug);
+        if (evento is null)
+            return EventoNaoEncontrado<(ItemPresente, int, decimal?, PixResposta?)>();
+        if (!evento.ListaPresentesAtiva)
+            return ListaDesativada<(ItemPresente, int, decimal?, PixResposta?)>();
+
+        var nome = NormalizarNome(requisicao.Nome);
+        var quantidade = requisicao.Quantidade;
+        var erros = new Dictionary<string, string[]>();
+
+        if (nome.Length == 0)
+            erros["nome"] = ["Informe seu nome."];
+        else if (nome.Length > 120)
+            erros["nome"] = ["O nome pode ter no máximo 120 caracteres."];
+        if (quantidade is < 1 or > MaximoCotasPorCompra)
+            erros["quantidade"] = ["Escolha pelo menos 1 cota."];
+
+        if (erros.Count > 0)
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Invalido(erros);
+
+        var presente = await banco.ItensPresente.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == presenteId && p.EventoId == evento.Id);
+        if (presente is null)
+            return PresenteNaoEncontrado<(ItemPresente, int, decimal?, PixResposta?)>();
+        if (presente.QuantidadeCotas is not int totalCotas)
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Falha(TipoErro.Conflito, "Este presente não é dividido em cotas. Reserve o presente inteiro.");
+
+        var restantes = totalCotas - presente.CotasVendidas;
+        if (restantes <= 0)
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Falha(TipoErro.Conflito, "Todas as cotas deste presente já foram compradas.");
+        if (quantidade > restantes)
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Invalido(new()
+            {
+                ["quantidade"] = [restantes == 1 ? "Só resta 1 cota." : $"Só restam {restantes} cotas."],
+            });
+
+        await using var transacao = await banco.Database.BeginTransactionAsync();
+
+        var convidado = await BuscarOuCriarConvidadoAsync(evento.Id, nome);
+        await banco.SaveChangesAsync();
+
+        var alterados = await banco.ItensPresente
+            .Where(p => p.Id == presenteId && p.QuantidadeCotas != null && p.CotasVendidas + quantidade <= p.QuantidadeCotas)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.CotasVendidas, p => p.CotasVendidas + quantidade)
+                .SetProperty(p => p.Status, p => p.CotasVendidas + quantidade == p.QuantidadeCotas
+                    ? StatusPresente.Comprado
+                    : StatusPresente.Disponivel));
+
+        // Outra pessoa comprou as últimas cotas entre a consulta e o UPDATE: desfaz o convidado criado agora
+        if (alterados == 0)
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Falha(
+                TipoErro.Conflito, "As cotas deste presente acabaram de ser compradas por outra pessoa. Atualize a página.");
+
+        var valor = presente.ValorCota * quantidade;
+        banco.CotasPresente.Add(new CotaPresente
+        {
+            ItemPresenteId = presente.Id,
+            ConvidadoId = convidado.Id,
+            NomeConvidado = nome,
+            Quantidade = quantidade,
+            Valor = valor ?? 0,
+        });
+        await banco.SaveChangesAsync();
+        await transacao.CommitAsync();
+
+        presente.CotasVendidas += quantidade;
+        if (presente.CotasVendidas == totalCotas)
+            presente.Status = StatusPresente.Comprado;
+
+        // Presente sem valor não tem como gerar Pix: o convidado combina o pagamento com o organizador
+        var pix = PixDisponivel(evento) && valor is > 0 and <= ValorMaximoPix ? MontarPix(evento, valor) : null;
+        return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Ok((presente, quantidade, valor, pix));
     }
 
     /// <summary>Confere o código de reserva e aplica a alteração. A alteração devolve uma mensagem se não for permitida.</summary>
@@ -212,6 +300,15 @@ public class ServicoPaginaPublica(ContextoBanco banco)
         return convidado;
     }
 
+    private static bool PixDisponivel(Evento evento) =>
+        evento.ChavePix is not null && evento.NomeRecebedorPix is not null && evento.CidadePix is not null;
+
+    private static PixResposta MontarPix(Evento evento, decimal? valor)
+    {
+        var copiaECola = GeradorPix.GerarCopiaECola(evento.ChavePix!, evento.NomeRecebedorPix!, evento.CidadePix!, valor);
+        return new PixResposta(copiaECola, GeradorPix.GerarQrCode(copiaECola), valor, evento.NomeRecebedorPix!);
+    }
+
     private Task<Evento?> BuscarPorSlugAsync(string slug)
     {
         var slugNormalizado = (slug ?? string.Empty).Trim().ToLowerInvariant();
@@ -228,6 +325,9 @@ public class ServicoPaginaPublica(ContextoBanco banco)
 
     private static Resultado<T> PresenteNaoEncontrado<T>() =>
         Resultado<T>.Falha(TipoErro.NaoEncontrado, "Presente não encontrado.");
+
+    private static Resultado<T> ListaDesativada<T>() =>
+        Resultado<T>.Falha(TipoErro.NaoEncontrado, "A lista de presentes deste evento está desativada.");
 
     private static Resultado<T> PresenteIndisponivel<T>() =>
         Resultado<T>.Falha(TipoErro.Conflito, "Este presente acabou de ser reservado por outra pessoa. Escolha outro!");

@@ -2,8 +2,8 @@ import { useCallback, useState } from 'react'
 import olho from '../assets/eye.svg'
 import casaBranca from '../assets/house-white.svg'
 import engrenagemAtiva from '../assets/settings-active.svg'
-import { ErroApi, mensagemDeErro } from '../api/cliente'
-import { atualizarEvento, excluirEvento, obterEvento } from '../api/eventos'
+import { ErroApi, mensagemDeErro, urlApi } from '../api/cliente'
+import { atualizarEvento, enviarBanner, excluirEvento, obterEvento, removerBanner } from '../api/eventos'
 import type { Evento } from '../api/tipos'
 import { AmostraCor } from '../componentes/AmostraCor'
 import { AreaTexto } from '../componentes/AreaTexto'
@@ -20,6 +20,8 @@ import { coresTema } from '../dados/coresTema'
 import { tonsRotulo } from '../dados/estilosCampo'
 import { deCampoDataHora, paraCampoDataHora } from '../dados/formatacao'
 import { useCarregamento } from '../hooks/useCarregamento'
+
+const TAMANHO_MAXIMO_BANNER_MB = 10
 
 /** Tela O7 - Configurações da página. */
 export function ConfiguracoesPagina({
@@ -67,6 +69,13 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
   const [chavePix, setChavePix] = useState(evento.chavePix ?? '')
   const [nomeRecebedorPix, setNomeRecebedorPix] = useState(evento.nomeRecebedorPix ?? '')
   const [cidadePix, setCidadePix] = useState(evento.cidadePix ?? '')
+  const [bannerUrl, setBannerUrl] = useState(evento.bannerUrl)
+  const [enviandoBanner, setEnviandoBanner] = useState(false)
+  const [erroBanner, setErroBanner] = useState<string | null>(null)
+  const [listaPresentesAtiva, setListaPresentesAtiva] = useState(evento.listaPresentesAtiva)
+  const [muralAtivo, setMuralAtivo] = useState(evento.muralAtivo)
+  const [salvandoOpcao, setSalvandoOpcao] = useState(false)
+  const [erroOpcoes, setErroOpcoes] = useState<string | null>(null)
 
   const [erro, setErro] = useState<ErroApi | null>(null)
   const [mensagemGeral, setMensagemGeral] = useState<string | null>(null)
@@ -117,6 +126,53 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
     }
   }
 
+  async function trocarBanner(arquivo: File) {
+    // Validação no navegador, antes de chamar a API
+    if (arquivo.size > TAMANHO_MAXIMO_BANNER_MB * 1024 * 1024) {
+      setErroBanner(`A imagem pode ter no máximo ${TAMANHO_MAXIMO_BANNER_MB} MB.`)
+      return
+    }
+
+    setErroBanner(null)
+    setEnviandoBanner(true)
+    try {
+      const atualizado = await enviarBanner(evento.id, arquivo)
+      setBannerUrl(atualizado.bannerUrl)
+    } catch (e) {
+      setErroBanner(mensagemDeErro(e))
+    } finally {
+      setEnviandoBanner(false)
+    }
+  }
+
+  async function tirarBanner() {
+    setErroBanner(null)
+    setEnviandoBanner(true)
+    try {
+      await removerBanner(evento.id)
+      setBannerUrl(null)
+    } catch (e) {
+      setErroBanner(mensagemDeErro(e))
+    } finally {
+      setEnviandoBanner(false)
+    }
+  }
+
+  /** Os interruptores são salvos na hora, sem esperar o "Salvar alterações". */
+  async function alterarOpcao(dados: { listaPresentesAtiva?: boolean; muralAtivo?: boolean }) {
+    setErroOpcoes(null)
+    setSalvandoOpcao(true)
+    try {
+      const atualizado = await atualizarEvento(evento.id, dados)
+      setListaPresentesAtiva(atualizado.listaPresentesAtiva)
+      setMuralAtivo(atualizado.muralAtivo)
+    } catch (e) {
+      setErroOpcoes(mensagemDeErro(e))
+    } finally {
+      setSalvandoOpcao(false)
+    }
+  }
+
   async function excluir() {
     setSalvando(true)
     setMensagemGeral(null)
@@ -138,9 +194,20 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
       >
         <AvisoErro className="lg:col-span-2" mensagem={mensagemGeral} />
 
-        <div className="lg:col-span-2">
-          {/* Upload de imagem ainda não tem backend */}
-          <EnvioImagem rotulo="Imagem banner" />
+        {/* O banner é salvo assim que a imagem é escolhida, sem esperar o "Salvar alterações" */}
+        <div className="flex flex-col items-center gap-2 lg:col-span-2 lg:items-start">
+          <EnvioImagem
+            rotulo="Imagem banner"
+            imagem={bannerUrl && urlApi(bannerUrl)}
+            carregando={enviandoBanner}
+            onEscolher={(arquivo) => void trocarBanner(arquivo)}
+            onRemover={() => void tirarBanner()}
+          />
+          <p className="text-center font-display text-[10px] text-muted lg:text-left lg:text-[11px]">
+            Aparece no topo da página do evento e no cartão em "Meus Eventos". JPG, PNG, GIF ou WEBP de até{' '}
+            {TAMANHO_MAXIMO_BANNER_MB} MB.
+          </p>
+          <AvisoErro mensagem={erroBanner} />
         </div>
 
         <CampoTexto
@@ -252,16 +319,21 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
         <TituloDestaque>Configurações opcionais</TituloDestaque>
       </div>
 
-      {/* Os interruptores ainda não têm backend */}
       <div className="mt-6 mb-6 flex flex-col gap-6 lg:max-w-3xl">
+        <AvisoErro mensagem={erroOpcoes} />
         <OpcaoConfiguracao
           titulo="Lista de presentes"
           descricao="Adiciona uma lista de presentes a página, onde convidados podem reservar ou pagar cotas de presentes cadastrados."
+          ativo={listaPresentesAtiva}
+          desabilitado={salvandoOpcao}
+          onAlterar={(ativo) => void alterarOpcao({ listaPresentesAtiva: ativo })}
         />
         <OpcaoConfiguracao
           titulo="Mural de fotos"
-          ativoInicialmente
           descricao="Ativar opção de mural de fotos onde convidados podem enviar fotos e você libera se elas podem ou não aparecer no mural."
+          ativo={muralAtivo}
+          desabilitado={salvandoOpcao}
+          onAlterar={(ativo) => void alterarOpcao({ muralAtivo: ativo })}
         />
       </div>
 

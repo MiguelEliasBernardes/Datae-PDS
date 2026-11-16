@@ -17,10 +17,17 @@ public class Evento
     public string? CorPrincipal { get; set; }
     public string? CorSecundaria { get; set; }
 
+    // Nome do arquivo da imagem de capa (ver ArmazenamentoArquivos); nulo = imagem padrão
+    public string? Banner { get; set; }
+
     // Pix estático para presente em dinheiro (nulo = opção desativada na página pública)
     public string? ChavePix { get; set; }
     public string? NomeRecebedorPix { get; set; }
     public string? CidadePix { get; set; }
+
+    // Seções opcionais da página pública (desativadas, somem da página e as rotas públicas recusam o uso)
+    public bool ListaPresentesAtiva { get; set; } = true;
+    public bool MuralAtivo { get; set; } = true;
 
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }

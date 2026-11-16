@@ -47,9 +47,12 @@ builder.Services.AddScoped<ServicoConvidado>();
 builder.Services.AddScoped<ServicoPresente>();
 builder.Services.AddScoped<ServicoPaginaPublica>();
 builder.Services.AddScoped<ServicoMural>();
+builder.Services.AddScoped<ServicoFormando>();
+builder.Services.AddScoped<ServicoDespesa>();
+builder.Services.AddScoped<ServicoRateio>();
 builder.Services.AddSingleton<ArmazenamentoArquivos>();
 
-// Limite de requisições por IP nas rotas públicas que gravam dados (RSVP, reserva, Pix, fotos),
+// Limite de requisições por IP nas rotas públicas que gravam dados (RSVP, reserva, cotas, Pix, fotos),
 // para ninguém conseguir encher o banco ou o disco de um evento com um script
 builder.Services.AddRateLimiter(opcoes =>
 {
@@ -98,6 +101,7 @@ app.MapearRotasEvento();
 app.MapearRotasConvidado();
 app.MapearRotasPresente();
 app.MapearRotasMural();
+app.MapearRotasFormatura();
 app.MapearRotasPublicas();
 
 app.Run();

@@ -13,6 +13,7 @@ import { CampoTexto } from '../componentes/CampoTexto'
 import { GradeAcessos } from '../componentes/GradeAcessos'
 import { LayoutPainel } from '../componentes/LayoutPainel'
 import { TituloDestaque } from '../componentes/TituloDestaque'
+import { linkPublicoEvento } from '../dados/rotas'
 import { useCarregamento } from '../hooks/useCarregamento'
 
 /** Tela F1 - Painel do Organizador (Formatura). */
@@ -20,6 +21,8 @@ export function PainelFormatura({
   eventoId,
   onVoltar,
   onAbrirFormandos,
+  onAbrirDespesas,
+  onAbrirMural,
   onAbrirRateio,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
@@ -27,6 +30,8 @@ export function PainelFormatura({
   eventoId: number
   onVoltar: () => void
   onAbrirFormandos: () => void
+  onAbrirDespesas: () => void
+  onAbrirMural: () => void
   onAbrirRateio: () => void
   onAbrirConfiguracoes: () => void
   onAbrirVisualizacao: () => void
@@ -55,7 +60,7 @@ export function PainelFormatura({
         tomRotulo="campo"
         name="link-publico"
         readOnly
-        value={evento ? `${window.location.origin}/${evento.slugPublico}` : ''}
+        value={evento ? linkPublicoEvento(evento.slugPublico) : ''}
       />
 
       {/* Acessos rápidos */}
@@ -63,8 +68,8 @@ export function PainelFormatura({
         <GradeAcessos
           itens={[
             { icone: pessoas, titulo: 'Formandos', onClick: onAbrirFormandos },
-            { icone: notaDinheiro, titulo: 'Despesas' },
-            { icone: livroImagem, titulo: 'Mural de fotos' },
+            { icone: notaDinheiro, titulo: 'Despesas', onClick: onAbrirDespesas },
+            { icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural },
             { icone: dividir, titulo: 'Rateio Pagamentos', onClick: onAbrirRateio },
           ]}
         />

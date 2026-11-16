@@ -11,6 +11,7 @@ namespace Backend.Servicos;
 public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazenamento)
 {
     private const int TamanhoMaximoSlug = 150;
+    public const long TamanhoMaximoBannerBytes = 10 * 1024 * 1024;
 
     public async Task<Resultado<List<Evento>>> ListarAsync(int usuarioId)
     {
@@ -112,6 +113,10 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
             evento.CorPrincipal = TextoOpcional(requisicao.CorPrincipal);
         if (requisicao.CorSecundaria is not null)
             evento.CorSecundaria = TextoOpcional(requisicao.CorSecundaria);
+        if (requisicao.ListaPresentesAtiva is bool listaPresentesAtiva)
+            evento.ListaPresentesAtiva = listaPresentesAtiva;
+        if (requisicao.MuralAtivo is bool muralAtivo)
+            evento.MuralAtivo = muralAtivo;
 
         await banco.SaveChangesAsync();
         return Resultado<Evento>.Ok(evento);
@@ -124,12 +129,64 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
             return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado.");
 
         // Convidados, presentes e fotos do evento são excluídos junto (cascata no banco);
-        // os arquivos das fotos precisam ser apagados do disco à parte
+        // os arquivos das fotos e do banner precisam ser apagados do disco à parte
         banco.Eventos.Remove(evento);
         await banco.SaveChangesAsync();
         armazenamento.ExcluirPastaEvento(id);
         return Resultado<bool>.Ok(true);
     }
+
+    /// <summary>Troca a imagem de capa do evento (usada no banner da página pública e no cartão do evento).</summary>
+    public async Task<Resultado<Evento>> EnviarBannerAsync(int usuarioId, int id, IFormFile? arquivo)
+    {
+        var evento = await BuscarDoUsuarioAsync(usuarioId, id);
+        if (evento is null)
+            return EventoNaoEncontrado();
+
+        if (arquivo is null || arquivo.Length == 0)
+            return Resultado<Evento>.Invalido(new() { ["arquivo"] = ["Escolha uma imagem para o banner."] });
+        if (arquivo.Length > TamanhoMaximoBannerBytes)
+            return Resultado<Evento>.Invalido(new()
+            {
+                ["arquivo"] = [$"A imagem pode ter no máximo {TamanhoMaximoBannerBytes / 1024 / 1024} MB."],
+            });
+
+        // Lê o começo do arquivo para conferir se é mesmo uma imagem
+        var extensao = await ArmazenamentoArquivos.DetectarExtensaoImagemAsync(arquivo);
+        if (extensao is null)
+            return Resultado<Evento>.Invalido(new() { ["arquivo"] = ["Envie uma imagem JPG, PNG, GIF ou WEBP."] });
+
+        var bannerAnterior = evento.Banner;
+        await using (var conteudo = arquivo.OpenReadStream())
+            evento.Banner = await armazenamento.SalvarBannerAsync(evento.Id, conteudo, extensao);
+
+        await banco.SaveChangesAsync();
+        if (bannerAnterior is not null)
+            armazenamento.ExcluirBanner(evento.Id, bannerAnterior);
+
+        return Resultado<Evento>.Ok(evento);
+    }
+
+    /// <summary>Remove a imagem de capa; a página volta a usar a imagem padrão.</summary>
+    public async Task<Resultado<Evento>> RemoverBannerAsync(int usuarioId, int id)
+    {
+        var evento = await BuscarDoUsuarioAsync(usuarioId, id);
+        if (evento is null)
+            return EventoNaoEncontrado();
+
+        if (evento.Banner is string banner)
+        {
+            evento.Banner = null;
+            await banco.SaveChangesAsync();
+            armazenamento.ExcluirBanner(evento.Id, banner);
+        }
+
+        return Resultado<Evento>.Ok(evento);
+    }
+
+    /// <summary>Endereço público do banner, ou nulo se o evento usa a imagem padrão.</summary>
+    public static string? UrlDoBanner(Evento evento) =>
+        evento.Banner is null ? null : $"/api/banners/{evento.Id}/{evento.Banner}";
 
     /// <summary>
     /// Dados do Pix estático. Chave vazia ("") desativa o Pix na página pública;

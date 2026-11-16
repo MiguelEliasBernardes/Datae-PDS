@@ -1,51 +1,66 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import seloPercentual from '../assets/badge-percent.svg'
 import notaDinheiro from '../assets/banknote-stat.svg'
 import circuloCifrao from '../assets/circle-dollar-sign.svg'
 import olho from '../assets/eye.svg'
 import casaBranca from '../assets/house-white.svg'
 import engrenagem from '../assets/settings.svg'
+import { obterRateio } from '../api/formatura'
+import type { RateioFormando } from '../api/tipos'
+import { AvisoErro } from '../componentes/AvisoErro'
+import { Botao } from '../componentes/Botao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CampoTexto } from '../componentes/CampoTexto'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { ChipFiltro } from '../componentes/ChipFiltro'
+import { JanelaModal } from '../componentes/JanelaModal'
 import { LayoutPainel } from '../componentes/LayoutPainel'
-import { LinhaPagamento, type Pagamento } from '../componentes/LinhaPagamento'
+import { LinhaPagamento } from '../componentes/LinhaPagamento'
 import { MensagemLista } from '../componentes/MensagemLista'
+import { PagamentosFormando } from '../componentes/PagamentosFormando'
 import { TituloDestaque } from '../componentes/TituloDestaque'
-
-/** Dados de exemplo: o rateio ainda não tem backend. */
-const pagamentos: Pagamento[] = [
-  { nome: 'Miguel', status: 'pendente', pago: 'R$ 199,90', total: 'R$ 256,97', percentual: 66 },
-  { nome: 'Ana Silva', status: 'pago', pago: 'R$ 256,97', total: 'R$ 256,97', percentual: 100 },
-  { nome: 'João', status: 'pendente', pago: 'R$ 100,00', total: 'R$ 256,97', percentual: 39 },
-  { nome: 'Beatriz Lima', status: 'pago', pago: 'R$ 256,97', total: 'R$ 256,97', percentual: 100 },
-]
+import { formatarMoeda } from '../dados/formatacao'
+import { useCarregamento } from '../hooks/useCarregamento'
 
 type Filtro = 'pago' | 'pendente'
 
-/** Tela F4 - Rateio de Pagamentos. */
+/** Tela F4 - Rateio de Pagamentos: o total das despesas dividido igualmente entre os formandos. */
 export function Rateio({
+  eventoId,
   onVoltar,
+  onAbrirDespesas,
+  onAbrirFormandos,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
+  eventoId: number
   onVoltar: () => void
+  onAbrirDespesas: () => void
+  onAbrirFormandos: () => void
   onAbrirConfiguracoes: () => void
   onAbrirVisualizacao: () => void
 }) {
+  const carregar = useCallback(() => obterRateio(eventoId), [eventoId])
+  const { dados: rateio, erro, carregando, recarregar } = useCarregamento(carregar)
+
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState<Filtro | null>(null)
+  // Guarda só o id: depois de registrar um pagamento, a janela mostra os valores recalculados
+  const [formandoAberto, setFormandoAberto] = useState<number | null>(null)
+  const fecharJanela = useCallback(() => setFormandoAberto(null), [])
 
   const alternarFiltro = (f: Filtro) => setFiltro((atual) => (atual === f ? null : f))
 
   const visiveis = useMemo(() => {
-    return pagamentos.filter((p) => {
-      if (!p.nome.toLowerCase().includes(busca.toLowerCase())) return false
-      if (filtro) return p.status === filtro
+    return (rateio?.formandos ?? []).filter((f) => {
+      if (!f.nome.toLowerCase().includes(busca.toLowerCase())) return false
+      if (filtro === 'pago') return f.quitado
+      if (filtro === 'pendente') return !f.quitado
       return true
     })
-  }, [busca, filtro])
+  }, [rateio, busca, filtro])
+
+  const aberto: RateioFormando | undefined = rateio?.formandos.find((f) => f.formandoId === formandoAberto)
 
   const navegacao = [
     { icone: casaBranca, rotulo: 'Inicio', onClick: onVoltar },
@@ -61,9 +76,33 @@ export function Rateio({
 
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
       <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
-        <CartaoEstatistica icone={notaDinheiro} valor="R$ 2.678,99" tom="lilas" rotulo="Total despesas" />
-        <CartaoEstatistica icone={seloPercentual} valor="80%" tom="menta" rotulo="Porcentagem paga" />
-        <CartaoEstatistica icone={circuloCifrao} valor="R$ 256,97" tom="pessego" rotulo="Valor por formando" />
+        <CartaoEstatistica
+          icone={notaDinheiro}
+          valor={formatarMoeda(rateio?.totalDespesas ?? 0)}
+          tom="lilas"
+          rotulo="Total despesas"
+        />
+        <CartaoEstatistica
+          icone={seloPercentual}
+          valor={`${rateio?.percentualPago ?? 0}%`}
+          tom="menta"
+          rotulo="Porcentagem paga"
+        />
+        <CartaoEstatistica
+          icone={circuloCifrao}
+          valor={formatarMoeda(rateio?.valorPorFormando ?? 0)}
+          tom="pessego"
+          rotulo="Valor por formando"
+        />
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3 lg:max-w-xl lg:flex-row">
+        <Botao variante="secundario" onClick={onAbrirDespesas}>
+          Gerenciar despesas
+        </Botao>
+        <Botao variante="secundario" onClick={onAbrirFormandos}>
+          Gerenciar formandos
+        </Botao>
       </div>
 
       {/* Busca */}
@@ -81,14 +120,46 @@ export function Rateio({
         <ChipFiltro rotulo="Pendente" ativo={filtro === 'pendente'} onClick={() => alternarFiltro('pendente')} />
       </div>
 
+      <AvisoErro className="mt-4" mensagem={erro} onTentarNovamente={recarregar} />
+
       {/* Lista de rateio */}
       <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto lg:grid lg:grid-cols-2 lg:content-start lg:gap-x-6 lg:gap-y-4 lg:overflow-visible">
-        {visiveis.length > 0 ? (
-          visiveis.map((p) => <LinhaPagamento key={p.nome} {...p} />)
+        {carregando && !rateio ? (
+          <MensagemLista>Carregando rateio...</MensagemLista>
+        ) : visiveis.length > 0 ? (
+          visiveis.map((f) => (
+            <LinhaPagamento
+              key={f.formandoId}
+              nome={f.nome}
+              status={f.quitado ? 'pago' : 'pendente'}
+              pago={formatarMoeda(f.valorPago)}
+              total={formatarMoeda(f.valorDevido)}
+              percentual={f.percentual}
+              onAdicionarPagamento={() => setFormandoAberto(f.formandoId)}
+            />
+          ))
         ) : (
-          <MensagemLista>Nenhum formando encontrado.</MensagemLista>
+          rateio && (
+            <MensagemLista>
+              {rateio.formandos.length === 0
+                ? 'Cadastre os formandos para dividir as despesas.'
+                : 'Nenhum formando encontrado.'}
+            </MensagemLista>
+          )
         )}
       </div>
+
+      <JanelaModal titulo={aberto ? `Pagamentos de ${aberto.nome}` : ''} aberta={aberto !== undefined} onFechar={fecharJanela}>
+        {aberto && (
+          <PagamentosFormando
+            // key recria a janela ao trocar de formando
+            key={aberto.formandoId}
+            eventoId={eventoId}
+            formando={aberto}
+            onAlterado={recarregar}
+          />
+        )}
+      </JanelaModal>
     </LayoutPainel>
   )
 }

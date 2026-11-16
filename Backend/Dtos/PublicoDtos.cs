@@ -15,7 +15,10 @@ public record EventoPublicoResposta(
     string? CorPrincipal,
     string? CorSecundaria,
     bool PixDisponivel,
-    string? NomeRecebedorPix);
+    string? NomeRecebedorPix,
+    string? BannerUrl,
+    bool ListaPresentesAtiva,
+    bool MuralAtivo);
 
 public record PresentePublicoResposta(
     int Id,
@@ -24,7 +27,10 @@ public record PresentePublicoResposta(
     decimal? ValorEstimado,
     StatusPresente Status,
     string? LinkAfiliado,
-    string? Foto);
+    string? Foto,
+    int? QuantidadeCotas,
+    int CotasVendidas,
+    decimal? ValorCota);
 
 // RSVP: o convidado é localizado pelo nome; se ainda não estiver na lista, é adicionado
 public record ConfirmarPresencaRequisicao(
@@ -50,5 +56,11 @@ public record AcaoReservaRequisicao(string CodigoReserva);
 public record GerarPixRequisicao(decimal? Valor);
 
 public record PixResposta(string CopiaECola, string QrCode, decimal? Valor, string NomeRecebedor);
+
+// Compra de cotas de um presente; o convidado paga pelo Pix do evento
+public record ComprarCotasRequisicao(string Nome, int Quantidade);
+
+// Pix é nulo quando o evento não tem Pix configurado (o convidado combina o pagamento com o organizador)
+public record CompraCotasResposta(PresentePublicoResposta Presente, int Quantidade, decimal? Valor, PixResposta? Pix);
 
 public record FotoPublicaResposta(int Id, string? NomeAutor, string Url, DateTime EnviadaEm);

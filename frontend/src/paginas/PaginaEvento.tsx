@@ -16,6 +16,7 @@ import { CartaoPix } from '../componentes/CartaoPix'
 import { CartaoPresentePublico } from '../componentes/CartaoPresentePublico'
 import { ContagemRegressiva } from '../componentes/ContagemRegressiva'
 import { EnvioFotosMural } from '../componentes/EnvioFotosMural'
+import { FormularioCotas } from '../componentes/FormularioCotas'
 import { FormularioPresenca } from '../componentes/FormularioPresenca'
 import { FormularioReserva } from '../componentes/FormularioReserva'
 import { JanelaModal } from '../componentes/JanelaModal'
@@ -112,10 +113,23 @@ export function PaginaEvento({
     : undefined
 
   function acaoDoPresente(p: PresentePublico) {
+    if (p.quantidadeCotas !== null) return p.status === 'Disponivel' ? 'Dar cotas' : undefined
     if (p.status === 'Disponivel') return 'Reservar'
     if (codigoReserva(p.id)) return 'Minha reserva'
     return undefined
   }
+
+  function precoDoPresente(p: PresentePublico) {
+    if (p.quantidadeCotas === null) return formatarMoeda(p.valorEstimado)
+    return `${formatarMoeda(p.valorCota)} a cota · ${p.cotasVendidas}/${p.quantidadeCotas}`
+  }
+
+  // Aviso no lugar de uma seção desativada (só o organizador vê, na pré-visualização)
+  const avisoSecaoDesativada = (secao: string) => (
+    <p className="mt-5 rounded-[12px] border-[1.5px] border-dashed border-field-border p-5 text-[13px] text-muted lg:text-center">
+      {secao} está desativado nas Configurações, então os convidados não veem esta seção.
+    </p>
+  )
 
   return (
     <div className="flex min-h-screen w-full bg-page" style={estiloTema}>
@@ -140,7 +154,11 @@ export function PaginaEvento({
           <div className={`${duasColunas} lg:items-center`}>
             {/* Imagem do evento */}
             <div className="relative aspect-[338/507] overflow-hidden rounded-[10px] lg:aspect-[3/4] lg:rounded-[24px]">
-              <img src={imagemCapa} alt="" className="size-full object-cover" />
+              <img
+                src={evento.bannerUrl ? urlApi(evento.bannerUrl) : imagemCapa}
+                alt=""
+                className="size-full object-cover"
+              />
               <div className="absolute inset-0 bg-black/20" />
               <span className="absolute top-4 right-4 text-[10px] font-bold tracking-[1.8px] text-white uppercase lg:top-6 lg:right-6 lg:text-[12px]">
                 {rotulosTipoEvento[evento.tipo]}
@@ -212,44 +230,47 @@ export function PaginaEvento({
         </section>
 
         {/* Presentes (faixa, grade 3 colunas) */}
-        <section className="mt-10 bg-badge py-10 lg:mt-16 lg:py-16">
-          <div className={envoltorio}>
-            <RotuloSecao className="text-center">PRESENTES</RotuloSecao>
-            <h2 className={`mt-4 ${titulo} lg:text-center`}>Lista de presentes</h2>
-            <p className="mt-1 text-[12px] text-muted lg:text-center lg:text-[14px]">
-              Reserve um item para ninguém dar o mesmo presente.
-            </p>
-            {avisoPresentes && (
-              <p role="status" className="mt-4 rounded-[10px] bg-stat-mint px-4 py-3 text-[13px] text-success lg:text-center">
-                {avisoPresentes}
+        {(evento.listaPresentesAtiva || preVisualizacao) && (
+          <section className="mt-10 bg-badge py-10 lg:mt-16 lg:py-16">
+            <div className={envoltorio}>
+              <RotuloSecao className="text-center">PRESENTES</RotuloSecao>
+              <h2 className={`mt-4 ${titulo} lg:text-center`}>Lista de presentes</h2>
+              {!evento.listaPresentesAtiva && avisoSecaoDesativada('A lista de presentes')}
+              <p className="mt-1 text-[12px] text-muted lg:text-center lg:text-[14px]">
+                Reserve um item para ninguém dar o mesmo presente.
               </p>
-            )}
-            <div className="mt-5 flex flex-col gap-4 lg:mt-8 lg:grid lg:grid-cols-3 lg:gap-6">
-              {presentes.length === 0 && <MensagemLista>Nenhum presente cadastrado ainda.</MensagemLista>}
-              {presentesVisiveis.map((p) => (
-                <CartaoPresentePublico
-                  key={p.id}
-                  nome={p.nome}
-                  preco={formatarMoeda(p.valorEstimado)}
-                  imagem={p.foto ?? undefined}
-                  link={p.linkAfiliado ?? undefined}
-                  status={{ rotulo: rotulosStatusPresente[p.status], tom: tomStatusPresente[p.status] }}
-                  acao={acaoDoPresente(p)}
-                  onAcao={() => setPresenteAberto(p)}
-                />
-              ))}
+              {avisoPresentes && (
+                <p role="status" className="mt-4 rounded-[10px] bg-stat-mint px-4 py-3 text-[13px] text-success lg:text-center">
+                  {avisoPresentes}
+                </p>
+              )}
+              <div className="mt-5 flex flex-col gap-4 lg:mt-8 lg:grid lg:grid-cols-3 lg:gap-6">
+                {presentes.length === 0 && <MensagemLista>Nenhum presente cadastrado ainda.</MensagemLista>}
+                {presentesVisiveis.map((p) => (
+                  <CartaoPresentePublico
+                    key={p.id}
+                    nome={p.nome}
+                    preco={precoDoPresente(p)}
+                    imagem={p.foto ?? undefined}
+                    link={p.linkAfiliado ?? undefined}
+                    status={{ rotulo: rotulosStatusPresente[p.status], tom: tomStatusPresente[p.status] }}
+                    acao={acaoDoPresente(p)}
+                    onAcao={() => setPresenteAberto(p)}
+                  />
+                ))}
+              </div>
+              {presentes.length > PRESENTES_INICIAIS && (
+                <Botao
+                  className="mt-5 lg:mx-auto lg:mt-8 lg:max-w-xs"
+                  onClick={() => setTodosPresentes((atual) => !atual)}
+                  icone={<img src={presenteBotao} alt="" width={24} height={24} />}
+                >
+                  {todosPresentes ? 'Mostrar menos' : `Todos presentes (${presentes.length})`}
+                </Botao>
+              )}
             </div>
-            {presentes.length > PRESENTES_INICIAIS && (
-              <Botao
-                className="mt-5 lg:mx-auto lg:mt-8 lg:max-w-xs"
-                onClick={() => setTodosPresentes((atual) => !atual)}
-                icone={<img src={presenteBotao} alt="" width={24} height={24} />}
-              >
-                {todosPresentes ? 'Mostrar menos' : `Todos presentes (${presentes.length})`}
-              </Botao>
-            )}
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Presente em dinheiro / Pix (introdução | card) */}
         {(evento.pixDisponivel || preVisualizacao) && (
@@ -279,49 +300,52 @@ export function PaginaEvento({
         )}
 
         {/* Mural de fotos */}
-        <section className="mt-10 bg-badge py-10 lg:mt-16 lg:py-16">
-          <div className={envoltorio}>
-            <RotuloSecao className="lg:text-center">MURAL</RotuloSecao>
-            <h2 className={`mt-4 ${titulo} lg:text-center`}>Fotos da festa</h2>
-            <p className="mt-1 text-[12px] text-muted lg:text-center lg:text-[14px]">
-              Suas fotos aparecem aqui depois de aprovadas.
-            </p>
-            <div className="mt-5 grid grid-cols-3 gap-2 lg:mt-8 lg:grid-cols-6 lg:gap-4">
-              {fotos.length === 0
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`aspect-square rounded-[10px] ${i % 2 === 0 ? 'bg-surface' : 'bg-theme-lilac'}`}
-                    />
-                  ))
-                : fotosVisiveis.map((f) => (
-                    <a
-                      key={f.id}
-                      href={urlApi(f.url)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="aspect-square overflow-hidden rounded-[10px] bg-surface"
-                      title={f.nomeAutor ? `Enviada por ${f.nomeAutor}` : undefined}
-                    >
-                      <img src={urlApi(f.url)} alt={f.nomeAutor ? `Foto de ${f.nomeAutor}` : 'Foto do mural'} loading="lazy" className="size-full object-cover" />
-                    </a>
-                  ))}
+        {(evento.muralAtivo || preVisualizacao) && (
+          <section className="mt-10 bg-badge py-10 lg:mt-16 lg:py-16">
+            <div className={envoltorio}>
+              <RotuloSecao className="lg:text-center">MURAL</RotuloSecao>
+              <h2 className={`mt-4 ${titulo} lg:text-center`}>Fotos da festa</h2>
+              {!evento.muralAtivo && avisoSecaoDesativada('O mural de fotos')}
+              <p className="mt-1 text-[12px] text-muted lg:text-center lg:text-[14px]">
+                Suas fotos aparecem aqui depois de aprovadas.
+              </p>
+              <div className="mt-5 grid grid-cols-3 gap-2 lg:mt-8 lg:grid-cols-6 lg:gap-4">
+                {fotos.length === 0
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`aspect-square rounded-[10px] ${i % 2 === 0 ? 'bg-surface' : 'bg-theme-lilac'}`}
+                      />
+                    ))
+                  : fotosVisiveis.map((f) => (
+                      <a
+                        key={f.id}
+                        href={urlApi(f.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="aspect-square overflow-hidden rounded-[10px] bg-surface"
+                        title={f.nomeAutor ? `Enviada por ${f.nomeAutor}` : undefined}
+                      >
+                        <img src={urlApi(f.url)} alt={f.nomeAutor ? `Foto de ${f.nomeAutor}` : 'Foto do mural'} loading="lazy" className="size-full object-cover" />
+                      </a>
+                    ))}
+              </div>
+              {fotos.length === 0 && (
+                <p className="mt-3 text-center text-[12px] text-muted">Ainda não há fotos. Seja o primeiro a enviar!</p>
+              )}
+              {fotos.length > FOTOS_INICIAIS && (
+                <button
+                  type="button"
+                  onClick={() => setTodasFotos((atual) => !atual)}
+                  className="mt-4 block w-full text-center text-[13px] font-medium text-primary underline"
+                >
+                  {todasFotos ? 'Mostrar menos fotos' : `Ver todas as ${fotos.length} fotos`}
+                </button>
+              )}
+              <EnvioFotosMural slug={slug} somenteLeitura={preVisualizacao} />
             </div>
-            {fotos.length === 0 && (
-              <p className="mt-3 text-center text-[12px] text-muted">Ainda não há fotos. Seja o primeiro a enviar!</p>
-            )}
-            {fotos.length > FOTOS_INICIAIS && (
-              <button
-                type="button"
-                onClick={() => setTodasFotos((atual) => !atual)}
-                className="mt-4 block w-full text-center text-[13px] font-medium text-primary underline"
-              >
-                {todasFotos ? 'Mostrar menos fotos' : `Ver todas as ${fotos.length} fotos`}
-              </button>
-            )}
-            <EnvioFotosMural slug={slug} somenteLeitura={preVisualizacao} />
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Rodapé */}
         <footer className="bg-primary-strong py-9 text-center lg:py-14">
@@ -342,7 +366,17 @@ export function PaginaEvento({
       </main>
 
       <JanelaModal titulo={presenteAberto?.nome ?? ''} aberta={presenteAberto !== null} onFechar={fecharPresente}>
-        {presenteAberto && (
+        {presenteAberto?.quantidadeCotas != null && (
+          <FormularioCotas
+            // key recria o formulário ao trocar de presente
+            key={presenteAberto.id}
+            slug={slug}
+            presente={presenteAberto}
+            somenteLeitura={preVisualizacao}
+            onComprado={recarregar}
+          />
+        )}
+        {presenteAberto && presenteAberto.quantidadeCotas === null && (
           <FormularioReserva
             // key recria o formulário ao trocar de presente
             key={presenteAberto.id}

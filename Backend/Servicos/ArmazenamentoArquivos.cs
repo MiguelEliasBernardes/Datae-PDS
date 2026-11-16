@@ -3,7 +3,9 @@ using System.Text.RegularExpressions;
 namespace Backend.Servicos;
 
 /// <summary>
-/// Guarda as fotos do mural em disco, numa pasta por evento: {PastaUploads}/mural/{eventoId}/{arquivo}.
+/// Guarda as imagens enviadas em disco, numa pasta por evento:
+/// {PastaUploads}/mural/{eventoId}/{arquivo} para as fotos do mural e
+/// {PastaUploads}/banners/{eventoId}/{arquivo} para o banner da página.
 /// O nome do arquivo é sempre gerado aqui (GUID aleatório), então não dá para adivinhar
 /// o endereço de uma foto pendente nem escapar da pasta com "../".
 /// </summary>
@@ -17,32 +19,21 @@ public partial class ArmazenamentoArquivos(IConfiguration configuracao, IWebHost
         [".webp"] = "image/webp",
     };
 
-    private string PastaMural => Path.Combine(
+    private string PastaUploads => Path.Combine(
         ambiente.ContentRootPath,
-        configuracao["Armazenamento:PastaUploads"] is { Length: > 0 } pasta ? pasta : "Uploads",
-        "mural");
+        configuracao["Armazenamento:PastaUploads"] is { Length: > 0 } pasta ? pasta : "Uploads");
 
-    public async Task<string> SalvarFotoMuralAsync(int eventoId, Stream conteudo, string extensao)
-    {
-        var pasta = Path.Combine(PastaMural, eventoId.ToString());
-        Directory.CreateDirectory(pasta);
+    private string PastaMural => Path.Combine(PastaUploads, "mural");
+    private string PastaBanners => Path.Combine(PastaUploads, "banners");
 
-        var arquivo = $"{Guid.NewGuid():N}{extensao}";
-        await using var destino = File.Create(Path.Combine(pasta, arquivo));
-        await conteudo.CopyToAsync(destino);
+    // ===== Mural =====
 
-        return arquivo;
-    }
+    public Task<string> SalvarFotoMuralAsync(int eventoId, Stream conteudo, string extensao) =>
+        SalvarAsync(Path.Combine(PastaMural, eventoId.ToString()), conteudo, extensao);
 
     /// <summary>Caminho completo e tipo da foto, ou nulo se o nome for inválido ou o arquivo não existir.</summary>
-    public (string Caminho, string TipoConteudo)? AbrirFotoMural(int eventoId, string arquivo)
-    {
-        if (!RegexNomeArquivo().IsMatch(arquivo))
-            return null;
-
-        var caminho = Path.Combine(PastaMural, eventoId.ToString(), arquivo);
-        return File.Exists(caminho) ? (caminho, TiposConteudo[Path.GetExtension(arquivo)]) : null;
-    }
+    public (string Caminho, string TipoConteudo)? AbrirFotoMural(int eventoId, string arquivo) =>
+        Abrir(Path.Combine(PastaMural, eventoId.ToString()), arquivo);
 
     public void ExcluirFotoMural(int eventoId, string arquivo)
     {
@@ -50,12 +41,42 @@ public partial class ArmazenamentoArquivos(IConfiguration configuracao, IWebHost
             File.Delete(foto.Caminho);
     }
 
-    /// <summary>Apaga todas as fotos de um evento (chamado quando o evento é excluído).</summary>
+    // ===== Banner da página =====
+
+    public Task<string> SalvarBannerAsync(int eventoId, Stream conteudo, string extensao) =>
+        SalvarAsync(Path.Combine(PastaBanners, eventoId.ToString()), conteudo, extensao);
+
+    /// <summary>Caminho completo e tipo do banner, ou nulo se o nome for inválido ou o arquivo não existir.</summary>
+    public (string Caminho, string TipoConteudo)? AbrirBanner(int eventoId, string arquivo) =>
+        Abrir(Path.Combine(PastaBanners, eventoId.ToString()), arquivo);
+
+    public void ExcluirBanner(int eventoId, string arquivo)
+    {
+        if (AbrirBanner(eventoId, arquivo) is { } banner)
+            File.Delete(banner.Caminho);
+    }
+
+    /// <summary>Apaga todas as imagens de um evento (chamado quando o evento é excluído).</summary>
     public void ExcluirPastaEvento(int eventoId)
     {
-        var pasta = Path.Combine(PastaMural, eventoId.ToString());
-        if (Directory.Exists(pasta))
-            Directory.Delete(pasta, recursive: true);
+        foreach (var pastaBase in new[] { PastaMural, PastaBanners })
+        {
+            var pasta = Path.Combine(pastaBase, eventoId.ToString());
+            if (Directory.Exists(pasta))
+                Directory.Delete(pasta, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Lê o começo do arquivo enviado e descobre se é uma imagem aceita.
+    /// Devolve a extensão, ou nulo se não for uma imagem JPG, PNG, GIF ou WEBP.
+    /// </summary>
+    public static async Task<string?> DetectarExtensaoImagemAsync(IFormFile arquivo)
+    {
+        var inicio = new byte[12];
+        await using var cabecalho = arquivo.OpenReadStream();
+        var lidos = await cabecalho.ReadAtLeastAsync(inicio, inicio.Length, throwOnEndOfStream: false);
+        return DetectarExtensaoImagem(inicio.AsSpan(0, lidos));
     }
 
     /// <summary>
@@ -73,6 +94,26 @@ public partial class ArmazenamentoArquivos(IConfiguration configuracao, IWebHost
         if (inicio.Length >= 12 && inicio.StartsWith("RIFF"u8) && inicio[8..12].SequenceEqual("WEBP"u8))
             return ".webp";
         return null;
+    }
+
+    private static async Task<string> SalvarAsync(string pasta, Stream conteudo, string extensao)
+    {
+        Directory.CreateDirectory(pasta);
+
+        var arquivo = $"{Guid.NewGuid():N}{extensao}";
+        await using var destino = File.Create(Path.Combine(pasta, arquivo));
+        await conteudo.CopyToAsync(destino);
+
+        return arquivo;
+    }
+
+    private static (string Caminho, string TipoConteudo)? Abrir(string pasta, string arquivo)
+    {
+        if (!RegexNomeArquivo().IsMatch(arquivo))
+            return null;
+
+        var caminho = Path.Combine(pasta, arquivo);
+        return File.Exists(caminho) ? (caminho, TiposConteudo[Path.GetExtension(arquivo)]) : null;
     }
 
     [GeneratedRegex(@"^[0-9a-f]{32}\.(jpg|png|gif|webp)$")]

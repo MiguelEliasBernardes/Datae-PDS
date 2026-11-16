@@ -20,6 +20,13 @@ public static class RotasEvento
         eventos.MapGet("/{id:int}", Obter);
         eventos.MapPut("/{id:int}", Atualizar);
         eventos.MapDelete("/{id:int}", Excluir);
+
+        // Envio de arquivo (multipart/form-data). Não há formulário do servidor, então o antiforgery não se aplica.
+        eventos.MapPut("/{id:int}/banner", EnviarBanner).DisableAntiforgery();
+        eventos.MapDelete("/{id:int}/banner", RemoverBanner);
+
+        // Arquivo do banner, sem login (aparece na página pública e funciona em <img src>)
+        app.MapGet("/api/banners/{eventoId:int}/{arquivo}", BaixarBanner).WithTags("Eventos");
     }
 
     private static async Task<IResult> Listar(ClaimsPrincipal principal, ServicoEvento servicoEvento)
@@ -69,6 +76,33 @@ public static class RotasEvento
         return ParaHttp(resultado, _ => Results.NoContent());
     }
 
+    private static async Task<IResult> EnviarBanner(
+        int id, IFormFile? arquivo, ClaimsPrincipal principal, ServicoEvento servicoEvento)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servicoEvento.EnviarBannerAsync(usuarioId, id, arquivo);
+        return ParaHttp(resultado, evento => Results.Ok(ParaResposta(evento)));
+    }
+
+    private static async Task<IResult> RemoverBanner(int id, ClaimsPrincipal principal, ServicoEvento servicoEvento)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servicoEvento.RemoverBannerAsync(usuarioId, id);
+        return ParaHttp(resultado, evento => Results.Ok(ParaResposta(evento)));
+    }
+
+    private static IResult BaixarBanner(int eventoId, string arquivo, ArmazenamentoArquivos armazenamento)
+    {
+        if (armazenamento.AbrirBanner(eventoId, arquivo) is not { } banner)
+            return Results.NotFound(new { mensagem = "Imagem não encontrada." });
+
+        return Results.File(banner.Caminho, banner.TipoConteudo);
+    }
+
     private static EventoResposta ParaResposta(Evento evento) => new(
         evento.Id,
         evento.PlanoAtualId,
@@ -83,5 +117,8 @@ public static class RotasEvento
         evento.ChavePix,
         evento.NomeRecebedorPix,
         evento.CidadePix,
+        evento.ListaPresentesAtiva,
+        evento.MuralAtivo,
+        ServicoEvento.UrlDoBanner(evento),
         evento.CriadoEm);
 }

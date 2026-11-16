@@ -3,10 +3,11 @@ import setaCheck from '../assets/arrow-check.svg'
 import { ErroApi, mensagemDeErro } from '../api/cliente'
 import { gerarPix } from '../api/publico'
 import type { Pix } from '../api/tipos'
-import { formatarMoeda, lerValorMonetario } from '../dados/formatacao'
+import { lerValorMonetario } from '../dados/formatacao'
 import { AvisoErro } from './AvisoErro'
 import { Botao } from './Botao'
 import { CampoTexto } from './CampoTexto'
+import { ExibicaoPix } from './ExibicaoPix'
 
 /**
  * Presente em dinheiro via Pix estático: o convidado digita o valor (opcional),
@@ -18,7 +19,6 @@ export function CartaoPix({ slug, nomeRecebedor }: { slug: string; nomeRecebedor
   const [pix, setPix] = useState<Pix | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [gerando, setGerando] = useState(false)
-  const [copiado, setCopiado] = useState(false)
 
   async function gerar(e: React.FormEvent) {
     e.preventDefault()
@@ -34,7 +34,6 @@ export function CartaoPix({ slug, nomeRecebedor }: { slug: string; nomeRecebedor
     setGerando(true)
     try {
       setPix(await gerarPix(slug, numero))
-      setCopiado(false)
     } catch (e) {
       setErro(e instanceof ErroApi && e.doCampo('valor') ? e.doCampo('valor')! : mensagemDeErro(e))
     } finally {
@@ -42,38 +41,12 @@ export function CartaoPix({ slug, nomeRecebedor }: { slug: string; nomeRecebedor
     }
   }
 
-  async function copiar() {
-    if (!pix) return
-    try {
-      await navigator.clipboard.writeText(pix.copiaECola)
-      setCopiado(true)
-    } catch {
-      setErro('Não foi possível copiar. Selecione o código e copie manualmente.')
-    }
-  }
-
   return (
     <div className="rounded-[12px] bg-heading p-5 lg:p-7">
       {pix ? (
-        <div className="flex flex-col items-center gap-3 text-center">
-          <p className="text-[13px] font-medium text-white">
-            {pix.valor ? `Pix de ${formatarMoeda(pix.valor)}` : 'Pix sem valor definido'} para {pix.nomeRecebedor}
-          </p>
-          <img
-            src={pix.qrCode}
-            alt="QR Code do Pix"
-            className="size-52 rounded-[10px] bg-white p-2 [image-rendering:pixelated]"
-          />
-          <p className="text-[12px] text-theme-lilac">Abra o app do seu banco, escolha Pix e leia o QR Code ou use o copia e cola:</p>
-          <textarea
-            readOnly
-            aria-label="Pix copia e cola"
-            value={pix.copiaECola}
-            onFocus={(e) => e.target.select()}
-            className="h-20 w-full resize-none rounded-[10px] bg-surface p-2 font-mono text-[11px] break-all text-heading"
-          />
-          <AvisoErro className="w-full" mensagem={erro} />
-          <Botao onClick={() => void copiar()}>{copiado ? 'Copiado!' : 'Copiar código Pix'}</Botao>
+        <div className="flex flex-col items-center gap-3">
+          {/* key recria a exibição (e o "Copiado!") a cada Pix novo */}
+          <ExibicaoPix key={pix.copiaECola} pix={pix} />
           <button type="button" onClick={() => setPix(null)} className="text-[13px] font-medium text-white underline">
             Gerar com outro valor
           </button>

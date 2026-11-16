@@ -1,5 +1,6 @@
 import { requisicao } from './cliente'
 import type {
+  CompraCotas,
   DadosPresenca,
   EventoPublico,
   FotoPublica,
@@ -29,6 +30,9 @@ export const marcarPresenteComprado = (slug: string, presenteId: number, codigoR
 
 export const cancelarReservaPresente = (slug: string, presenteId: number, codigoReserva: string) =>
   requisicao<PresentePublico>(`${base(slug)}/presentes/${presenteId}/cancelar-reserva`, 'POST', { codigoReserva })
+
+export const comprarCotas = (slug: string, presenteId: number, nome: string, quantidade: number) =>
+  requisicao<CompraCotas>(`${base(slug)}/presentes/${presenteId}/cotas`, 'POST', { nome, quantidade })
 
 /** Valor opcional: sem valor, o convidado digita o quanto quiser no app do banco. */
 export const gerarPix = (slug: string, valor: number | null) => requisicao<Pix>(`${base(slug)}/pix`, 'POST', { valor })

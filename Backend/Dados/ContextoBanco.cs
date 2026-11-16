@@ -10,6 +10,10 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
     public DbSet<Convidado> Convidados => Set<Convidado>();
     public DbSet<ItemPresente> ItensPresente => Set<ItemPresente>();
     public DbSet<FotoMural> FotosMural => Set<FotoMural>();
+    public DbSet<CotaPresente> CotasPresente => Set<CotaPresente>();
+    public DbSet<Formando> Formandos => Set<Formando>();
+    public DbSet<Despesa> Despesas => Set<Despesa>();
+    public DbSet<PagamentoFormando> PagamentosFormando => Set<PagamentoFormando>();
 
     protected override void OnModelCreating(ModelBuilder modelo)
     {
@@ -35,6 +39,7 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             evento.Property(e => e.Descricao).HasMaxLength(2000);
             evento.Property(e => e.CorPrincipal).HasMaxLength(7);
             evento.Property(e => e.CorSecundaria).HasMaxLength(7);
+            evento.Property(e => e.Banner).HasMaxLength(64);
             evento.Property(e => e.ChavePix).HasMaxLength(77);
             evento.Property(e => e.NomeRecebedorPix).HasMaxLength(25);
             evento.Property(e => e.CidadePix).HasMaxLength(15);
@@ -64,6 +69,43 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             presente.Property(p => p.LinkAfiliado).HasMaxLength(500);
             presente.Property(p => p.Foto).HasMaxLength(500);
             presente.Property(p => p.CodigoReserva).HasMaxLength(32);
+            presente.Ignore(p => p.ValorCota);
+        });
+
+        modelo.Entity<CotaPresente>(cota =>
+        {
+            // Excluir o presente exclui as cotas; excluir o convidado mantém a cota com o nome guardado
+            cota.HasOne<ItemPresente>().WithMany().HasForeignKey(c => c.ItemPresenteId).OnDelete(DeleteBehavior.Cascade);
+            cota.HasOne<Convidado>().WithMany().HasForeignKey(c => c.ConvidadoId).OnDelete(DeleteBehavior.SetNull);
+
+            cota.Property(c => c.NomeConvidado).HasMaxLength(120).IsRequired();
+            cota.Property(c => c.Valor).HasPrecision(10, 2);
+        });
+
+        modelo.Entity<Formando>(formando =>
+        {
+            // Excluir o evento exclui os formandos (e os pagamentos deles)
+            formando.HasOne<Evento>().WithMany().HasForeignKey(f => f.EventoId).OnDelete(DeleteBehavior.Cascade);
+
+            formando.Property(f => f.Nome).HasMaxLength(120).IsRequired();
+            formando.Property(f => f.Email).HasMaxLength(200);
+            formando.Property(f => f.Papel).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelo.Entity<Despesa>(despesa =>
+        {
+            despesa.HasOne<Evento>().WithMany().HasForeignKey(d => d.EventoId).OnDelete(DeleteBehavior.Cascade);
+
+            despesa.Property(d => d.Descricao).HasMaxLength(200).IsRequired();
+            despesa.Property(d => d.Valor).HasPrecision(12, 2);
+        });
+
+        modelo.Entity<PagamentoFormando>(pagamento =>
+        {
+            pagamento.HasOne<Formando>().WithMany().HasForeignKey(p => p.FormandoId).OnDelete(DeleteBehavior.Cascade);
+
+            pagamento.Property(p => p.Valor).HasPrecision(12, 2);
+            pagamento.Property(p => p.Observacao).HasMaxLength(500);
         });
 
         modelo.Entity<FotoMural>(foto =>

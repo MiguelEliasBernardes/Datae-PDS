@@ -23,7 +23,9 @@ public record AtualizarEventoRequisicao(
     string? CorSecundaria,
     string? ChavePix,
     string? NomeRecebedorPix,
-    string? CidadePix);
+    string? CidadePix,
+    bool? ListaPresentesAtiva,
+    bool? MuralAtivo);
 
 public record EventoResposta(
     int Id,
@@ -39,4 +41,7 @@ public record EventoResposta(
     string? ChavePix,
     string? NomeRecebedorPix,
     string? CidadePix,
+    bool ListaPresentesAtiva,
+    bool MuralAtivo,
+    string? BannerUrl,
     DateTime CriadoEm);

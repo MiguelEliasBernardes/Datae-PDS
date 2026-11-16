@@ -6,6 +6,7 @@ import type { Evento, Usuario } from './api/tipos'
 import { ConfiguracoesPagina } from './paginas/ConfiguracoesPagina'
 import { Convidados } from './paginas/Convidados'
 import { CriarEvento } from './paginas/CriarEvento'
+import { Despesas } from './paginas/Despesas'
 import { Formandos } from './paginas/Formandos'
 import { Login } from './paginas/Login'
 import { slugDaUrl } from './dados/rotas'
@@ -29,6 +30,7 @@ type Tela =
   | 'configuracoes'
   | 'pagina-evento'
   | 'formandos'
+  | 'despesas'
   | 'rateio'
 
 /** Evento aberto no momento e qual painel ele usa (formatura tem um painel próprio). */
@@ -130,6 +132,8 @@ function AreaOrganizador() {
             eventoId={evento.id}
             onVoltar={voltarAosEventos}
             onAbrirFormandos={irPara('formandos')}
+            onAbrirDespesas={irPara('despesas')}
+            onAbrirMural={irPara('mural')}
             onAbrirRateio={irPara('rateio')}
             onAbrirConfiguracoes={irPara('configuracoes')}
             onAbrirVisualizacao={irPara('pagina-evento')}
@@ -182,7 +186,18 @@ function AreaOrganizador() {
       case 'formandos':
         return (
           <Formandos
+            eventoId={evento.id}
             onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'despesas':
+        return (
+          <Despesas
+            eventoId={evento.id}
+            onVoltar={voltarAoPainel}
+            onAbrirRateio={irPara('rateio')}
             onAbrirConfiguracoes={irPara('configuracoes')}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -190,7 +205,10 @@ function AreaOrganizador() {
       case 'rateio':
         return (
           <Rateio
+            eventoId={evento.id}
             onVoltar={voltarAoPainel}
+            onAbrirDespesas={irPara('despesas')}
+            onAbrirFormandos={irPara('formandos')}
             onAbrirConfiguracoes={irPara('configuracoes')}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />

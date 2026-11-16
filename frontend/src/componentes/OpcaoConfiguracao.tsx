@@ -1,19 +1,16 @@
-import { useState } from 'react'
 import { Interruptor } from './Interruptor'
 
 interface OpcaoConfiguracaoProps {
   titulo: string
   descricao: string
-  ativoInicialmente?: boolean
+  ativo: boolean
+  onAlterar: (ativo: boolean) => void
+  /** Enquanto salva, o interruptor fica travado. */
+  desabilitado?: boolean
 }
 
 /** Linha de configuração opcional: título, descrição e interruptor. */
-export function OpcaoConfiguracao({
-  titulo,
-  descricao,
-  ativoInicialmente = false,
-}: OpcaoConfiguracaoProps) {
-  const [ativo, setAtivo] = useState(ativoInicialmente)
+export function OpcaoConfiguracao({ titulo, descricao, ativo, onAlterar, desabilitado = false }: OpcaoConfiguracaoProps) {
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex-1">
@@ -22,7 +19,7 @@ export function OpcaoConfiguracao({
         </p>
         <p className="mt-1 font-display text-[10px] text-muted">{descricao}</p>
       </div>
-      <Interruptor ativo={ativo} onAlterar={setAtivo} rotulo={titulo} />
+      <Interruptor ativo={ativo} onAlterar={desabilitado ? undefined : onAlterar} rotulo={titulo} />
     </div>
   )
 }

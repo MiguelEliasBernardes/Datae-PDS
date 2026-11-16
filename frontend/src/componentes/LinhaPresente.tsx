@@ -15,11 +15,13 @@ interface LinhaPresenteProps {
   status: StatusPresente
   /** Nome de quem reservou/comprou, quando houver. */
   reservadoPor?: string | null
+  /** Resumo das cotas (ex.: "3/10 cotas"), se o presente for dividido. */
+  cotas?: string | null
   onEditar?: () => void
 }
 
 /** Linha de produto da lista de presentes. */
-export function LinhaPresente({ imagem, nome, preco, status, reservadoPor, onEditar }: LinhaPresenteProps) {
+export function LinhaPresente({ imagem, nome, preco, status, reservadoPor, cotas, onEditar }: LinhaPresenteProps) {
   const { tom, rotulo } = infoStatus[status]
   return (
     <div className="flex gap-3 border-b border-field-border pb-3">
@@ -36,6 +38,7 @@ export function LinhaPresente({ imagem, nome, preco, status, reservadoPor, onEdi
           <SeloStatus tom={tom}>{rotulo}</SeloStatus>
         </div>
         <p className="mt-0.5 font-display text-[12px] text-muted">{preco}</p>
+        {cotas && <p className="truncate font-display text-[12px] text-muted">{cotas}</p>}
         {reservadoPor && (
           <p className="truncate font-display text-[12px] text-muted">
             {status === 'Comprado' ? 'Comprado por' : 'Reservado por'} {reservadoPor}

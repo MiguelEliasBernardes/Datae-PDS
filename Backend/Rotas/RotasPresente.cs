@@ -23,6 +23,10 @@ public static class RotasPresente
         presentes.MapGet("/{id:int}", Obter);
         presentes.MapPut("/{id:int}", Atualizar);
         presentes.MapDelete("/{id:int}", Excluir);
+
+        // Compras de cotas feitas pelos convidados na página pública
+        presentes.MapGet("/{id:int}/cotas", ListarCotas);
+        presentes.MapDelete("/{id:int}/cotas/{cotaId:int}", ExcluirCota);
     }
 
     // Filtro opcional: /presentes?status=Disponivel
@@ -81,6 +85,28 @@ public static class RotasPresente
         return ParaHttp(resultado, _ => Results.NoContent());
     }
 
+    private static async Task<IResult> ListarCotas(
+        int eventoId, int id, ClaimsPrincipal principal, ServicoPresente servicoPresente)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servicoPresente.ListarCotasAsync(usuarioId, eventoId, id);
+        return ParaHttp(resultado, cotas => Results.Ok(cotas.Select(c => new CotaPresenteResposta(
+            c.Id, c.ItemPresenteId, c.ConvidadoId, c.NomeConvidado, c.Quantidade, c.Valor, c.CriadoEm))));
+    }
+
+    // Devolve o presente atualizado (com as cotas liberadas)
+    private static async Task<IResult> ExcluirCota(
+        int eventoId, int id, int cotaId, ClaimsPrincipal principal, ServicoPresente servicoPresente)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servicoPresente.ExcluirCotaAsync(usuarioId, eventoId, id, cotaId);
+        return ParaHttp(resultado, presente => Results.Ok(ParaResposta(presente)));
+    }
+
     private static PresenteResposta ParaResposta(ItemPresente presente) => new(
         presente.Id,
         presente.EventoId,
@@ -90,5 +116,8 @@ public static class RotasPresente
         presente.ValorEstimado,
         presente.Status,
         presente.LinkAfiliado,
-        presente.Foto);
+        presente.Foto,
+        presente.QuantidadeCotas,
+        presente.CotasVendidas,
+        presente.ValorCota);
 }

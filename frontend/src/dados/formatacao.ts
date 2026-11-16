@@ -1,4 +1,4 @@
-import type { StatusFoto, StatusPresenca, StatusPresente, TipoEvento } from '../api/tipos'
+import type { PapelFormando, StatusFoto, StatusPresenca, StatusPresente, TipoEvento } from '../api/tipos'
 
 /** Rótulos exibidos para cada tipo de evento do backend. */
 export const rotulosTipoEvento: Record<TipoEvento, string> = {
@@ -26,6 +26,11 @@ export const rotulosStatusFoto: Record<StatusFoto, string> = {
   Pendente: 'Pendente',
   Aprovada: 'Aprovada',
   Recusada: 'Recusada',
+}
+
+export const rotulosPapelFormando: Record<PapelFormando, string> = {
+  Membro: 'Membro',
+  Administrador: 'Administrador',
 }
 
 /** Quanto falta até a data, em dias/horas/minutos/segundos (zera quando a data passa). */
@@ -70,6 +75,19 @@ export function paraCampoDataHora(iso: string) {
 /** Valor de <input type="datetime-local"> → data ISO em UTC para o backend. */
 export function deCampoDataHora(valor: string) {
   return new Date(valor).toISOString()
+}
+
+/** Data ISO → valor aceito por <input type="date"> ("2026-12-20"). */
+export function paraCampoData(iso: string) {
+  return paraCampoDataHora(iso).slice(0, 10)
+}
+
+/**
+ * Valor de <input type="date"> → data ISO para o backend. Usa o meio-dia em UTC
+ * para a data não "voltar um dia" ao ser exibida no fuso do Brasil.
+ */
+export function deCampoData(valor: string) {
+  return `${valor}T12:00:00Z`
 }
 
 /** "R$ 1.234,56", "1234,56" ou "1234.56" → 1234.56. Texto vazio vira null; inválido vira NaN. */

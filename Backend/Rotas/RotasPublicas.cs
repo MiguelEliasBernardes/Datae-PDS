@@ -27,6 +27,7 @@ public static class RotasPublicas
         publico.MapPost("/presentes/{id:int}/reserva", ReservarPresente).RequireRateLimiting(PoliticaLimite);
         publico.MapPost("/presentes/{id:int}/comprado", MarcarComprado).RequireRateLimiting(PoliticaLimite);
         publico.MapPost("/presentes/{id:int}/cancelar-reserva", CancelarReserva).RequireRateLimiting(PoliticaLimite);
+        publico.MapPost("/presentes/{id:int}/cotas", ComprarCotas).RequireRateLimiting(PoliticaLimite);
         publico.MapPost("/pix", GerarPix).RequireRateLimiting(PoliticaLimite);
 
         // Envio de arquivo (multipart/form-data). Não há formulário do servidor, então o antiforgery não se aplica.
@@ -74,6 +75,14 @@ public static class RotasPublicas
         return ParaHttp(resultado, presente => Results.Ok(ParaResposta(presente)));
     }
 
+    private static async Task<IResult> ComprarCotas(
+        string slug, int id, ComprarCotasRequisicao requisicao, ServicoPaginaPublica servico)
+    {
+        var resultado = await servico.ComprarCotasAsync(slug, id, requisicao);
+        return ParaHttp(resultado, compra => Results.Ok(
+            new CompraCotasResposta(ParaResposta(compra.Presente), compra.Quantidade, compra.Valor, compra.Pix)));
+    }
+
     private static async Task<IResult> GerarPix(string slug, GerarPixRequisicao requisicao, ServicoPaginaPublica servico)
     {
         var resultado = await servico.GerarPixAsync(slug, requisicao);
@@ -108,7 +117,10 @@ public static class RotasPublicas
         evento.CorPrincipal,
         evento.CorSecundaria,
         evento.ChavePix is not null && evento.NomeRecebedorPix is not null && evento.CidadePix is not null,
-        evento.NomeRecebedorPix);
+        evento.NomeRecebedorPix,
+        ServicoEvento.UrlDoBanner(evento),
+        evento.ListaPresentesAtiva,
+        evento.MuralAtivo);
 
     private static PresentePublicoResposta ParaResposta(ItemPresente presente) => new(
         presente.Id,
@@ -117,5 +129,8 @@ public static class RotasPublicas
         presente.ValorEstimado,
         presente.Status,
         presente.LinkAfiliado,
-        presente.Foto);
+        presente.Foto,
+        presente.QuantidadeCotas,
+        presente.CotasVendidas,
+        presente.ValorCota);
 }

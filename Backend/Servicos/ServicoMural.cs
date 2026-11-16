@@ -22,6 +22,8 @@ public class ServicoMural(ContextoBanco banco, ArmazenamentoArquivos armazenamen
         var evento = await banco.Eventos.FirstOrDefaultAsync(e => e.SlugPublico == slugNormalizado);
         if (evento is null)
             return Resultado<FotoMural>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado. Confira o link do convite.");
+        if (!evento.MuralAtivo)
+            return Resultado<FotoMural>.Falha(TipoErro.NaoEncontrado, "O mural de fotos deste evento está desativado.");
 
         var autor = TextoOpcional(nomeAutor) is null ? null : NormalizarNome(nomeAutor);
         var erros = new Dictionary<string, string[]>();
@@ -37,19 +39,14 @@ public class ServicoMural(ContextoBanco banco, ArmazenamentoArquivos armazenamen
             return Resultado<FotoMural>.Invalido(erros);
 
         // Lê o começo do arquivo para conferir se é mesmo uma imagem
-        var inicio = new byte[12];
-        int lidos;
-        await using (var cabecalho = arquivo!.OpenReadStream())
-            lidos = await cabecalho.ReadAtLeastAsync(inicio, inicio.Length, throwOnEndOfStream: false);
-
-        var extensao = ArmazenamentoArquivos.DetectarExtensaoImagem(inicio.AsSpan(0, lidos));
+        var extensao = await ArmazenamentoArquivos.DetectarExtensaoImagemAsync(arquivo!);
         if (extensao is null)
             return Resultado<FotoMural>.Invalido(new() { ["arquivo"] = ["Envie uma imagem JPG, PNG, GIF ou WEBP."] });
 
         if (await banco.FotosMural.CountAsync(f => f.EventoId == evento.Id) >= MaximoFotosPorEvento)
             return Resultado<FotoMural>.Falha(TipoErro.Conflito, "O mural deste evento atingiu o limite de fotos.");
 
-        await using var conteudo = arquivo.OpenReadStream();
+        await using var conteudo = arquivo!.OpenReadStream();
         var nomeArquivo = await armazenamento.SalvarFotoMuralAsync(evento.Id, conteudo, extensao);
 
         var foto = new FotoMural { EventoId = evento.Id, NomeAutor = autor, Arquivo = nomeArquivo };
@@ -62,16 +59,20 @@ public class ServicoMural(ContextoBanco banco, ArmazenamentoArquivos armazenamen
     public async Task<Resultado<List<FotoMural>>> ListarAprovadasAsync(string slug)
     {
         var slugNormalizado = (slug ?? string.Empty).Trim().ToLowerInvariant();
-        var eventoId = await banco.Eventos
+        var evento = await banco.Eventos
             .Where(e => e.SlugPublico == slugNormalizado)
-            .Select(e => (int?)e.Id)
+            .Select(e => new { e.Id, e.MuralAtivo })
             .FirstOrDefaultAsync();
 
-        if (eventoId is null)
+        if (evento is null)
             return Resultado<List<FotoMural>>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado. Confira o link do convite.");
 
+        // Mural desativado nas configurações: a página simplesmente não mostra fotos
+        if (!evento.MuralAtivo)
+            return Resultado<List<FotoMural>>.Ok([]);
+
         var fotos = await banco.FotosMural
-            .Where(f => f.EventoId == eventoId && f.Status == StatusFoto.Aprovada)
+            .Where(f => f.EventoId == evento.Id && f.Status == StatusFoto.Aprovada)
             .OrderByDescending(f => f.EnviadaEm)
             .ToListAsync();
 

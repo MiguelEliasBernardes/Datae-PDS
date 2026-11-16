@@ -31,6 +31,7 @@ export function FormularioPresente({
   const [status, setStatus] = useState<StatusPresente>(presente?.status ?? 'Disponivel')
   const [link, setLink] = useState(presente?.linkAfiliado ?? '')
   const [foto, setFoto] = useState(presente?.foto ?? '')
+  const [cotas, setCotas] = useState(presente?.quantidadeCotas != null ? String(presente.quantidadeCotas) : '')
 
   const [erro, setErro] = useState<ErroApi | null>(null)
   const [mensagemGeral, setMensagemGeral] = useState<string | null>(null)
@@ -54,6 +55,7 @@ export function FormularioPresente({
   function aoEnviar(e: React.FormEvent) {
     e.preventDefault()
     const valorEstimado = lerValorMonetario(valor)
+    const quantidadeCotas = cotas.trim() ? Number(cotas) : 0
 
     // Validação no navegador, antes de chamar a API
     if (!nome.trim()) {
@@ -64,6 +66,14 @@ export function FormularioPresente({
       setMensagemGeral('Informe um valor válido, ex.: 199,90.')
       return
     }
+    if (quantidadeCotas !== 0 && (!Number.isInteger(quantidadeCotas) || quantidadeCotas < 2 || quantidadeCotas > 100)) {
+      setMensagemGeral('Divida o presente em 2 a 100 cotas, ou deixe o campo vazio.')
+      return
+    }
+    if (quantidadeCotas !== 0 && !valorEstimado) {
+      setMensagemGeral('Informe o valor do presente para dividir em cotas.')
+      return
+    }
 
     void executar(() =>
       onSalvar({
@@ -72,8 +82,9 @@ export function FormularioPresente({
         valorEstimado,
         linkAfiliado: link,
         foto,
-        // Status só existe na edição; ao criar, o presente nasce disponível
-        ...(presente ? { status } : {}),
+        quantidadeCotas,
+        // Status só existe na edição de um presente inteiro; com cotas, ele é calculado pelo servidor
+        ...(presente && quantidadeCotas === 0 && presente.quantidadeCotas === null ? { status } : {}),
       }),
     )
   }
@@ -97,6 +108,21 @@ export function FormularioPresente({
         onChange={(e) => setValor(e.target.value)}
         erro={erro?.doCampo('valorEstimado')}
       />
+      <div className="flex flex-col gap-1">
+        <CampoTexto
+          rotulo="Dividir em cotas (opcional)"
+          type="number"
+          min={2}
+          max={100}
+          placeholder="Ex: 10. Vazio = presente inteiro"
+          value={cotas}
+          onChange={(e) => setCotas(e.target.value)}
+          erro={erro?.doCampo('quantidadeCotas')}
+        />
+        <p className="text-[12px] text-muted">
+          Com cotas, vários convidados podem contribuir com partes do valor, pagando pelo Pix do evento.
+        </p>
+      </div>
       <AreaTexto
         rotulo="Descrição (opcional)"
         placeholder="Cor, modelo, tamanho..."
@@ -121,7 +147,7 @@ export function FormularioPresente({
         erro={erro?.doCampo('foto')}
       />
 
-      {presente && (
+      {presente && presente.quantidadeCotas === null && (
         <div className="flex flex-col gap-2">
           <span className="text-[13px] font-medium text-heading">Situação</span>
           <div className="grid grid-cols-3 gap-2">

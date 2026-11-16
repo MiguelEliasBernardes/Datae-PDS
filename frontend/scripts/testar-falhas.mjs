@@ -31,6 +31,8 @@ const autenticacao = await carregar('/src/api/autenticacao.ts')
 const eventos = await carregar('/src/api/eventos.ts')
 const convidados = await carregar('/src/api/convidados.ts')
 const presentes = await carregar('/src/api/presentes.ts')
+const publico = await carregar('/src/api/publico.ts')
+const formatura = await carregar('/src/api/formatura.ts')
 
 let aprovados = 0
 const falhas = []
@@ -236,6 +238,134 @@ try {
     const lista = await presentes.listarPresentes(evento.id)
     const depois = lista.find((p) => p.id === presente.id)
     verificar(depois && depois.convidadoId === null, JSON.stringify(depois))
+  })
+
+  console.log('\nCotas de presente')
+  let presenteCotas = null
+  await testar('dividir em cotas sem valor → 400 no campo valorEstimado', async () => {
+    const erro = await esperarErro(presentes.criarPresente(evento.id, { nome: 'Geladeira', quantidadeCotas: 4 }), 400)
+    verificar(erro.doCampo('valorEstimado'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('quantidade de cotas fora de 2 a 100 → 400 no campo quantidadeCotas', async () => {
+    const erro = await esperarErro(
+      presentes.criarPresente(evento.id, { nome: 'Geladeira', valorEstimado: 200, quantidadeCotas: 1 }),
+      400,
+    )
+    verificar(erro.doCampo('quantidadeCotas'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('criar presente com 4 cotas calcula o valor de cada cota', async () => {
+    presenteCotas = await presentes.criarPresente(evento.id, { nome: 'Geladeira', valorEstimado: 200, quantidadeCotas: 4 })
+    verificar(presenteCotas.valorCota === 50 && presenteCotas.cotasVendidas === 0, JSON.stringify(presenteCotas))
+  })
+  await testar('presente com cotas não pode ser reservado inteiro → 409', async () => {
+    await esperarErro(publico.reservarPresente(evento.slugPublico, presenteCotas.id, 'Bia', false), 409)
+  })
+  await testar('comprar mais cotas do que restam → 400 no campo quantidade', async () => {
+    const erro = await esperarErro(publico.comprarCotas(evento.slugPublico, presenteCotas.id, 'Bia', 5), 400)
+    verificar(erro.doCampo('quantidade'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('comprar 3 cotas sem Pix configurado → registra, sem QR Code', async () => {
+    const compra = await publico.comprarCotas(evento.slugPublico, presenteCotas.id, 'Bia Souza', 3)
+    verificar(compra.valor === 150 && compra.pix === null, JSON.stringify(compra))
+    verificar(compra.presente.cotasVendidas === 3 && compra.presente.status === 'Disponivel', JSON.stringify(compra.presente))
+  })
+  await testar('reduzir o total abaixo das cotas vendidas → 400', async () => {
+    const erro = await esperarErro(presentes.atualizarPresente(evento.id, presenteCotas.id, { quantidadeCotas: 2 }), 400)
+    verificar(erro.doCampo('quantidadeCotas'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('com Pix configurado, a última cota vem com QR Code e o presente vira Comprado', async () => {
+    await eventos.atualizarEvento(evento.id, { chavePix: 'pix@datae.dev', nomeRecebedorPix: 'Teste', cidadePix: 'Sao Paulo' })
+    const compra = await publico.comprarCotas(evento.slugPublico, presenteCotas.id, 'Carlos', 1)
+    verificar(compra.pix?.copiaECola && compra.pix.valor === 50, JSON.stringify(compra.pix))
+    verificar(compra.presente.status === 'Comprado', `status: ${compra.presente.status}`)
+  })
+  await testar('cotas esgotadas → 409', async () => {
+    await esperarErro(publico.comprarCotas(evento.slugPublico, presenteCotas.id, 'Davi', 1), 409)
+  })
+  await testar('organizador desfaz uma compra e as cotas voltam a ficar disponíveis', async () => {
+    const cotas = await presentes.listarCotas(evento.id, presenteCotas.id)
+    verificar(cotas.length === 2, `compras: ${cotas.length}`)
+    const daBia = cotas.find((c) => c.nomeConvidado === 'Bia Souza')
+    const depois = await presentes.excluirCota(evento.id, presenteCotas.id, daBia.id)
+    verificar(depois.cotasVendidas === 1 && depois.status === 'Disponivel', JSON.stringify(depois))
+  })
+  await testar('tirar as cotas com compras registradas → 400', async () => {
+    await esperarErro(presentes.atualizarPresente(evento.id, presenteCotas.id, { quantidadeCotas: 0 }), 400)
+  })
+
+  console.log('\nInterruptores da página')
+  await testar('lista de presentes desativada some da página e recusa reservas (404)', async () => {
+    const atualizado = await eventos.atualizarEvento(evento.id, { listaPresentesAtiva: false })
+    verificar(atualizado.listaPresentesAtiva === false && atualizado.muralAtivo === true, JSON.stringify(atualizado))
+    const pagina = await publico.obterEventoPublico(evento.slugPublico)
+    verificar(pagina.listaPresentesAtiva === false, 'página pública não sabe que a lista está desativada')
+    verificar((await publico.listarPresentesPublicos(evento.slugPublico)).length === 0, 'ainda lista presentes')
+    await esperarErro(publico.reservarPresente(evento.slugPublico, presente.id, 'Bia', false), 404)
+    await esperarErro(publico.comprarCotas(evento.slugPublico, presenteCotas.id, 'Bia', 1), 404)
+    await eventos.atualizarEvento(evento.id, { listaPresentesAtiva: true })
+  })
+  await testar('mural desativado recusa fotos (404)', async () => {
+    await eventos.atualizarEvento(evento.id, { muralAtivo: false })
+    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])], 'foto.png', { type: 'image/png' })
+    const erro = await esperarErro(publico.enviarFotoMural(evento.slugPublico, png, 'Bia'), 404)
+    verificar(erro.message.includes('mural'), `mensagem: "${erro.message}"`)
+    await eventos.atualizarEvento(evento.id, { muralAtivo: true })
+  })
+
+  console.log('\nFormatura')
+  let formaturaEvento = null
+  let ana = null
+  let joao = null
+  await testar('formandos em evento que não é formatura → 409', async () => {
+    await esperarErro(formatura.listarFormandos(evento.id), 409)
+    await esperarErro(formatura.obterRateio(evento.id), 409)
+  })
+  await testar('formando sem nome e com e-mail inválido → 400 por campo', async () => {
+    formaturaEvento = await eventos.criarEvento({ tipo: 'Formatura', dataEvento: daquiUmMes, nomeEvento: `Formatura ${sufixo}` })
+    const erro = await esperarErro(formatura.criarFormando(formaturaEvento.id, { nome: ' ', email: 'x' }), 400)
+    verificar(erro.doCampo('nome') && erro.doCampo('email'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('criar formandos (papel padrão Membro)', async () => {
+    ana = await formatura.criarFormando(formaturaEvento.id, { nome: '  Ana   Lima ' })
+    joao = await formatura.criarFormando(formaturaEvento.id, { nome: 'João', papel: 'Administrador' })
+    verificar(ana.nome === 'Ana Lima' && ana.papel === 'Membro' && joao.papel === 'Administrador', JSON.stringify([ana, joao]))
+  })
+  await testar('despesa com valor zero → 400 no campo valor', async () => {
+    const erro = await esperarErro(formatura.criarDespesa(formaturaEvento.id, { descricao: 'Buffet', valor: 0 }), 400)
+    verificar(erro.doCampo('valor'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('rateio divide o total das despesas entre os formandos', async () => {
+    await formatura.criarDespesa(formaturaEvento.id, { descricao: 'Buffet', valor: 300 })
+    await formatura.criarDespesa(formaturaEvento.id, { descricao: 'Fotógrafo', valor: 100.05 })
+    const rateio = await formatura.obterRateio(formaturaEvento.id)
+    verificar(rateio.totalDespesas === 400.05 && rateio.valorPorFormando === 200.03, JSON.stringify(rateio))
+    verificar(rateio.formandos.every((f) => !f.quitado && f.percentual === 0), JSON.stringify(rateio.formandos))
+  })
+  await testar('pagamento com valor negativo → 400 no campo valor', async () => {
+    const erro = await esperarErro(formatura.registrarPagamento(formaturaEvento.id, ana.id, { valor: -10 }), 400)
+    verificar(erro.doCampo('valor'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('pagamento completo deixa o formando quitado', async () => {
+    await formatura.registrarPagamento(formaturaEvento.id, ana.id, { valor: 200.03, observacao: 'Pix' })
+    await formatura.registrarPagamento(formaturaEvento.id, joao.id, { valor: 50 })
+    const rateio = await formatura.obterRateio(formaturaEvento.id)
+    const daAna = rateio.formandos.find((f) => f.formandoId === ana.id)
+    const doJoao = rateio.formandos.find((f) => f.formandoId === joao.id)
+    verificar(daAna.quitado && daAna.percentual === 100, JSON.stringify(daAna))
+    verificar(!doJoao.quitado && doJoao.percentual === 24, JSON.stringify(doJoao))
+    verificar(rateio.totalPago === 250.03 && rateio.percentualPago === 62, JSON.stringify(rateio))
+  })
+  await testar('outro usuário não enxerga formandos nem rateio (404)', async () => {
+    usarSessao(tokenB)
+    await esperarErro(formatura.listarFormandos(formaturaEvento.id), 404)
+    await esperarErro(formatura.obterRateio(formaturaEvento.id), 404)
+    await esperarErro(formatura.registrarPagamento(formaturaEvento.id, ana.id, { valor: 10 }), 404)
+    usarSessao(tokenA)
+  })
+  await testar('excluir formando apaga os pagamentos e refaz a divisão', async () => {
+    await formatura.excluirFormando(formaturaEvento.id, ana.id)
+    const rateio = await formatura.obterRateio(formaturaEvento.id)
+    verificar(rateio.quantidadeFormandos === 1 && rateio.valorPorFormando === 400.05 && rateio.totalPago === 50, JSON.stringify(rateio))
   })
 
   console.log('\nSessão')

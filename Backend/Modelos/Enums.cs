@@ -28,3 +28,9 @@ public enum StatusFoto
     Aprovada,
     Recusada,
 }
+
+public enum PapelFormando
+{
+    Membro,
+    Administrador,
+}

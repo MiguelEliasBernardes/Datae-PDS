@@ -20,6 +20,7 @@ import { FormularioPresente } from '../componentes/FormularioPresente'
 import { JanelaModal } from '../componentes/JanelaModal'
 import { LayoutPainel } from '../componentes/LayoutPainel'
 import { LinhaPresente } from '../componentes/LinhaPresente'
+import { ListaCotas } from '../componentes/ListaCotas'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { TituloDestaque } from '../componentes/TituloDestaque'
 import { formatarMoeda } from '../dados/formatacao'
@@ -64,8 +65,7 @@ export function Presentes({
       if (filtro === 'disponiveis') return p.status === 'Disponivel'
       if (filtro === 'reservados') return p.status === 'Reservado'
       if (filtro === 'comprados') return p.status === 'Comprado'
-      // Cotas ainda não existem no backend
-      if (filtro === 'cotas') return false
+      if (filtro === 'cotas') return p.quantidadeCotas !== null
       return true
     })
   }, [presentes, busca, filtro])
@@ -158,6 +158,11 @@ export function Presentes({
               preco={formatarMoeda(p.valorEstimado)}
               status={p.status}
               reservadoPor={p.convidadoId ? nomesConvidados.get(p.convidadoId) : null}
+              cotas={
+                p.quantidadeCotas !== null
+                  ? `${p.cotasVendidas}/${p.quantidadeCotas} cotas · ${formatarMoeda(p.valorCota)} cada`
+                  : null
+              }
               onEditar={() => setEdicao(p)}
             />
           ))
@@ -179,6 +184,9 @@ export function Presentes({
             onSalvar={salvar}
             onExcluir={edicao === 'novo' ? undefined : excluir}
           />
+        )}
+        {edicao !== null && edicao !== 'novo' && edicao.quantidadeCotas !== null && (
+          <ListaCotas eventoId={eventoId} presenteId={edicao.id} onAlterado={recarregar} />
         )}
       </JanelaModal>
     </LayoutPainel>

@@ -4,6 +4,7 @@ export type TipoEvento = 'ChaDePanela' | 'Casamento' | 'Aniversario' | 'Formatur
 export type StatusPresenca = 'Pendente' | 'Confirmado' | 'Recusado'
 export type StatusPresente = 'Disponivel' | 'Reservado' | 'Comprado'
 export type StatusFoto = 'Pendente' | 'Aprovada' | 'Recusada'
+export type PapelFormando = 'Membro' | 'Administrador'
 
 export interface Usuario {
   id: number
@@ -32,6 +33,10 @@ export interface Evento {
   chavePix: string | null
   nomeRecebedorPix: string | null
   cidadePix: string | null
+  listaPresentesAtiva: boolean
+  muralAtivo: boolean
+  /** Caminho na API (use urlApi no <img src>); nulo = imagem padrão. */
+  bannerUrl: string | null
   criadoEm: string
 }
 
@@ -48,6 +53,8 @@ export interface DadosEvento {
   chavePix?: string
   nomeRecebedorPix?: string
   cidadePix?: string
+  listaPresentesAtiva?: boolean
+  muralAtivo?: boolean
 }
 
 export interface Convidado {
@@ -78,6 +85,10 @@ export interface Presente {
   status: StatusPresente
   linkAfiliado: string | null
   foto: string | null
+  /** Presente dividido em cotas (null = presente inteiro). */
+  quantidadeCotas: number | null
+  cotasVendidas: number
+  valorCota: number | null
 }
 
 export interface DadosPresente {
@@ -87,6 +98,19 @@ export interface DadosPresente {
   status?: StatusPresente
   linkAfiliado?: string
   foto?: string
+  /** 0 volta a ser um presente inteiro. */
+  quantidadeCotas?: number
+}
+
+/** Compra de cotas feita por um convidado na página pública. */
+export interface CotaPresente {
+  id: number
+  itemPresenteId: number
+  convidadoId: number | null
+  nomeConvidado: string
+  quantidade: number
+  valor: number
+  criadoEm: string
 }
 
 /** Foto do mural, como o organizador vê na moderação. */
@@ -113,6 +137,9 @@ export interface EventoPublico {
   corSecundaria: string | null
   pixDisponivel: boolean
   nomeRecebedorPix: string | null
+  bannerUrl: string | null
+  listaPresentesAtiva: boolean
+  muralAtivo: boolean
 }
 
 export interface PresentePublico {
@@ -123,6 +150,9 @@ export interface PresentePublico {
   status: StatusPresente
   linkAfiliado: string | null
   foto: string | null
+  quantidadeCotas: number | null
+  cotasVendidas: number
+  valorCota: number | null
 }
 
 export interface DadosPresenca {
@@ -153,9 +183,83 @@ export interface Pix {
   nomeRecebedor: string
 }
 
+export interface CompraCotas {
+  presente: PresentePublico
+  quantidade: number
+  valor: number | null
+  /** Null quando o evento não tem Pix configurado. */
+  pix: Pix | null
+}
+
 export interface FotoPublica {
   id: number
   nomeAutor: string | null
   url: string
   enviadaEm: string
+}
+
+// ===== Formatura =====
+
+export interface Formando {
+  id: number
+  eventoId: number
+  nome: string
+  email: string | null
+  papel: PapelFormando
+  criadoEm: string
+}
+
+export interface DadosFormando {
+  nome: string
+  email?: string
+  papel?: PapelFormando
+}
+
+export interface Despesa {
+  id: number
+  eventoId: number
+  descricao: string
+  valor: number
+  data: string | null
+  criadoEm: string
+}
+
+export interface DadosDespesa {
+  descricao: string
+  valor: number
+  data?: string | null
+}
+
+export interface PagamentoFormando {
+  id: number
+  formandoId: number
+  valor: number
+  pagoEm: string
+  observacao: string | null
+}
+
+export interface DadosPagamento {
+  valor: number
+  /** Sem data, vale o momento do registro. */
+  pagoEm?: string | null
+  observacao?: string
+}
+
+export interface RateioFormando {
+  formandoId: number
+  nome: string
+  papel: PapelFormando
+  valorPago: number
+  valorDevido: number
+  percentual: number
+  quitado: boolean
+}
+
+export interface Rateio {
+  totalDespesas: number
+  quantidadeFormandos: number
+  valorPorFormando: number
+  totalPago: number
+  percentualPago: number
+  formandos: RateioFormando[]
 }
