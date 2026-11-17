@@ -6,15 +6,19 @@ using static Backend.Servicos.Validacoes;
 
 namespace Backend.Servicos;
 
-/// <summary>Despesas de uma formatura. O total é dividido entre os formandos no rateio.</summary>
+/// <summary>
+/// Despesas de uma formatura. O total é dividido entre os formandos no rateio.
+/// Todo participante vê as despesas (são da turma toda); só o financeiro lança e altera.
+/// </summary>
 public class ServicoDespesa(ContextoBanco banco)
 {
     private const decimal ValorMaximo = 10_000_000m;
 
     public async Task<Resultado<List<Despesa>>> ListarAsync(int usuarioId, int eventoId)
     {
-        if (await AcessoFormatura.ConferirAsync(banco, usuarioId, eventoId) is { } falha)
-            return Resultado<List<Despesa>>.Falha(falha.Erro, falha.Mensagem);
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.VerEvento, somenteFormatura: true);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<List<Despesa>>();
 
         // Com data primeiro (da mais próxima para a mais distante), depois as sem data
         var despesas = await banco.Despesas
@@ -29,8 +33,9 @@ public class ServicoDespesa(ContextoBanco banco)
 
     public async Task<Resultado<Despesa>> CriarAsync(int usuarioId, int eventoId, CriarDespesaRequisicao requisicao)
     {
-        if (await AcessoFormatura.ConferirAsync(banco, usuarioId, eventoId) is { } falha)
-            return Resultado<Despesa>.Falha(falha.Erro, falha.Mensagem);
+        var acesso = await ExigirFinanceiroAsync(usuarioId, eventoId);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<Despesa>();
 
         var descricao = (requisicao.Descricao ?? string.Empty).Trim();
         var erros = new Dictionary<string, string[]>();
@@ -58,7 +63,11 @@ public class ServicoDespesa(ContextoBanco banco)
     public async Task<Resultado<Despesa>> AtualizarAsync(
         int usuarioId, int eventoId, int id, AtualizarDespesaRequisicao requisicao)
     {
-        var despesa = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var acesso = await ExigirFinanceiroAsync(usuarioId, eventoId);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<Despesa>();
+
+        var despesa = await BuscarAsync(eventoId, id);
         if (despesa is null)
             return DespesaNaoEncontrada();
 
@@ -91,7 +100,11 @@ public class ServicoDespesa(ContextoBanco banco)
 
     public async Task<Resultado<bool>> ExcluirAsync(int usuarioId, int eventoId, int id)
     {
-        var despesa = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var acesso = await ExigirFinanceiroAsync(usuarioId, eventoId);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<bool>();
+
+        var despesa = await BuscarAsync(eventoId, id);
         if (despesa is null)
             return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Despesa não encontrada.");
 
@@ -114,11 +127,12 @@ public class ServicoDespesa(ContextoBanco banco)
             erros["valor"] = ["Informe um valor maior que zero, com no máximo 2 casas decimais."];
     }
 
-    private Task<Despesa?> BuscarDoUsuarioAsync(int usuarioId, int eventoId, int id) =>
-        banco.Despesas.FirstOrDefaultAsync(d =>
-            d.Id == id &&
-            d.EventoId == eventoId &&
-            banco.Eventos.Any(e => e.Id == eventoId && e.UsuarioId == usuarioId));
+    private Task<Resultado<AcessoEvento>> ExigirFinanceiroAsync(int usuarioId, int eventoId) =>
+        ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.Financeiro, somenteFormatura: true);
+
+    // O acesso ao evento já foi conferido pelo ControleAcesso
+    private Task<Despesa?> BuscarAsync(int eventoId, int id) =>
+        banco.Despesas.FirstOrDefaultAsync(d => d.Id == id && d.EventoId == eventoId);
 
     private static Resultado<Despesa> DespesaNaoEncontrada() =>
         Resultado<Despesa>.Falha(TipoErro.NaoEncontrado, "Despesa não encontrada.");

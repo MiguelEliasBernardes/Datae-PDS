@@ -24,18 +24,23 @@ import { useCarregamento } from '../hooks/useCarregamento'
 /** Despesa em edição: null = janela fechada, 'novo' = adicionando. */
 type Edicao = Despesa | 'novo' | null
 
-/** Tela F3 - Despesas da formatura (o total é dividido entre os formandos no Rateio). */
+/**
+ * Tela F3 - Despesas da formatura (o total é dividido entre os formandos no Rateio).
+ * Todo formando vê as despesas; só o financeiro (`somenteLeitura` = false) lança e altera.
+ */
 export function Despesas({
   eventoId,
+  somenteLeitura,
   onVoltar,
   onAbrirRateio,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
   eventoId: number
+  somenteLeitura: boolean
   onVoltar: () => void
   onAbrirRateio: () => void
-  onAbrirConfiguracoes: () => void
+  onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
   const carregar = useCallback(() => listarDespesas(eventoId), [eventoId])
@@ -88,11 +93,13 @@ export function Despesas({
       </div>
 
       <div className="mt-5 flex flex-col gap-3 lg:max-w-xl lg:flex-row">
-        <Botao onClick={() => setEdicao('novo')} icone={<img src={circuloMais} alt="" width={24} height={24} />}>
-          Adicionar Despesa
-        </Botao>
+        {!somenteLeitura && (
+          <Botao onClick={() => setEdicao('novo')} icone={<img src={circuloMais} alt="" width={24} height={24} />}>
+            Adicionar Despesa
+          </Botao>
+        )}
         <Botao variante="secundario" onClick={onAbrirRateio}>
-          Ver rateio
+          {somenteLeitura ? 'Ver minha parte' : 'Ver rateio'}
         </Botao>
       </div>
 
@@ -118,7 +125,7 @@ export function Despesas({
               descricao={d.descricao}
               valor={formatarMoeda(d.valor)}
               data={d.data ? formatarData(d.data) : null}
-              onEditar={() => setEdicao(d)}
+              onEditar={somenteLeitura ? undefined : () => setEdicao(d)}
             />
           ))
         ) : (

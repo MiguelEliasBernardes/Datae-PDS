@@ -19,14 +19,16 @@ export function LinhaDespesa({
         <span className="shrink-0 font-display text-[14px] font-semibold text-heading">{valor}</span>
       </div>
       {data && <p className="mt-0.5 font-display text-[12px] text-muted">Data: {data}</p>}
-      <button
-        type="button"
-        onClick={onEditar}
-        aria-label={`Editar ${descricao}`}
-        className="mt-2 flex h-7 w-8 items-center justify-center rounded-[2px] bg-primary"
-      >
-        <img src={lapis} alt="" width={14} height={17} />
-      </button>
+      {onEditar && (
+        <button
+          type="button"
+          onClick={onEditar}
+          aria-label={`Editar ${descricao}`}
+          className="mt-2 flex h-7 w-8 items-center justify-center rounded-[2px] bg-primary"
+        >
+          <img src={lapis} alt="" width={14} height={17} />
+        </button>
+      )}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { requisicao } from './cliente'
 import type {
   DadosDespesa,
+  Evento,
   DadosFormando,
   DadosPagamento,
   Despesa,
@@ -23,6 +24,27 @@ export const atualizarFormando = (eventoId: number, id: number, dados: Partial<D
 
 export const excluirFormando = (eventoId: number, id: number) =>
   requisicao<void>(`${formandos(eventoId)}/${id}`, 'DELETE')
+
+/** Gera outro código de convite para o formando (o anterior deixa de valer). */
+export const gerarNovoConvite = (eventoId: number, id: number) =>
+  requisicao<Formando>(`${formandos(eventoId)}/${id}/convite`, 'POST')
+
+/** Tira o acesso da conta que entrou como este formando; ele ganha um convite novo. */
+export const desvincularFormando = (eventoId: number, id: number) =>
+  requisicao<Formando>(`${formandos(eventoId)}/${id}/vinculo`, 'DELETE')
+
+/** O formando ligado à conta logada (sub-página dele). */
+export const obterMeuFormando = (eventoId: number) => requisicao<Formando>(`${formandos(eventoId)}/eu`)
+
+export const atualizarMeuFormando = (eventoId: number, dados: { mensagem: string }) =>
+  requisicao<Formando>(`${formandos(eventoId)}/eu`, 'PUT', dados)
+
+/** Liga (ou troca) o código geral da turma; devolve o evento com o código novo. */
+export const gerarCodigoTurma = (eventoId: number) =>
+  requisicao<Evento>(`/api/eventos/${eventoId}/codigo-turma`, 'POST')
+
+export const desativarCodigoTurma = (eventoId: number) =>
+  requisicao<Evento>(`/api/eventos/${eventoId}/codigo-turma`, 'DELETE')
 
 export const listarDespesas = (eventoId: number) => requisicao<Despesa[]>(despesas(eventoId))
 

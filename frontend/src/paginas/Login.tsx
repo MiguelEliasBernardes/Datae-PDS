@@ -11,8 +11,11 @@ import { Logo } from '../componentes/Logo'
 
 type Modo = 'entrar' | 'cadastrar'
 
-/** Tela O1 - Login do Dataê (também usada para criar conta). */
-export function Login({ onEntrar }: { onEntrar: (usuario: Usuario) => void }) {
+/**
+ * Tela O1 - Login do Dataê (também usada para criar conta).
+ * `aviso` explica por que a pessoa precisa entrar (ex.: para aceitar um convite).
+ */
+export function Login({ onEntrar, aviso }: { onEntrar: (usuario: Usuario) => void; aviso?: string }) {
   const [modo, setModo] = useState<Modo>('entrar')
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
@@ -98,6 +101,12 @@ export function Login({ onEntrar }: { onEntrar: (usuario: Usuario) => void }) {
             </h1>
             <p className="mt-1 text-[14px] text-muted">{subtitulo}</p>
           </div>
+
+          {aviso && (
+            <p role="status" className="mt-6 rounded-[10px] bg-badge px-4 py-3 text-[13px] text-heading">
+              {aviso}
+            </p>
+          )}
 
           {/* Formulário */}
           <form onSubmit={aoEnviar} noValidate className="mt-10 flex flex-col gap-5 lg:mt-8">

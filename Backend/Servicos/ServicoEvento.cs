@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text;
 using Backend.Dados;
 using Backend.Dtos;
 using Backend.Modelos;
@@ -13,23 +11,28 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
     private const int TamanhoMaximoSlug = 150;
     public const long TamanhoMaximoBannerBytes = 10 * 1024 * 1024;
 
-    public async Task<Resultado<List<Evento>>> ListarAsync(int usuarioId)
+    /// <summary>Eventos que o usuário organiza e formaturas em que ele entrou como formando.</summary>
+    public async Task<Resultado<List<AcessoEvento>>> ListarAsync(int usuarioId)
     {
+        var formandos = await banco.Formandos.Where(f => f.UsuarioId == usuarioId).ToListAsync();
+        var idsComoFormando = formandos.Select(f => f.EventoId).ToList();
+
         var eventos = await banco.Eventos
-            .Where(e => e.UsuarioId == usuarioId)
+            .Where(e => e.UsuarioId == usuarioId || (e.Tipo == TipoEvento.Formatura && idsComoFormando.Contains(e.Id)))
             .OrderBy(e => e.DataEvento)
             .ToListAsync();
 
-        return Resultado<List<Evento>>.Ok(eventos);
+        var acessos = eventos
+            .Select(e => new AcessoEvento(e, formandos.FirstOrDefault(f => f.EventoId == e.Id), e.UsuarioId == usuarioId))
+            .ToList();
+
+        return Resultado<List<AcessoEvento>>.Ok(acessos);
     }
 
-    public async Task<Resultado<Evento>> ObterAsync(int usuarioId, int id)
-    {
-        var evento = await BuscarDoUsuarioAsync(usuarioId, id);
-        return evento is null ? EventoNaoEncontrado() : Resultado<Evento>.Ok(evento);
-    }
+    public Task<Resultado<AcessoEvento>> ObterAsync(int usuarioId, int id) =>
+        ControleAcesso.ExigirAsync(banco, usuarioId, id, Permissao.VerEvento);
 
-    public async Task<Resultado<Evento>> CriarAsync(int usuarioId, CriarEventoRequisicao requisicao)
+    public async Task<Resultado<AcessoEvento>> CriarAsync(int usuarioId, CriarEventoRequisicao requisicao)
     {
         var erros = new Dictionary<string, string[]>();
 
@@ -40,7 +43,7 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         ValidarCores(requisicao.CorPrincipal, requisicao.CorSecundaria, erros);
 
         if (erros.Count > 0)
-            return Resultado<Evento>.Invalido(erros);
+            return Resultado<AcessoEvento>.Invalido(erros);
 
         var evento = new Evento
         {
@@ -58,21 +61,25 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         banco.Eventos.Add(evento);
         await banco.SaveChangesAsync();
 
-        return Resultado<Evento>.Ok(evento);
+        return Resultado<AcessoEvento>.Ok(new AcessoEvento(evento, null, Organizador: true));
     }
 
-    public async Task<Resultado<Evento>> AtualizarAsync(int usuarioId, int id, AtualizarEventoRequisicao requisicao)
+    public async Task<Resultado<AcessoEvento>> AtualizarAsync(int usuarioId, int id, AtualizarEventoRequisicao requisicao)
     {
-        var evento = await BuscarDoUsuarioAsync(usuarioId, id);
-        if (evento is null)
-            return EventoNaoEncontrado();
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, id, Permissao.GerenciarEvento);
+        if (!acesso.Sucesso)
+            return acesso;
 
+        var evento = acesso.Valor!.Evento;
         var erros = new Dictionary<string, string[]>();
 
         if (requisicao.Tipo is TipoEvento tipo)
         {
             if (!Enum.IsDefined(tipo))
                 erros["tipo"] = ["Tipo de evento inválido."];
+            else if (evento.Tipo == TipoEvento.Formatura && tipo != TipoEvento.Formatura
+                && await banco.Formandos.AnyAsync(f => f.EventoId == evento.Id))
+                erros["tipo"] = ["Esta formatura já tem formandos. Exclua os formandos antes de mudar o tipo do evento."];
             else
                 evento.Tipo = tipo;
         }
@@ -91,10 +98,10 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         if (requisicao.SlugPublico is not null)
         {
             var slug = requisicao.SlugPublico.Trim().ToLowerInvariant();
-            if (slug != GerarSlugBase(slug))
+            if (slug != GerarSlug(slug, "evento", TamanhoMaximoSlug))
                 erros["slugPublico"] = ["Use apenas letras minúsculas sem acento, números e hífens."];
             else if (slug != evento.SlugPublico && await banco.Eventos.AnyAsync(e => e.SlugPublico == slug))
-                return Resultado<Evento>.Falha(TipoErro.Conflito, "Este endereço já está em uso por outro evento.");
+                return Resultado<AcessoEvento>.Falha(TipoErro.Conflito, "Este endereço já está em uso por outro evento.");
             else
                 evento.SlugPublico = slug;
         }
@@ -103,7 +110,7 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         AplicarPix(evento, requisicao, erros);
 
         if (erros.Count > 0)
-            return Resultado<Evento>.Invalido(erros);
+            return Resultado<AcessoEvento>.Invalido(erros);
 
         if (requisicao.Local is not null)
             evento.Local = TextoOpcional(requisicao.Local);
@@ -119,14 +126,19 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
             evento.MuralAtivo = muralAtivo;
 
         await banco.SaveChangesAsync();
-        return Resultado<Evento>.Ok(evento);
+        return acesso;
     }
 
     public async Task<Resultado<bool>> ExcluirAsync(int usuarioId, int id)
     {
-        var evento = await BuscarDoUsuarioAsync(usuarioId, id);
-        if (evento is null)
-            return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado.");
+        // Só quem criou o evento pode excluí-lo (nem os administradores da comissão)
+        var acesso = await ControleAcesso.ObterAsync(banco, usuarioId, id);
+        if (acesso is null)
+            return Resultado<bool>.Falha(TipoErro.NaoEncontrado, ControleAcesso.MensagemEventoNaoEncontrado);
+        if (!acesso.Organizador)
+            return Resultado<bool>.Falha(TipoErro.SemPermissao, "Só quem criou o evento pode excluí-lo.");
+
+        var evento = acesso.Evento;
 
         // Convidados, presentes e fotos do evento são excluídos junto (cascata no banco);
         // os arquivos das fotos e do banner precisam ser apagados do disco à parte
@@ -137,16 +149,18 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
     }
 
     /// <summary>Troca a imagem de capa do evento (usada no banner da página pública e no cartão do evento).</summary>
-    public async Task<Resultado<Evento>> EnviarBannerAsync(int usuarioId, int id, IFormFile? arquivo)
+    public async Task<Resultado<AcessoEvento>> EnviarBannerAsync(int usuarioId, int id, IFormFile? arquivo)
     {
-        var evento = await BuscarDoUsuarioAsync(usuarioId, id);
-        if (evento is null)
-            return EventoNaoEncontrado();
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, id, Permissao.GerenciarEvento);
+        if (!acesso.Sucesso)
+            return acesso;
+
+        var evento = acesso.Valor!.Evento;
 
         if (arquivo is null || arquivo.Length == 0)
-            return Resultado<Evento>.Invalido(new() { ["arquivo"] = ["Escolha uma imagem para o banner."] });
+            return Resultado<AcessoEvento>.Invalido(new() { ["arquivo"] = ["Escolha uma imagem para o banner."] });
         if (arquivo.Length > TamanhoMaximoBannerBytes)
-            return Resultado<Evento>.Invalido(new()
+            return Resultado<AcessoEvento>.Invalido(new()
             {
                 ["arquivo"] = [$"A imagem pode ter no máximo {TamanhoMaximoBannerBytes / 1024 / 1024} MB."],
             });
@@ -154,7 +168,7 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         // Lê o começo do arquivo para conferir se é mesmo uma imagem
         var extensao = await ArmazenamentoArquivos.DetectarExtensaoImagemAsync(arquivo);
         if (extensao is null)
-            return Resultado<Evento>.Invalido(new() { ["arquivo"] = ["Envie uma imagem JPG, PNG, GIF ou WEBP."] });
+            return Resultado<AcessoEvento>.Invalido(new() { ["arquivo"] = ["Envie uma imagem JPG, PNG, GIF ou WEBP."] });
 
         var bannerAnterior = evento.Banner;
         await using (var conteudo = arquivo.OpenReadStream())
@@ -164,15 +178,17 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         if (bannerAnterior is not null)
             armazenamento.ExcluirBanner(evento.Id, bannerAnterior);
 
-        return Resultado<Evento>.Ok(evento);
+        return acesso;
     }
 
     /// <summary>Remove a imagem de capa; a página volta a usar a imagem padrão.</summary>
-    public async Task<Resultado<Evento>> RemoverBannerAsync(int usuarioId, int id)
+    public async Task<Resultado<AcessoEvento>> RemoverBannerAsync(int usuarioId, int id)
     {
-        var evento = await BuscarDoUsuarioAsync(usuarioId, id);
-        if (evento is null)
-            return EventoNaoEncontrado();
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, id, Permissao.GerenciarEvento);
+        if (!acesso.Sucesso)
+            return acesso;
+
+        var evento = acesso.Valor!.Evento;
 
         if (evento.Banner is string banner)
         {
@@ -181,7 +197,7 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
             armazenamento.ExcluirBanner(evento.Id, banner);
         }
 
-        return Resultado<Evento>.Ok(evento);
+        return acesso;
     }
 
     /// <summary>Endereço público do banner, ou nulo se o evento usa a imagem padrão.</summary>
@@ -225,10 +241,6 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         }
     }
 
-    // Só encontra eventos do próprio usuário; evento de outra pessoa aparece como "não encontrado"
-    private Task<Evento?> BuscarDoUsuarioAsync(int usuarioId, int id) =>
-        banco.Eventos.FirstOrDefaultAsync(e => e.Id == id && e.UsuarioId == usuarioId);
-
     private static void ValidarCores(string? corPrincipal, string? corSecundaria, Dictionary<string, string[]> erros)
     {
         if (!CorValida(TextoOpcional(corPrincipal)))
@@ -240,7 +252,7 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
     /// <summary>Gera um endereço público único a partir do nome, ex.: "casamento-ana-e-pedro-2".</summary>
     private async Task<string> GerarSlugUnicoAsync(string nomeEvento)
     {
-        var slugBase = GerarSlugBase(nomeEvento);
+        var slugBase = GerarSlug(nomeEvento, "evento", TamanhoMaximoSlug);
         var slug = slugBase;
         var sufixo = 2;
 
@@ -249,33 +261,4 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
 
         return slug;
     }
-
-    /// <summary>"Casamento de Ana & Pedro" vira "casamento-de-ana-pedro".</summary>
-    private static string GerarSlugBase(string texto)
-    {
-        var semAcento = new StringBuilder();
-        foreach (var caractere in texto.Normalize(NormalizationForm.FormD))
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(caractere) != UnicodeCategory.NonSpacingMark)
-                semAcento.Append(caractere);
-        }
-
-        var slug = new StringBuilder();
-        foreach (var caractere in semAcento.ToString().ToLowerInvariant())
-        {
-            if (char.IsAsciiLetterOrDigit(caractere))
-                slug.Append(caractere);
-            else if (slug.Length > 0 && slug[^1] != '-')
-                slug.Append('-');
-        }
-
-        var resultado = slug.ToString().Trim('-');
-        if (resultado.Length > TamanhoMaximoSlug)
-            resultado = resultado[..TamanhoMaximoSlug].Trim('-');
-
-        return resultado.Length == 0 ? "evento" : resultado;
-    }
-
-    private static Resultado<Evento> EventoNaoEncontrado() =>
-        Resultado<Evento>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado.");
 }

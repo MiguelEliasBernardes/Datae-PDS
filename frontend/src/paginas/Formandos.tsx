@@ -4,26 +4,35 @@ import olho from '../assets/eye.svg'
 import capelo from '../assets/graduation-cap.svg'
 import casaBranca from '../assets/house-white.svg'
 import engrenagem from '../assets/settings.svg'
+import { obterEvento } from '../api/eventos'
 import { atualizarFormando, criarFormando, excluirFormando, listarFormandos } from '../api/formatura'
-import type { DadosFormando, Formando, PapelFormando } from '../api/tipos'
+import type { DadosFormando, Evento, Formando, PapelFormando } from '../api/tipos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { Botao } from '../componentes/Botao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CampoTexto } from '../componentes/CampoTexto'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { ChipFiltro } from '../componentes/ChipFiltro'
+import { CodigoTurma } from '../componentes/CodigoTurma'
+import { ConviteFormando } from '../componentes/ConviteFormando'
 import { FormularioFormando } from '../componentes/FormularioFormando'
 import { JanelaModal } from '../componentes/JanelaModal'
 import { LayoutPainel } from '../componentes/LayoutPainel'
 import { LinhaMembro } from '../componentes/LinhaMembro'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { TituloDestaque } from '../componentes/TituloDestaque'
+import { rotulosPapelFormando } from '../dados/formatacao'
 import { useCarregamento } from '../hooks/useCarregamento'
+
+const papeis = Object.keys(rotulosPapelFormando) as PapelFormando[]
 
 /** Formando em edição: null = janela fechada, 'novo' = adicionando. */
 type Edicao = Formando | 'novo' | null
 
-/** Tela F2 - Formandos. */
+/**
+ * Tela F2 - Formandos (comissão da formatura). Aqui o organizador e os administradores
+ * cadastram os formandos, escolhem o papel de cada um e enviam os convites.
+ */
 export function Formandos({
   eventoId,
   onVoltar,
@@ -32,11 +41,15 @@ export function Formandos({
 }: {
   eventoId: number
   onVoltar: () => void
-  onAbrirConfiguracoes: () => void
+  onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
-  const carregar = useCallback(() => listarFormandos(eventoId), [eventoId])
-  const { dados: formandos, erro, carregando, recarregar } = useCarregamento(carregar)
+  const carregar = useCallback(() => Promise.all([listarFormandos(eventoId), obterEvento(eventoId)]), [eventoId])
+  const { dados, erro, carregando, recarregar } = useCarregamento(carregar)
+  const formandos = dados?.[0] ?? null
+  // O código da turma muda sem recarregar a lista inteira
+  const [eventoAtualizado, setEventoAtualizado] = useState<Evento | null>(null)
+  const evento = eventoAtualizado ?? dados?.[1] ?? null
 
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState<PapelFormando | null>(null)
@@ -54,9 +67,18 @@ export function Formandos({
   }, [formandos, busca, filtro])
 
   async function salvar(dados: DadosFormando) {
-    if (edicao === 'novo') await criarFormando(eventoId, dados)
-    else if (edicao) await atualizarFormando(eventoId, edicao.id, dados)
-    setEdicao(null)
+    if (edicao === 'novo') {
+      // Ao adicionar, a janela continua aberta mostrando o convite pronto para enviar
+      setEdicao(await criarFormando(eventoId, dados))
+    } else if (edicao) {
+      await atualizarFormando(eventoId, edicao.id, dados)
+      setEdicao(null)
+    }
+    recarregar()
+  }
+
+  function aoAlterarConvite(formando: Formando) {
+    setEdicao(formando)
     recarregar()
   }
 
@@ -77,6 +99,12 @@ export function Formandos({
       <BotaoVoltar onVoltar={onVoltar} />
 
       <TituloDestaque>Formandos</TituloDestaque>
+
+      {evento && (
+        <div className="mt-5">
+          <CodigoTurma evento={evento} onAlterado={setEventoAtualizado} />
+        </div>
+      )}
 
       {/* Estatística */}
       <div className="mt-5 lg:max-w-sm">
@@ -107,13 +135,10 @@ export function Formandos({
       />
 
       {/* Filtros */}
-      <div className="mt-3 flex gap-2">
-        <ChipFiltro rotulo="Membro" ativo={filtro === 'Membro'} onClick={() => alternarFiltro('Membro')} />
-        <ChipFiltro
-          rotulo="Administrador"
-          ativo={filtro === 'Administrador'}
-          onClick={() => alternarFiltro('Administrador')}
-        />
+      <div className="mt-3 flex flex-wrap gap-2">
+        {papeis.map((p) => (
+          <ChipFiltro key={p} rotulo={rotulosPapelFormando[p]} ativo={filtro === p} onClick={() => alternarFiltro(p)} />
+        ))}
       </div>
 
       <AvisoErro className="mt-4" mensagem={erro} onTentarNovamente={recarregar} />
@@ -124,7 +149,14 @@ export function Formandos({
           <MensagemLista>Carregando formandos...</MensagemLista>
         ) : visiveis.length > 0 ? (
           visiveis.map((f) => (
-            <LinhaMembro key={f.id} nome={f.nome} papel={f.papel} email={f.email} onEditar={() => setEdicao(f)} />
+            <LinhaMembro
+              key={f.id}
+              nome={f.nome}
+              papel={f.papel}
+              email={f.email}
+              vinculado={f.vinculado}
+              onEditar={() => setEdicao(f)}
+            />
           ))
         ) : (
           formandos && <MensagemLista>Nenhum formando encontrado.</MensagemLista>
@@ -144,6 +176,9 @@ export function Formandos({
             onSalvar={salvar}
             onExcluir={edicao === 'novo' ? undefined : excluir}
           />
+        )}
+        {edicao !== null && edicao !== 'novo' && (
+          <ConviteFormando eventoId={eventoId} formando={edicao} onAlterado={aoAlterarConvite} />
         )}
       </JanelaModal>
     </LayoutPainel>

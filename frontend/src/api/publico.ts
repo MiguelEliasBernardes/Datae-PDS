@@ -3,7 +3,9 @@ import type {
   CompraCotas,
   DadosPresenca,
   EventoPublico,
+  FormandoPublico,
   FotoPublica,
+  PaginaFormando,
   Pix,
   Presenca,
   PresentePublico,
@@ -16,6 +18,16 @@ const base = (slug: string) => `/api/publico/eventos/${encodeURIComponent(slug)}
 export const obterEventoPublico = (slug: string) => requisicao<EventoPublico>(base(slug))
 
 export const listarPresentesPublicos = (slug: string) => requisicao<PresentePublico[]>(`${base(slug)}/presentes`)
+
+/** Formatura: formandos da turma e a sub-página de cada um. */
+export const listarFormandosPublicos = (slug: string) => requisicao<FormandoPublico[]>(`${base(slug)}/formandos`)
+
+export const obterPaginaFormando = (slug: string, slugFormando: string) =>
+  requisicao<PaginaFormando>(`${base(slug)}/formandos/${encodeURIComponent(slugFormando)}`)
+
+/** Lista pessoal do formando; reserva e cotas usam as mesmas funções dos presentes do evento. */
+export const listarPresentesFormando = (slug: string, slugFormando: string) =>
+  requisicao<PresentePublico[]>(`${base(slug)}/formandos/${encodeURIComponent(slugFormando)}/presentes`)
 
 export const listarFotosPublicas = (slug: string) => requisicao<FotoPublica[]>(`${base(slug)}/fotos`)
 

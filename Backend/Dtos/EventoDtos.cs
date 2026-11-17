@@ -44,4 +44,10 @@ public record EventoResposta(
     bool ListaPresentesAtiva,
     bool MuralAtivo,
     string? BannerUrl,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    // Quem está vendo: o dono do evento e/ou o papel dele na comissão, e o que ele pode fazer
+    bool Organizador,
+    PapelFormando? MeuPapel,
+    List<Permissao> Permissoes,
+    // Código de convite da turma; só aparece para quem gerencia a comissão
+    string? CodigoTurma);

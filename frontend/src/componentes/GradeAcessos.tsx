@@ -4,7 +4,7 @@ export type ItemAcesso = Omit<CartaoAcessoProps, 'className'>
 
 /**
  * Acessos rápidos. No mobile: grade 2×2 com divisórias verticais centrais.
- * No desktop: todos os cards numa linha.
+ * No desktop: os cards numa linha (ou em linhas de 3, se forem mais de 4).
  */
 export function GradeAcessos({ itens }: { itens: ItemAcesso[] }) {
   const linhas: ItemAcesso[][] = []
@@ -31,7 +31,8 @@ export function GradeAcessos({ itens }: { itens: ItemAcesso[] }) {
       <div
         className="hidden gap-6 lg:grid"
         style={{
-          gridTemplateColumns: `repeat(${itens.length}, minmax(0, 1fr))`,
+          // Até 4 cards numa linha; com mais (painel da formatura), quebra em linhas de 3
+          gridTemplateColumns: `repeat(${itens.length <= 4 ? itens.length : 3}, minmax(0, 1fr))`,
         }}
       >
         {itens.map((item) => (

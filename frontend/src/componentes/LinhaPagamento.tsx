@@ -24,8 +24,9 @@ export function LinhaPagamento({
   pago,
   total,
   percentual,
+  rotuloAcao = 'Adicionar Pagamento',
   onAdicionarPagamento,
-}: Pagamento & { onAdicionarPagamento?: () => void }) {
+}: Pagamento & { rotuloAcao?: string; onAdicionarPagamento?: () => void }) {
   const { tom, rotulo } = infoStatus[status]
   return (
     <div className="border-b border-field-border pb-4">
@@ -40,16 +41,18 @@ export function LinhaPagamento({
         <span>{total}</span>
       </div>
 
-      <div className="mt-2 w-[64%]">
-        <Botao
-          variante="secundario"
-          tamanho="pequeno"
-          fonte="display"
-          onClick={onAdicionarPagamento}
-        >
-          Adicionar Pagamento
-        </Botao>
-      </div>
+      {onAdicionarPagamento && (
+        <div className="mt-2 w-[64%]">
+          <Botao
+            variante="secundario"
+            tamanho="pequeno"
+            fonte="display"
+            onClick={onAdicionarPagamento}
+          >
+            {rotuloAcao}
+          </Botao>
+        </div>
+      )}
     </div>
   )
 }

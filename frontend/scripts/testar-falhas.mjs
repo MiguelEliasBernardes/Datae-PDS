@@ -33,6 +33,7 @@ const convidados = await carregar('/src/api/convidados.ts')
 const presentes = await carregar('/src/api/presentes.ts')
 const publico = await carregar('/src/api/publico.ts')
 const formatura = await carregar('/src/api/formatura.ts')
+const convites = await carregar('/src/api/convites.ts')
 
 let aprovados = 0
 const falhas = []
@@ -67,11 +68,13 @@ async function esperarErro(promessa, status) {
 const sufixo = Date.now()
 const emailA = `teste-falhas-a-${sufixo}@datae.dev`
 const emailB = `teste-falhas-b-${sufixo}@datae.dev`
+const emailC = `teste-falhas-c-${sufixo}@datae.dev`
 const senha = 'senha-de-teste-123'
 const daquiUmMes = new Date(Date.now() + 30 * 86_400_000).toISOString()
 
 let tokenA = null
 let tokenB = null
+let tokenC = null
 const usarSessao = (token) => localStorage.setItem('datae.token', token)
 
 try {
@@ -368,6 +371,97 @@ try {
     verificar(rateio.quantidadeFormandos === 1 && rateio.valorPorFormando === 400.05 && rateio.totalPago === 50, JSON.stringify(rateio))
   })
 
+  console.log('\nConvites e papéis da comissão')
+  let bia = null
+  await testar('formando novo já vem com convite e endereço próprio', async () => {
+    bia = await formatura.criarFormando(formaturaEvento.id, { nome: 'Bia Costa' })
+    verificar(bia.codigoConvite && bia.slug === 'bia-costa' && !bia.vinculado, JSON.stringify(bia))
+  })
+  await testar('ver o convite não exige login (e aceita o código em minúsculas)', async () => {
+    localStorage.removeItem('datae.token')
+    const convite = await convites.obterConvite(bia.codigoConvite.toLowerCase())
+    verificar(convite.tipo === 'Formando' && convite.nomeFormando === 'Bia Costa', JSON.stringify(convite))
+  })
+  await testar('aceitar o convite liga a conta ao formando, com papel Membro', async () => {
+    usarSessao(tokenB)
+    const aceito = await convites.aceitarConvite(bia.codigoConvite)
+    verificar(aceito.id === formaturaEvento.id && aceito.meuPapel === 'Membro' && !aceito.organizador, JSON.stringify(aceito))
+    verificar(aceito.permissoes.join() === 'VerEvento', `permissões: ${aceito.permissoes.join()}`)
+    verificar((await eventos.listarEventos()).some((e) => e.id === formaturaEvento.id), 'a formatura não aparece em Meus Eventos')
+  })
+  await testar('o convite individual só vale uma vez (404)', async () => {
+    await esperarErro(convites.aceitarConvite(bia.codigoConvite), 404)
+  })
+  await testar('membro vê as despesas, mas não lança nem gerencia (403)', async () => {
+    verificar((await formatura.listarDespesas(formaturaEvento.id)).length === 2, 'membro não viu as despesas')
+    await esperarErro(formatura.criarDespesa(formaturaEvento.id, { descricao: 'X', valor: 10 }), 403)
+    await esperarErro(formatura.listarFormandos(formaturaEvento.id), 403)
+    await esperarErro(eventos.atualizarEvento(formaturaEvento.id, { nomeEvento: 'Invadido' }), 403)
+    await esperarErro(eventos.excluirEvento(formaturaEvento.id), 403)
+  })
+  await testar('membro vê os totais da turma e só a própria parte no rateio', async () => {
+    const rateio = await formatura.obterRateio(formaturaEvento.id)
+    verificar(rateio.quantidadeFormandos === 2 && rateio.totalDespesas === 400.05, JSON.stringify(rateio))
+    verificar(rateio.formandos.length === 1 && rateio.formandos[0].formandoId === bia.id, JSON.stringify(rateio.formandos))
+    await esperarErro(formatura.listarPagamentos(formaturaEvento.id, joao.id), 403)
+    verificar((await formatura.listarPagamentos(formaturaEvento.id, bia.id)).length === 0, 'esperava ver os próprios pagamentos')
+  })
+  await testar('papel Financeiro libera despesas e os pagamentos de todos', async () => {
+    usarSessao(tokenA)
+    await formatura.atualizarFormando(formaturaEvento.id, bia.id, { papel: 'Financeiro' })
+    usarSessao(tokenB)
+    const visto = await eventos.obterEvento(formaturaEvento.id)
+    verificar(visto.permissoes.includes('Financeiro') && !visto.permissoes.includes('GerenciarEvento'), visto.permissoes.join())
+    await formatura.registrarPagamento(formaturaEvento.id, joao.id, { valor: 10 })
+    verificar((await formatura.obterRateio(formaturaEvento.id)).formandos.length === 2, 'financeiro deveria ver todos')
+    await esperarErro(formatura.criarFormando(formaturaEvento.id, { nome: 'X' }), 403)
+  })
+  await testar('a lista pessoal do formando aparece só na sub-página dele', async () => {
+    const meu = await formatura.obterMeuFormando(formaturaEvento.id)
+    await formatura.atualizarMeuFormando(formaturaEvento.id, { mensagem: 'Obrigada!' })
+    const anel = await presentes.criarPresente(formaturaEvento.id, { nome: 'Anel de formatura', valorEstimado: 300 }, true)
+    const daTurma = await publico.listarPresentesPublicos(formaturaEvento.slugPublico)
+    verificar(!daTurma.some((p) => p.id === anel.id), 'presente pessoal apareceu na lista da turma')
+    const pagina = await publico.obterPaginaFormando(formaturaEvento.slugPublico, meu.slug)
+    verificar(pagina.formando.nome === 'Bia Costa' && pagina.formando.mensagem === 'Obrigada!', JSON.stringify(pagina.formando))
+    const daBia = await publico.listarPresentesFormando(formaturaEvento.slugPublico, meu.slug)
+    verificar(daBia.length === 1 && daBia[0].id === anel.id, JSON.stringify(daBia))
+    const reserva = await publico.reservarPresente(formaturaEvento.slugPublico, anel.id, 'Tia Rosa', false)
+    verificar(reserva.presente.status === 'Reservado', JSON.stringify(reserva.presente))
+    verificar((await publico.listarFormandosPublicos(formaturaEvento.slugPublico)).length === 2, 'formandos públicos')
+    await esperarErro(publico.obterPaginaFormando(formaturaEvento.slugPublico, 'nao-existe'), 404)
+  })
+  await testar('organizador que não é formando não tem lista pessoal (409)', async () => {
+    usarSessao(tokenA)
+    await esperarErro(presentes.listarPresentes(formaturaEvento.id, true), 409)
+  })
+  await testar('código da turma: quem entra vira formando novo; desligado, deixa de valer', async () => {
+    const comCodigo = await formatura.gerarCodigoTurma(formaturaEvento.id)
+    verificar(comCodigo.codigoTurma, 'código da turma não veio')
+    await autenticacao.cadastrar('Teste Falhas C', emailC, senha)
+    tokenC = sessao.obterToken()
+    verificar((await convites.obterConvite(comCodigo.codigoTurma)).tipo === 'Turma', 'tipo do convite')
+    const aceito = await convites.aceitarConvite(comCodigo.codigoTurma)
+    verificar(aceito.meuPapel === 'Membro' && aceito.codigoTurma === null, JSON.stringify(aceito))
+    await esperarErro(convites.aceitarConvite(comCodigo.codigoTurma), 409)
+    usarSessao(tokenA)
+    const lista = await formatura.listarFormandos(formaturaEvento.id)
+    verificar(lista.some((f) => f.nome === 'Teste Falhas C' && f.vinculado && f.codigoConvite === null), JSON.stringify(lista))
+    const desligado = await formatura.desativarCodigoTurma(formaturaEvento.id)
+    verificar(desligado.codigoTurma === null, 'código continuou ligado')
+    await esperarErro(convites.obterConvite(comCodigo.codigoTurma), 404)
+  })
+  await testar('código da turma em evento que não é formatura → 409', async () => {
+    await esperarErro(formatura.gerarCodigoTurma(evento.id), 409)
+  })
+  await testar('desvincular tira o acesso da conta (404) e gera um convite novo', async () => {
+    const atualizado = await formatura.desvincularFormando(formaturaEvento.id, bia.id)
+    verificar(!atualizado.vinculado && atualizado.codigoConvite && atualizado.codigoConvite !== bia.codigoConvite, JSON.stringify(atualizado))
+    usarSessao(tokenB)
+    await esperarErro(eventos.obterEvento(formaturaEvento.id), 404)
+    usarSessao(tokenA)
+  })
+
   console.log('\nSessão')
   await testar('token inválido → 401, limpa a sessão e avisa o App', async () => {
     usarSessao('token-invalido')
@@ -395,7 +489,7 @@ try {
   })
 } finally {
   // Limpeza: excluir os usuários de teste apaga tudo o que eles criaram
-  for (const token of [tokenA, tokenB]) {
+  for (const token of [tokenA, tokenB, tokenC]) {
     if (!token) continue
     usarSessao(token)
     await cliente.requisicao('/api/usuarios/eu', 'DELETE').catch(() => {})

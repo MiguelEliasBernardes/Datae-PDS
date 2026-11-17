@@ -13,14 +13,17 @@ import { MensagemLista } from './MensagemLista'
 /**
  * Conteúdo da janela de um formando no rateio: registrar um pagamento e ver
  * (ou desfazer) os já registrados. `onAlterado` avisa a tela para recalcular o rateio.
+ * Com `somenteLeitura` (o próprio formando, sem ser do financeiro), só mostra o histórico.
  */
 export function PagamentosFormando({
   eventoId,
   formando,
+  somenteLeitura = false,
   onAlterado,
 }: {
   eventoId: number
   formando: RateioFormando
+  somenteLeitura?: boolean
   onAlterado: () => void
 }) {
   const carregar = useCallback(() => listarPagamentos(eventoId, formando.formandoId), [eventoId, formando.formandoId])
@@ -89,36 +92,39 @@ export function PagamentosFormando({
         {restante > 0 ? ` · faltam ${formatarMoeda(restante)}` : ' · quitado'}
       </p>
 
-      <form onSubmit={registrar} className="flex flex-col gap-3" noValidate>
-        <AvisoErro mensagem={mensagemGeral} />
-        <CampoTexto
-          rotulo="Valor pago"
-          inputMode="decimal"
-          placeholder="Ex: 150,00"
-          value={valor}
-          onChange={(e) => setValor(e.target.value)}
-          erro={erro?.doCampo('valor')}
-        />
-        <CampoTexto
-          rotulo="Data do pagamento (opcional)"
-          type="date"
-          value={data}
-          onChange={(e) => setData(e.target.value)}
-          erro={erro?.doCampo('pagoEm')}
-        />
-        <AreaTexto
-          rotulo="Observação (opcional)"
-          placeholder="Ex: pagou em dinheiro"
-          value={observacao}
-          onChange={(e) => setObservacao(e.target.value)}
-          erro={erro?.doCampo('observacao')}
-        />
-        <Botao type="submit" carregando={salvando}>
-          Registrar pagamento
-        </Botao>
-      </form>
+      {!somenteLeitura && (
+        <form onSubmit={registrar} className="flex flex-col gap-3" noValidate>
+          <AvisoErro mensagem={mensagemGeral} />
+          <CampoTexto
+            rotulo="Valor pago"
+            inputMode="decimal"
+            placeholder="Ex: 150,00"
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+            erro={erro?.doCampo('valor')}
+          />
+          <CampoTexto
+            rotulo="Data do pagamento (opcional)"
+            type="date"
+            value={data}
+            onChange={(e) => setData(e.target.value)}
+            erro={erro?.doCampo('pagoEm')}
+          />
+          <AreaTexto
+            rotulo="Observação (opcional)"
+            placeholder="Ex: pagou em dinheiro"
+            value={observacao}
+            onChange={(e) => setObservacao(e.target.value)}
+            erro={erro?.doCampo('observacao')}
+          />
+          <Botao type="submit" carregando={salvando}>
+            Registrar pagamento
+          </Botao>
+        </form>
+      )}
+      {somenteLeitura && <AvisoErro mensagem={mensagemGeral} />}
 
-      <div className="flex flex-col gap-2 border-t border-field-border pt-4">
+      <div className={`flex flex-col gap-2 ${somenteLeitura ? '' : 'border-t border-field-border pt-4'}`}>
         <span className="text-[13px] font-medium text-heading">Pagamentos registrados</span>
         <AvisoErro mensagem={erroLista} onTentarNovamente={recarregar} />
         {carregando && !pagamentos && <MensagemLista>Carregando pagamentos...</MensagemLista>}
@@ -131,14 +137,16 @@ export function PagamentosFormando({
               </p>
               {p.observacao && <p className="truncate font-display text-[12px] text-muted">{p.observacao}</p>}
             </div>
-            <button
-              type="button"
-              disabled={excluindo !== null}
-              onClick={() => void desfazer(p.id)}
-              className="shrink-0 text-[12px] font-medium text-danger disabled:opacity-60"
-            >
-              {excluindo === p.id ? 'Excluindo...' : 'Excluir'}
-            </button>
+            {!somenteLeitura && (
+              <button
+                type="button"
+                disabled={excluindo !== null}
+                onClick={() => void desfazer(p.id)}
+                className="shrink-0 text-[12px] font-medium text-danger disabled:opacity-60"
+              >
+                {excluindo === p.id ? 'Excluindo...' : 'Excluir'}
+              </button>
+            )}
           </div>
         ))}
       </div>

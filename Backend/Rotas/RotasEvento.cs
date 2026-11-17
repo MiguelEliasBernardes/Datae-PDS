@@ -8,7 +8,7 @@ namespace Backend.Rotas;
 
 /// <summary>
 /// Rotas de evento: só recebem a requisição, chamam o ServicoEvento e traduzem o resultado para HTTP.
-/// Todas exigem login e só enxergam os eventos do usuário logado.
+/// Todas exigem login; o que cada um pode fazer depende do papel dele no evento (ver ControleAcesso).
 /// </summary>
 public static class RotasEvento
 {
@@ -35,7 +35,7 @@ public static class RotasEvento
             return Results.Unauthorized();
 
         var resultado = await servicoEvento.ListarAsync(usuarioId);
-        return ParaHttp(resultado, eventos => Results.Ok(eventos.Select(ParaResposta)));
+        return ParaHttp(resultado, acessos => Results.Ok(acessos.Select(ParaResposta)));
     }
 
     private static async Task<IResult> Criar(
@@ -45,7 +45,7 @@ public static class RotasEvento
             return Results.Unauthorized();
 
         var resultado = await servicoEvento.CriarAsync(usuarioId, requisicao);
-        return ParaHttp(resultado, evento => Results.Created($"/api/eventos/{evento.Id}", ParaResposta(evento)));
+        return ParaHttp(resultado, acesso => Results.Created($"/api/eventos/{acesso.Evento.Id}", ParaResposta(acesso)));
     }
 
     private static async Task<IResult> Obter(int id, ClaimsPrincipal principal, ServicoEvento servicoEvento)
@@ -54,7 +54,7 @@ public static class RotasEvento
             return Results.Unauthorized();
 
         var resultado = await servicoEvento.ObterAsync(usuarioId, id);
-        return ParaHttp(resultado, evento => Results.Ok(ParaResposta(evento)));
+        return ParaHttp(resultado, acesso => Results.Ok(ParaResposta(acesso)));
     }
 
     private static async Task<IResult> Atualizar(
@@ -64,7 +64,7 @@ public static class RotasEvento
             return Results.Unauthorized();
 
         var resultado = await servicoEvento.AtualizarAsync(usuarioId, id, requisicao);
-        return ParaHttp(resultado, evento => Results.Ok(ParaResposta(evento)));
+        return ParaHttp(resultado, acesso => Results.Ok(ParaResposta(acesso)));
     }
 
     private static async Task<IResult> Excluir(int id, ClaimsPrincipal principal, ServicoEvento servicoEvento)
@@ -83,7 +83,7 @@ public static class RotasEvento
             return Results.Unauthorized();
 
         var resultado = await servicoEvento.EnviarBannerAsync(usuarioId, id, arquivo);
-        return ParaHttp(resultado, evento => Results.Ok(ParaResposta(evento)));
+        return ParaHttp(resultado, acesso => Results.Ok(ParaResposta(acesso)));
     }
 
     private static async Task<IResult> RemoverBanner(int id, ClaimsPrincipal principal, ServicoEvento servicoEvento)
@@ -92,7 +92,7 @@ public static class RotasEvento
             return Results.Unauthorized();
 
         var resultado = await servicoEvento.RemoverBannerAsync(usuarioId, id);
-        return ParaHttp(resultado, evento => Results.Ok(ParaResposta(evento)));
+        return ParaHttp(resultado, acesso => Results.Ok(ParaResposta(acesso)));
     }
 
     private static IResult BaixarBanner(int eventoId, string arquivo, ArmazenamentoArquivos armazenamento)
@@ -103,22 +103,31 @@ public static class RotasEvento
         return Results.File(banner.Caminho, banner.TipoConteudo);
     }
 
-    private static EventoResposta ParaResposta(Evento evento) => new(
-        evento.Id,
-        evento.PlanoAtualId,
-        evento.Tipo,
-        evento.DataEvento,
-        evento.NomeEvento,
-        evento.Local,
-        evento.SlugPublico,
-        evento.Descricao,
-        evento.CorPrincipal,
-        evento.CorSecundaria,
-        evento.ChavePix,
-        evento.NomeRecebedorPix,
-        evento.CidadePix,
-        evento.ListaPresentesAtiva,
-        evento.MuralAtivo,
-        ServicoEvento.UrlDoBanner(evento),
-        evento.CriadoEm);
+    /// <summary>Usado também pelas rotas de convite, que devolvem o evento em que a pessoa entrou.</summary>
+    internal static EventoResposta ParaResposta(AcessoEvento acesso)
+    {
+        var evento = acesso.Evento;
+        return new(
+            evento.Id,
+            evento.PlanoAtualId,
+            evento.Tipo,
+            evento.DataEvento,
+            evento.NomeEvento,
+            evento.Local,
+            evento.SlugPublico,
+            evento.Descricao,
+            evento.CorPrincipal,
+            evento.CorSecundaria,
+            evento.ChavePix,
+            evento.NomeRecebedorPix,
+            evento.CidadePix,
+            evento.ListaPresentesAtiva,
+            evento.MuralAtivo,
+            ServicoEvento.UrlDoBanner(evento),
+            evento.CriadoEm,
+            acesso.Organizador,
+            acesso.Papel,
+            acesso.Permissoes,
+            acesso.Pode(Permissao.GerenciarComissao) ? evento.CodigoTurma : null);
+    }
 }

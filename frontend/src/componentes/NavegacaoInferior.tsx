@@ -2,6 +2,7 @@ export interface ItemNavegacao {
   icone: string
   rotulo: string
   ativo?: boolean
+  /** Sem onClick (e sem estar ativo), o item não aparece: ex.: "Configurações" para quem não pode alterar o evento. */
   onClick?: () => void
 }
 
@@ -17,7 +18,7 @@ export function NavegacaoInferior({
     <nav
       className={`sticky bottom-4 mt-auto flex items-center gap-1 rounded-[30px] bg-primary-strong p-1.5 shadow-[0px_0px_5px_rgba(0,0,0,0.5)] ${className}`}
     >
-      {itens.map((item) => (
+      {itens.filter((item) => item.ativo || item.onClick).map((item) => (
         <button
           key={item.rotulo}
           type="button"

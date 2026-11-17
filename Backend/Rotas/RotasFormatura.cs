@@ -7,8 +7,9 @@ using static Backend.Rotas.AuxiliaresRotas;
 namespace Backend.Rotas;
 
 /// <summary>
-/// Rotas dos módulos de formatura: formandos, despesas e rateio (com os pagamentos de cada formando).
+/// Rotas dos módulos de formatura: formandos (com convites), despesas e rateio (com os pagamentos de cada formando).
 /// Ficam "dentro" do evento e só funcionam em eventos do tipo Formatura (os outros respondem 409).
+/// O que cada participante pode fazer depende do papel dele na comissão (ver ControleAcesso).
 /// </summary>
 public static class RotasFormatura
 {
@@ -22,6 +23,14 @@ public static class RotasFormatura
         formandos.MapPost("/", CriarFormando);
         formandos.MapPut("/{id:int}", AtualizarFormando);
         formandos.MapDelete("/{id:int}", ExcluirFormando);
+
+        // Convite individual: gerar outro código ou tirar o acesso de quem entrou
+        formandos.MapPost("/{id:int}/convite", GerarNovoConvite);
+        formandos.MapDelete("/{id:int}/vinculo", Desvincular);
+
+        // O formando ligado à conta logada (sub-página dele)
+        formandos.MapGet("/eu", ObterMeuFormando);
+        formandos.MapPut("/eu", AtualizarMeuFormando);
 
         formandos.MapGet("/{formandoId:int}/pagamentos", ListarPagamentos);
         formandos.MapPost("/{formandoId:int}/pagamentos", RegistrarPagamento);
@@ -37,6 +46,11 @@ public static class RotasFormatura
         despesas.MapDelete("/{id:int}", ExcluirDespesa);
 
         app.MapGet("/api/eventos/{eventoId:int}/rateio", ObterRateio).WithTags("Rateio").RequireAuthorization();
+
+        // Código geral de convite da turma: POST liga ou troca, DELETE desliga. Devolvem o evento atualizado
+        var codigoTurma = app.MapGroup("/api/eventos/{eventoId:int}/codigo-turma").WithTags("Formandos").RequireAuthorization();
+        codigoTurma.MapPost("/", GerarCodigoTurma);
+        codigoTurma.MapDelete("/", DesativarCodigoTurma);
     }
 
     // ===== Formandos =====
@@ -80,6 +94,61 @@ public static class RotasFormatura
 
         var resultado = await servico.ExcluirAsync(usuarioId, eventoId, id);
         return ParaHttp(resultado, _ => Results.NoContent());
+    }
+
+    private static async Task<IResult> GerarNovoConvite(int eventoId, int id, ClaimsPrincipal principal, ServicoFormando servico)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servico.GerarNovoConviteAsync(usuarioId, eventoId, id);
+        return ParaHttp(resultado, formando => Results.Ok(ParaResposta(formando)));
+    }
+
+    private static async Task<IResult> Desvincular(int eventoId, int id, ClaimsPrincipal principal, ServicoFormando servico)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servico.DesvincularAsync(usuarioId, eventoId, id);
+        return ParaHttp(resultado, formando => Results.Ok(ParaResposta(formando)));
+    }
+
+    private static async Task<IResult> ObterMeuFormando(int eventoId, ClaimsPrincipal principal, ServicoFormando servico)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servico.ObterMeuAsync(usuarioId, eventoId);
+        return ParaHttp(resultado, formando => Results.Ok(ParaResposta(formando)));
+    }
+
+    private static async Task<IResult> AtualizarMeuFormando(
+        int eventoId, AtualizarMeuFormandoRequisicao requisicao, ClaimsPrincipal principal, ServicoFormando servico)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servico.AtualizarMeuAsync(usuarioId, eventoId, requisicao);
+        return ParaHttp(resultado, formando => Results.Ok(ParaResposta(formando)));
+    }
+
+    private static async Task<IResult> GerarCodigoTurma(int eventoId, ClaimsPrincipal principal, ServicoConvite servico)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servico.GerarCodigoTurmaAsync(usuarioId, eventoId);
+        return ParaHttp(resultado, acesso => Results.Ok(RotasEvento.ParaResposta(acesso)));
+    }
+
+    private static async Task<IResult> DesativarCodigoTurma(int eventoId, ClaimsPrincipal principal, ServicoConvite servico)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servico.DesativarCodigoTurmaAsync(usuarioId, eventoId);
+        return ParaHttp(resultado, acesso => Results.Ok(RotasEvento.ParaResposta(acesso)));
     }
 
     // ===== Pagamentos do rateio =====
@@ -168,7 +237,16 @@ public static class RotasFormatura
     }
 
     private static FormandoResposta ParaResposta(Formando formando) => new(
-        formando.Id, formando.EventoId, formando.Nome, formando.Email, formando.Papel, formando.CriadoEm);
+        formando.Id,
+        formando.EventoId,
+        formando.Nome,
+        formando.Email,
+        formando.Papel,
+        formando.CriadoEm,
+        formando.Slug,
+        formando.Mensagem,
+        formando.UsuarioId is not null,
+        formando.CodigoConvite);
 
     private static DespesaResposta ParaResposta(Despesa despesa) => new(
         despesa.Id, despesa.EventoId, despesa.Descricao, despesa.Valor, despesa.Data, despesa.CriadoEm);

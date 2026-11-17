@@ -2,17 +2,19 @@ import { useEffect, useState } from 'react'
 import { sair } from './api/autenticacao'
 import { definirAoExpirarSessao } from './api/cliente'
 import { obterUsuario } from './api/sessao'
-import type { Evento, Usuario } from './api/tipos'
+import type { Evento, Permissao, Usuario } from './api/tipos'
+import { codigoConviteDaUrl, limparUrl, rotaPublicaDaUrl } from './dados/rotas'
+import { AceitarConvite } from './paginas/AceitarConvite'
 import { ConfiguracoesPagina } from './paginas/ConfiguracoesPagina'
 import { Convidados } from './paginas/Convidados'
 import { CriarEvento } from './paginas/CriarEvento'
 import { Despesas } from './paginas/Despesas'
 import { Formandos } from './paginas/Formandos'
 import { Login } from './paginas/Login'
-import { slugDaUrl } from './dados/rotas'
 import { MeusEventos } from './paginas/MeusEventos'
 import { Mural } from './paginas/Mural'
 import { PaginaEvento, PreVisualizacaoEvento } from './paginas/PaginaEvento'
+import { PaginaFormando } from './paginas/PaginaFormando'
 import { PainelEvento } from './paginas/PainelEvento'
 import { PainelFormatura } from './paginas/PainelFormatura'
 import { Presentes } from './paginas/Presentes'
@@ -26,6 +28,7 @@ type Tela =
   | 'painel-formatura'
   | 'convidados'
   | 'presentes'
+  | 'meus-presentes'
   | 'mural'
   | 'configuracoes'
   | 'pagina-evento'
@@ -33,19 +36,26 @@ type Tela =
   | 'despesas'
   | 'rateio'
 
-/** Evento aberto no momento e qual painel ele usa (formatura tem um painel próprio). */
+/**
+ * Evento aberto no momento, qual painel ele usa (formatura tem um painel próprio) e o que o
+ * usuário pode fazer nele. As permissões só escondem botões: quem barra de verdade é o backend.
+ */
 interface EventoAberto {
   id: number
   painel: 'painel-evento' | 'painel-formatura'
+  permissoes: Permissao[]
 }
 
 /**
- * Endereços /e/{slug} abrem a página pública do evento, para convidados (sem login).
- * Qualquer outro endereço abre a área do organizador.
+ * Endereços /e/{slug} abrem a página pública do evento e /e/{slug}/{formando} a sub-página de
+ * um formando, para convidados (sem login). Qualquer outro endereço abre a área do organizador.
  */
 function App() {
-  const slug = slugDaUrl()
-  if (slug) return <div className="app-shell"><PaginaEvento slug={slug} /></div>
+  const rota = rotaPublicaDaUrl()
+  if (rota?.slugFormando) {
+    return <div className="app-shell"><PaginaFormando slug={rota.slug} slugFormando={rota.slugFormando} /></div>
+  }
+  if (rota) return <div className="app-shell"><PaginaEvento slug={rota.slug} /></div>
   return <AreaOrganizador />
 }
 
@@ -53,6 +63,8 @@ function AreaOrganizador() {
   const [usuario, setUsuario] = useState<Usuario | null>(obterUsuario)
   const [tela, setTela] = useState<Tela>(() => (obterUsuario() ? 'meus-eventos' : 'login'))
   const [evento, setEvento] = useState<EventoAberto | null>(null)
+  // Convite aberto por /convite/{codigo}: depois do login, a pessoa vê o convite antes de qualquer outra tela
+  const [codigoConvite, setCodigoConvite] = useState(codigoConviteDaUrl)
 
   // Se a API responder 401 (token expirado), volta para o login
   useEffect(() => {
@@ -66,7 +78,7 @@ function AreaOrganizador() {
 
   function abrirEvento(e: Evento) {
     const painel = e.tipo === 'Formatura' ? 'painel-formatura' : 'painel-evento'
-    setEvento({ id: e.id, painel })
+    setEvento({ id: e.id, painel, permissoes: e.permissoes })
     setTela(painel)
   }
 
@@ -77,16 +89,40 @@ function AreaOrganizador() {
     setTela('login')
   }
 
+  function fecharConvite() {
+    limparUrl()
+    setCodigoConvite(null)
+  }
+
   const irPara = (t: Tela) => () => setTela(t)
 
   function renderizarTela() {
     if (!usuario || tela === 'login') {
       return (
         <Login
+          aviso={codigoConvite ? 'Entre ou crie sua conta para aceitar o convite da formatura.' : undefined}
           onEntrar={(u) => {
             setUsuario(u)
             setTela('meus-eventos')
           }}
+        />
+      )
+    }
+
+    if (codigoConvite) {
+      return (
+        <AceitarConvite
+          codigo={codigoConvite}
+          usuario={usuario}
+          onAceito={(e) => {
+            fecharConvite()
+            abrirEvento(e)
+          }}
+          onIgnorar={() => {
+            fecharConvite()
+            setTela('meus-eventos')
+          }}
+          onTrocarConta={encerrarSessao}
         />
       )
     }
@@ -101,17 +137,21 @@ function AreaOrganizador() {
           nomeUsuario={usuario.nome}
           onCriar={irPara('criar-evento')}
           onAcessarEvento={abrirEvento}
+          onUsarCodigo={setCodigoConvite}
           onSair={encerrarSessao}
         />
       )
     }
 
     // Telas "dentro" de um evento
+    const pode = (permissao: Permissao) => evento.permissoes.includes(permissao)
     const voltarAoPainel = irPara(evento.painel)
     const voltarAosEventos = () => {
       setEvento(null)
       setTela('meus-eventos')
     }
+    // Sem permissão, o item "Configurações" some da navegação
+    const abrirConfiguracoes = pode('GerenciarEvento') ? irPara('configuracoes') : undefined
 
     switch (tela) {
       case 'painel-evento':
@@ -135,7 +175,9 @@ function AreaOrganizador() {
             onAbrirDespesas={irPara('despesas')}
             onAbrirMural={irPara('mural')}
             onAbrirRateio={irPara('rateio')}
-            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirConvidados={irPara('convidados')}
+            onAbrirMeusPresentes={irPara('meus-presentes')}
+            onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
         )
@@ -149,11 +191,15 @@ function AreaOrganizador() {
           />
         )
       case 'presentes':
+      case 'meus-presentes':
         return (
           <Presentes
+            // key recria a tela ao trocar entre a lista do evento e a lista pessoal
+            key={tela}
             eventoId={evento.id}
+            minhaLista={tela === 'meus-presentes'}
             onVoltar={voltarAoPainel}
-            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
         )
@@ -162,7 +208,7 @@ function AreaOrganizador() {
           <Mural
             eventoId={evento.id}
             onVoltar={voltarAoPainel}
-            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
         )
@@ -180,7 +226,7 @@ function AreaOrganizador() {
           <PreVisualizacaoEvento
             eventoId={evento.id}
             onVoltar={voltarAoPainel}
-            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirConfiguracoes={abrirConfiguracoes}
           />
         )
       case 'formandos':
@@ -188,7 +234,7 @@ function AreaOrganizador() {
           <Formandos
             eventoId={evento.id}
             onVoltar={voltarAoPainel}
-            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
         )
@@ -196,9 +242,10 @@ function AreaOrganizador() {
         return (
           <Despesas
             eventoId={evento.id}
+            somenteLeitura={!pode('Financeiro')}
             onVoltar={voltarAoPainel}
             onAbrirRateio={irPara('rateio')}
-            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
         )
@@ -206,10 +253,11 @@ function AreaOrganizador() {
         return (
           <Rateio
             eventoId={evento.id}
+            financeiro={pode('Financeiro')}
             onVoltar={voltarAoPainel}
             onAbrirDespesas={irPara('despesas')}
-            onAbrirFormandos={irPara('formandos')}
-            onAbrirConfiguracoes={irPara('configuracoes')}
+            onAbrirFormandos={pode('GerenciarComissao') ? irPara('formandos') : undefined}
+            onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
         )

@@ -26,7 +26,7 @@ export function Mural({
 }: {
   eventoId: number
   onVoltar: () => void
-  onAbrirConfiguracoes: () => void
+  onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
   const carregar = useCallback(() => listarFotos(eventoId), [eventoId])

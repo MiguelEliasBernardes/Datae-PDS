@@ -2,37 +2,23 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import calendario from '../assets/calendar.svg'
 import imagemCapa from '../assets/event-hero.png'
 import olhoAtivo from '../assets/eye-active.svg'
-import presenteBotao from '../assets/gift-btn.svg'
 import casaBranca from '../assets/house-white.svg'
 import engrenagem from '../assets/settings.svg'
 import { urlApi } from '../api/cliente'
 import { obterEvento } from '../api/eventos'
-import { listarFotosPublicas, listarPresentesPublicos, obterEventoPublico } from '../api/publico'
-import type { PresentePublico, StatusPresente } from '../api/tipos'
+import { listarFormandosPublicos, listarFotosPublicas, listarPresentesPublicos, obterEventoPublico } from '../api/publico'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { BarraLateral } from '../componentes/BarraLateral'
-import { Botao } from '../componentes/Botao'
 import { CartaoPix } from '../componentes/CartaoPix'
-import { CartaoPresentePublico } from '../componentes/CartaoPresentePublico'
 import { ContagemRegressiva } from '../componentes/ContagemRegressiva'
 import { EnvioFotosMural } from '../componentes/EnvioFotosMural'
-import { FormularioCotas } from '../componentes/FormularioCotas'
 import { FormularioPresenca } from '../componentes/FormularioPresenca'
-import { FormularioReserva } from '../componentes/FormularioReserva'
-import { JanelaModal } from '../componentes/JanelaModal'
+import { ListaPresentesPublica } from '../componentes/ListaPresentesPublica'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { NavegacaoInferior, type ItemNavegacao } from '../componentes/NavegacaoInferior'
 import { RotuloSecao } from '../componentes/RotuloSecao'
-import type { TomSelo } from '../componentes/SeloStatus'
-import {
-  formatarDataPorExtenso,
-  formatarMoeda,
-  rotulosStatusPresente,
-  rotulosTipoEvento,
-  tempoRestante,
-} from '../dados/formatacao'
-import { codigoReserva } from '../dados/reservas'
-import { linkPublicoEvento } from '../dados/rotas'
+import { formatarDataPorExtenso, rotulosTipoEvento, tempoRestante } from '../dados/formatacao'
+import { linkPaginaFormando, linkPublicoEvento } from '../dados/rotas'
 import { useAgora } from '../hooks/useAgora'
 import { useCarregamento } from '../hooks/useCarregamento'
 
@@ -42,14 +28,7 @@ const envoltorio = 'mx-auto w-full max-w-5xl px-6 lg:px-10'
 /** Linha de 2 colunas no desktop. */
 const duasColunas = `${envoltorio} lg:grid lg:grid-cols-2 lg:gap-10`
 
-const PRESENTES_INICIAIS = 3
 const FOTOS_INICIAIS = 12
-
-const tomStatusPresente: Record<StatusPresente, TomSelo> = {
-  Disponivel: 'sucesso',
-  Reservado: 'neutro',
-  Comprado: 'destaque',
-}
 
 /**
  * Tela G1 - Página pública do Evento, aberta pelos convidados em /e/{slug} (sem login).
@@ -65,18 +44,21 @@ export function PaginaEvento({
   navegacao?: ItemNavegacao[]
   preVisualizacao?: boolean
 }) {
+  // Na formatura, os formandos vêm junto para a página linkar a sub-página de cada um
   const carregar = useCallback(
-    () => Promise.all([obterEventoPublico(slug), listarPresentesPublicos(slug), listarFotosPublicas(slug)]),
+    () =>
+      Promise.all([
+        obterEventoPublico(slug),
+        listarPresentesPublicos(slug),
+        listarFotosPublicas(slug),
+        listarFormandosPublicos(slug),
+      ]),
     [slug],
   )
   const { dados, erro, carregando, recarregar } = useCarregamento(carregar)
   const agora = useAgora()
 
-  const [presenteAberto, setPresenteAberto] = useState<PresentePublico | null>(null)
-  const [avisoPresentes, setAvisoPresentes] = useState<string | null>(null)
-  const [todosPresentes, setTodosPresentes] = useState(false)
   const [todasFotos, setTodasFotos] = useState(false)
-  const fecharPresente = useCallback(() => setPresenteAberto(null), [])
 
   const nomeEvento = dados?.[0].nomeEvento
   useEffect(() => {
@@ -96,33 +78,16 @@ export function PaginaEvento({
     )
   }
 
-  const [evento, presentesDaApi, fotos] = dados
-  // As reservas feitas neste aparelho vêm primeiro, para o convidado achar "Minha reserva" sem procurar.
-  // O resto mantém a ordem da API (disponíveis antes dos reservados).
-  const presentes = [...presentesDaApi].sort(
-    (a, b) => Number(codigoReserva(b.id) !== null) - Number(codigoReserva(a.id) !== null),
-  )
+  const [evento, presentes, fotos, formandos] = dados
+  const formatura = evento.tipo === 'Formatura'
   const dataPorExtenso = formatarDataPorExtenso(evento.dataEvento)
   const eventoJaComecou = new Date(evento.dataEvento).getTime() <= agora
-  const presentesVisiveis = todosPresentes ? presentes : presentes.slice(0, PRESENTES_INICIAIS)
   const fotosVisiveis = todasFotos ? fotos : fotos.slice(0, FOTOS_INICIAIS)
 
   // A cor escolhida nas configurações substitui o roxo padrão nesta página
   const estiloTema = evento.corPrincipal
     ? ({ '--color-primary': evento.corPrincipal } as CSSProperties)
     : undefined
-
-  function acaoDoPresente(p: PresentePublico) {
-    if (p.quantidadeCotas !== null) return p.status === 'Disponivel' ? 'Dar cotas' : undefined
-    if (p.status === 'Disponivel') return 'Reservar'
-    if (codigoReserva(p.id)) return 'Minha reserva'
-    return undefined
-  }
-
-  function precoDoPresente(p: PresentePublico) {
-    if (p.quantidadeCotas === null) return formatarMoeda(p.valorEstimado)
-    return `${formatarMoeda(p.valorCota)} a cota · ${p.cotasVendidas}/${p.quantidadeCotas}`
-  }
 
   // Aviso no lugar de uma seção desativada (só o organizador vê, na pré-visualização)
   const avisoSecaoDesativada = (secao: string) => (
@@ -229,8 +194,34 @@ export function PaginaEvento({
           </div>
         </section>
 
-        {/* Presentes (faixa, grade 3 colunas) */}
-        {(evento.listaPresentesAtiva || preVisualizacao) && (
+        {/* Formatura: cada formando tem a sua sub-página, com a lista de presentes pessoal */}
+        {formatura && (
+          <section className="mt-10 bg-badge py-10 lg:mt-16 lg:py-16">
+            <div className={envoltorio}>
+              <RotuloSecao className="text-center">FORMANDOS</RotuloSecao>
+              <h2 className={`mt-4 ${titulo} lg:text-center`}>Presenteie um formando</h2>
+              <p className="mt-1 text-[12px] text-muted lg:text-center lg:text-[14px]">
+                Cada formando tem a sua página, com a lista de presentes e um recado.
+              </p>
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:mt-8 lg:grid-cols-3 lg:gap-4">
+                {formandos.length === 0 && <MensagemLista>A turma ainda não tem formandos cadastrados.</MensagemLista>}
+                {formandos.map((f) => (
+                  <a
+                    key={f.slug}
+                    href={linkPaginaFormando(slug, f.slug)}
+                    className="flex items-center justify-between gap-2 rounded-[12px] bg-surface p-4 text-[14px] font-bold text-heading shadow-[0px_1px_4px_0px_rgba(0,0,0,0.12)] transition-colors hover:text-primary"
+                  >
+                    <span className="min-w-0 truncate">{f.nome}</span>
+                    <span className="shrink-0 text-[12px] font-medium text-primary">Ver página</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Presentes do evento (faixa, grade 3 colunas). Na formatura, aparece só se tiver presentes */}
+        {(evento.listaPresentesAtiva || preVisualizacao) && (!formatura || presentes.length > 0) && (
           <section className="mt-10 bg-badge py-10 lg:mt-16 lg:py-16">
             <div className={envoltorio}>
               <RotuloSecao className="text-center">PRESENTES</RotuloSecao>
@@ -239,35 +230,12 @@ export function PaginaEvento({
               <p className="mt-1 text-[12px] text-muted lg:text-center lg:text-[14px]">
                 Reserve um item para ninguém dar o mesmo presente.
               </p>
-              {avisoPresentes && (
-                <p role="status" className="mt-4 rounded-[10px] bg-stat-mint px-4 py-3 text-[13px] text-success lg:text-center">
-                  {avisoPresentes}
-                </p>
-              )}
-              <div className="mt-5 flex flex-col gap-4 lg:mt-8 lg:grid lg:grid-cols-3 lg:gap-6">
-                {presentes.length === 0 && <MensagemLista>Nenhum presente cadastrado ainda.</MensagemLista>}
-                {presentesVisiveis.map((p) => (
-                  <CartaoPresentePublico
-                    key={p.id}
-                    nome={p.nome}
-                    preco={precoDoPresente(p)}
-                    imagem={p.foto ?? undefined}
-                    link={p.linkAfiliado ?? undefined}
-                    status={{ rotulo: rotulosStatusPresente[p.status], tom: tomStatusPresente[p.status] }}
-                    acao={acaoDoPresente(p)}
-                    onAcao={() => setPresenteAberto(p)}
-                  />
-                ))}
-              </div>
-              {presentes.length > PRESENTES_INICIAIS && (
-                <Botao
-                  className="mt-5 lg:mx-auto lg:mt-8 lg:max-w-xs"
-                  onClick={() => setTodosPresentes((atual) => !atual)}
-                  icone={<img src={presenteBotao} alt="" width={24} height={24} />}
-                >
-                  {todosPresentes ? 'Mostrar menos' : `Todos presentes (${presentes.length})`}
-                </Botao>
-              )}
+              <ListaPresentesPublica
+                slug={slug}
+                presentes={presentes}
+                somenteLeitura={preVisualizacao}
+                onAlterado={recarregar}
+              />
             </div>
           </section>
         )}
@@ -364,34 +332,6 @@ export function PaginaEvento({
           />
         )}
       </main>
-
-      <JanelaModal titulo={presenteAberto?.nome ?? ''} aberta={presenteAberto !== null} onFechar={fecharPresente}>
-        {presenteAberto?.quantidadeCotas != null && (
-          <FormularioCotas
-            // key recria o formulário ao trocar de presente
-            key={presenteAberto.id}
-            slug={slug}
-            presente={presenteAberto}
-            somenteLeitura={preVisualizacao}
-            onComprado={recarregar}
-          />
-        )}
-        {presenteAberto && presenteAberto.quantidadeCotas === null && (
-          <FormularioReserva
-            // key recria o formulário ao trocar de presente
-            key={presenteAberto.id}
-            slug={slug}
-            presente={presenteAberto}
-            codigo={codigoReserva(presenteAberto.id)}
-            somenteLeitura={preVisualizacao}
-            onConcluido={(mensagem) => {
-              setPresenteAberto(null)
-              setAvisoPresentes(mensagem)
-              recarregar()
-            }}
-          />
-        )}
-      </JanelaModal>
     </div>
   )
 }
@@ -404,7 +344,7 @@ export function PreVisualizacaoEvento({
 }: {
   eventoId: number
   onVoltar: () => void
-  onAbrirConfiguracoes: () => void
+  onAbrirConfiguracoes?: () => void
 }) {
   const carregar = useCallback(() => obterEvento(eventoId), [eventoId])
   const { dados: evento, erro, carregando, recarregar } = useCarregamento(carregar)

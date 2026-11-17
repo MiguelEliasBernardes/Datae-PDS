@@ -2,7 +2,9 @@ import { useCallback } from 'react'
 import notaDinheiro from '../assets/banknote-arrow-down.svg'
 import livroImagem from '../assets/book-image.svg'
 import olho from '../assets/eye.svg'
+import presente from '../assets/gift.svg'
 import casa from '../assets/house.svg'
+import emailConfirmado from '../assets/mail-check.svg'
 import engrenagem from '../assets/settings.svg'
 import dividir from '../assets/split.svg'
 import pessoas from '../assets/users.svg'
@@ -10,13 +12,19 @@ import { obterEvento } from '../api/eventos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CampoTexto } from '../componentes/CampoTexto'
-import { GradeAcessos } from '../componentes/GradeAcessos'
+import { GradeAcessos, type ItemAcesso } from '../componentes/GradeAcessos'
 import { LayoutPainel } from '../componentes/LayoutPainel'
 import { TituloDestaque } from '../componentes/TituloDestaque'
+import { rotulosPapelFormando } from '../dados/formatacao'
+import { pode } from '../dados/permissoes'
 import { linkPublicoEvento } from '../dados/rotas'
 import { useCarregamento } from '../hooks/useCarregamento'
 
-/** Tela F1 - Painel do Organizador (Formatura). */
+/**
+ * Tela F1 - Painel da Formatura. Mostra só os módulos que o papel do usuário libera:
+ * o organizador e os administradores veem tudo; o financeiro, despesas e o rateio completo;
+ * a equipe de fotos, o mural; e todo formando vê a própria situação e a própria lista de presentes.
+ */
 export function PainelFormatura({
   eventoId,
   onVoltar,
@@ -24,6 +32,8 @@ export function PainelFormatura({
   onAbrirDespesas,
   onAbrirMural,
   onAbrirRateio,
+  onAbrirConvidados,
+  onAbrirMeusPresentes,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -33,7 +43,9 @@ export function PainelFormatura({
   onAbrirDespesas: () => void
   onAbrirMural: () => void
   onAbrirRateio: () => void
-  onAbrirConfiguracoes: () => void
+  onAbrirConvidados: () => void
+  onAbrirMeusPresentes: () => void
+  onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
   const carregar = useCallback(() => obterEvento(eventoId), [eventoId])
@@ -45,11 +57,32 @@ export function PainelFormatura({
     { icone: engrenagem, rotulo: 'Configurações', onClick: onAbrirConfiguracoes },
   ]
 
+  const acessos: ItemAcesso[] = []
+  if (evento) {
+    const financeiro = pode(evento, 'Financeiro')
+    if (pode(evento, 'GerenciarComissao')) acessos.push({ icone: pessoas, titulo: 'Formandos', onClick: onAbrirFormandos })
+    acessos.push({ icone: notaDinheiro, titulo: 'Despesas', onClick: onAbrirDespesas })
+    acessos.push({ icone: dividir, titulo: financeiro ? 'Rateio Pagamentos' : 'Minha parte', onClick: onAbrirRateio })
+    if (evento.meuPapel) acessos.push({ icone: presente, titulo: 'Meus presentes', onClick: onAbrirMeusPresentes })
+    if (pode(evento, 'ModerarMural')) acessos.push({ icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural })
+    if (pode(evento, 'GerenciarEvento')) acessos.push({ icone: emailConfirmado, titulo: 'Convidados', onClick: onAbrirConvidados })
+  }
+
   return (
     <LayoutPainel itens={navegacao}>
       <BotaoVoltar rotulo="Eventos" onVoltar={onVoltar} />
 
       <TituloDestaque>{evento?.nomeEvento ?? 'Carregando...'}</TituloDestaque>
+
+      {evento && (
+        <p className="mt-2 font-display text-[12px] text-muted lg:text-[13px]">
+          {evento.organizador
+            ? evento.meuPapel
+              ? `Você organiza esta formatura e também participa como ${rotulosPapelFormando[evento.meuPapel]}.`
+              : 'Você organiza esta formatura.'
+            : `Você participa da comissão como ${rotulosPapelFormando[evento.meuPapel ?? 'Membro']}.`}
+        </p>
+      )}
 
       <AvisoErro className="mt-4" mensagem={erro} onTentarNovamente={recarregar} />
 
@@ -60,19 +93,13 @@ export function PainelFormatura({
         tomRotulo="campo"
         name="link-publico"
         readOnly
+        onFocus={(e) => e.target.select()}
         value={evento ? linkPublicoEvento(evento.slugPublico) : ''}
       />
 
       {/* Acessos rápidos */}
       <div className="mt-6">
-        <GradeAcessos
-          itens={[
-            { icone: pessoas, titulo: 'Formandos', onClick: onAbrirFormandos },
-            { icone: notaDinheiro, titulo: 'Despesas', onClick: onAbrirDespesas },
-            { icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural },
-            { icone: dividir, titulo: 'Rateio Pagamentos', onClick: onAbrirRateio },
-          ]}
-        />
+        <GradeAcessos itens={acessos} />
       </div>
     </LayoutPainel>
   )

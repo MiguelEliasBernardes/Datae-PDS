@@ -7,6 +7,7 @@ public enum TipoErro
     Conflito,
     NaoEncontrado,
     NaoAutorizado,
+    SemPermissao,
     Indisponivel,
 }
 
@@ -29,4 +30,8 @@ public class Resultado<T>
 
     public static Resultado<T> Invalido(Dictionary<string, string[]> erros) =>
         new() { Erro = TipoErro.Validacao, ErrosValidacao = erros };
+
+    /// <summary>Repassa a falha deste resultado como resultado de outro tipo (ex.: falta de permissão).</summary>
+    public Resultado<TOutro> Repassar<TOutro>() =>
+        new() { Erro = Erro, Mensagem = Mensagem, ErrosValidacao = ErrosValidacao };
 }

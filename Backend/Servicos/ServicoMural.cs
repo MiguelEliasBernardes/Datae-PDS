@@ -83,8 +83,9 @@ public class ServicoMural(ContextoBanco banco, ArmazenamentoArquivos armazenamen
 
     public async Task<Resultado<List<FotoMural>>> ListarAsync(int usuarioId, int eventoId, StatusFoto? status)
     {
-        if (!await EventoDoUsuarioAsync(usuarioId, eventoId))
-            return Resultado<List<FotoMural>>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado.");
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.ModerarMural);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<List<FotoMural>>();
 
         var consulta = banco.FotosMural.Where(f => f.EventoId == eventoId);
         if (status is not null)
@@ -95,7 +96,11 @@ public class ServicoMural(ContextoBanco banco, ArmazenamentoArquivos armazenamen
 
     public async Task<Resultado<FotoMural>> ModerarAsync(int usuarioId, int eventoId, int id, StatusFoto status)
     {
-        var foto = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.ModerarMural);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<FotoMural>();
+
+        var foto = await BuscarAsync(eventoId, id);
         if (foto is null)
             return FotoNaoEncontrada();
 
@@ -109,7 +114,11 @@ public class ServicoMural(ContextoBanco banco, ArmazenamentoArquivos armazenamen
 
     public async Task<Resultado<bool>> ExcluirAsync(int usuarioId, int eventoId, int id)
     {
-        var foto = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.ModerarMural);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<bool>();
+
+        var foto = await BuscarAsync(eventoId, id);
         if (foto is null)
             return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Foto não encontrada.");
 
@@ -122,14 +131,9 @@ public class ServicoMural(ContextoBanco banco, ArmazenamentoArquivos armazenamen
     /// <summary>Endereço público do arquivo da foto (o nome aleatório impede adivinhar fotos pendentes).</summary>
     public static string UrlDaFoto(FotoMural foto) => $"/api/mural/arquivos/{foto.EventoId}/{foto.Arquivo}";
 
-    private Task<bool> EventoDoUsuarioAsync(int usuarioId, int eventoId) =>
-        banco.Eventos.AnyAsync(e => e.Id == eventoId && e.UsuarioId == usuarioId);
-
-    private Task<FotoMural?> BuscarDoUsuarioAsync(int usuarioId, int eventoId, int id) =>
-        banco.FotosMural.FirstOrDefaultAsync(f =>
-            f.Id == id &&
-            f.EventoId == eventoId &&
-            banco.Eventos.Any(e => e.Id == eventoId && e.UsuarioId == usuarioId));
+    // O acesso ao evento já foi conferido pelo ControleAcesso
+    private Task<FotoMural?> BuscarAsync(int eventoId, int id) =>
+        banco.FotosMural.FirstOrDefaultAsync(f => f.Id == id && f.EventoId == eventoId);
 
     private static Resultado<FotoMural> FotoNaoEncontrada() =>
         Resultado<FotoMural>.Falha(TipoErro.NaoEncontrado, "Foto não encontrada.");

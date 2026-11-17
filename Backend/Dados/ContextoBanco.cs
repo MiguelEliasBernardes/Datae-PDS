@@ -43,6 +43,8 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             evento.Property(e => e.ChavePix).HasMaxLength(77);
             evento.Property(e => e.NomeRecebedorPix).HasMaxLength(25);
             evento.Property(e => e.CidadePix).HasMaxLength(15);
+            evento.HasIndex(e => e.CodigoTurma).IsUnique();
+            evento.Property(e => e.CodigoTurma).HasMaxLength(16);
         });
 
         modelo.Entity<Convidado>(convidado =>
@@ -61,6 +63,8 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             // Excluir o evento exclui os presentes; excluir o convidado só libera o presente
             presente.HasOne<Evento>().WithMany().HasForeignKey(p => p.EventoId).OnDelete(DeleteBehavior.Cascade);
             presente.HasOne<Convidado>().WithMany().HasForeignKey(p => p.ConvidadoId).OnDelete(DeleteBehavior.SetNull);
+            // Excluir o formando exclui a lista pessoal dele
+            presente.HasOne<Formando>().WithMany().HasForeignKey(p => p.FormandoId).OnDelete(DeleteBehavior.Cascade);
 
             presente.Property(p => p.Nome).HasMaxLength(150).IsRequired();
             presente.Property(p => p.Descricao).HasMaxLength(1000);
@@ -86,10 +90,20 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
         {
             // Excluir o evento exclui os formandos (e os pagamentos deles)
             formando.HasOne<Evento>().WithMany().HasForeignKey(f => f.EventoId).OnDelete(DeleteBehavior.Cascade);
+            // Excluir a conta só desfaz o vínculo; o formando continua na turma (e no rateio)
+            formando.HasOne<Usuario>().WithMany().HasForeignKey(f => f.UsuarioId).OnDelete(DeleteBehavior.SetNull);
+
+            // Uma conta é no máximo um formando por evento; o endereço é único dentro do evento
+            formando.HasIndex(f => new { f.EventoId, f.UsuarioId }).IsUnique();
+            formando.HasIndex(f => new { f.EventoId, f.Slug }).IsUnique();
+            formando.HasIndex(f => f.CodigoConvite).IsUnique();
 
             formando.Property(f => f.Nome).HasMaxLength(120).IsRequired();
             formando.Property(f => f.Email).HasMaxLength(200);
             formando.Property(f => f.Papel).HasConversion<string>().HasMaxLength(20);
+            formando.Property(f => f.CodigoConvite).HasMaxLength(16);
+            formando.Property(f => f.Slug).HasMaxLength(130).IsRequired();
+            formando.Property(f => f.Mensagem).HasMaxLength(1000);
         });
 
         modelo.Entity<Despesa>(despesa =>

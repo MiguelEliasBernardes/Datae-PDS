@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Backend.Servicos;
@@ -52,6 +54,35 @@ public static partial class Validacoes
             return RegexDocumentoOuTelefone().IsMatch(texto) && digitos.Length is >= 12 and <= 13 ? $"+{digitos}" : null;
 
         return RegexDocumentoOuTelefone().IsMatch(texto) && digitos.Length is 11 or 14 ? digitos : null;
+    }
+
+    /// <summary>
+    /// Endereço amigável a partir de um texto: "Casamento de Ana & Pedro" vira "casamento-de-ana-pedro".
+    /// Se não sobrar nada (ex.: só símbolos), usa <paramref name="padrao"/>.
+    /// </summary>
+    public static string GerarSlug(string texto, string padrao, int tamanhoMaximo)
+    {
+        var semAcento = new StringBuilder();
+        foreach (var caractere in (texto ?? string.Empty).Normalize(NormalizationForm.FormD))
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(caractere) != UnicodeCategory.NonSpacingMark)
+                semAcento.Append(caractere);
+        }
+
+        var slug = new StringBuilder();
+        foreach (var caractere in semAcento.ToString().ToLowerInvariant())
+        {
+            if (char.IsAsciiLetterOrDigit(caractere))
+                slug.Append(caractere);
+            else if (slug.Length > 0 && slug[^1] != '-')
+                slug.Append('-');
+        }
+
+        var resultado = slug.ToString().Trim('-');
+        if (resultado.Length > tamanhoMaximo)
+            resultado = resultado[..tamanhoMaximo].Trim('-');
+
+        return resultado.Length == 0 ? padrao : resultado;
     }
 
     [GeneratedRegex("^#[0-9A-Fa-f]{6}$")]

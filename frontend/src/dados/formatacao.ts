@@ -31,6 +31,16 @@ export const rotulosStatusFoto: Record<StatusFoto, string> = {
 export const rotulosPapelFormando: Record<PapelFormando, string> = {
   Membro: 'Membro',
   Administrador: 'Administrador',
+  Financeiro: 'Financeiro',
+  Fotos: 'Fotos',
+}
+
+/** O que cada papel da comissão pode fazer (mostrado ao escolher o papel). */
+export const descricoesPapelFormando: Record<PapelFormando, string> = {
+  Membro: 'Vê a própria parte no rateio, as despesas e cuida da própria lista de presentes.',
+  Administrador: 'Pode tudo: formandos, convites, despesas, pagamentos, mural e configurações da página.',
+  Financeiro: 'Lança despesas e registra os pagamentos de todos os formandos.',
+  Fotos: 'Aprova ou recusa as fotos enviadas para o mural.',
 }
 
 /** Quanto falta até a data, em dias/horas/minutos/segundos (zera quando a data passa). */

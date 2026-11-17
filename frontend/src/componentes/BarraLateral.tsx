@@ -8,7 +8,7 @@ export function BarraLateral({ itens }: { itens: ItemNavegacao[] }) {
         Dataê
       </div>
       <nav className="flex flex-col gap-1">
-        {itens.map((item) => (
+        {itens.filter((item) => item.ativo || item.onClick).map((item) => (
           <button
             key={item.rotulo}
             type="button"

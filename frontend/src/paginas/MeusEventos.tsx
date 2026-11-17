@@ -8,9 +8,10 @@ import type { Evento } from '../api/tipos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { Botao } from '../componentes/Botao'
 import { CartaoEvento } from '../componentes/CartaoEvento'
+import { EntrarComCodigo } from '../componentes/EntrarComCodigo'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { TituloDestaque } from '../componentes/TituloDestaque'
-import { formatarData, rotulosTipoEvento } from '../dados/formatacao'
+import { formatarData, rotulosPapelFormando, rotulosTipoEvento } from '../dados/formatacao'
 import { useCarregamento } from '../hooks/useCarregamento'
 
 /** Tela O2 - "Meus Eventos". */
@@ -18,11 +19,14 @@ export function MeusEventos({
   nomeUsuario,
   onCriar,
   onAcessarEvento,
+  onUsarCodigo,
   onSair,
 }: {
   nomeUsuario?: string
   onCriar: () => void
   onAcessarEvento: (evento: Evento) => void
+  /** Abre a tela de aceitar convite com o código digitado. */
+  onUsarCodigo: (codigo: string) => void
   onSair: () => void
 }) {
   const carregar = useCallback(() => listarEventos(), [])
@@ -54,13 +58,21 @@ export function MeusEventos({
         {/* Divisor (só mobile) */}
         <span className="mx-auto mt-4 block h-px w-3/5 bg-field-border lg:hidden" />
 
+        {/* Entrar numa formatura com o código do convite (para quem não recebeu o link) */}
+        <div className="mt-6">
+          <EntrarComCodigo onUsarCodigo={onUsarCodigo} />
+        </div>
+
         <AvisoErro className="mt-6" mensagem={erro} onTentarNovamente={recarregar} />
 
         {/* Lista de eventos */}
         <section className="mt-6 grid grid-cols-1 gap-5 lg:mt-8 lg:grid-cols-2 lg:gap-6 xl:grid-cols-3">
           {carregando && !eventos && <MensagemLista>Carregando eventos...</MensagemLista>}
           {eventos?.length === 0 && (
-            <MensagemLista>Você ainda não tem eventos. Clique em "Criar Evento" para começar.</MensagemLista>
+            <MensagemLista>
+              Você ainda não tem eventos. Clique em "Criar Evento" para começar ou use o código de convite da sua
+              formatura.
+            </MensagemLista>
           )}
           {eventos?.map((evento) => (
             <CartaoEvento
@@ -74,7 +86,12 @@ export function MeusEventos({
               }
               titulo={evento.nomeEvento}
               data={formatarData(evento.dataEvento)}
-              categoria={rotulosTipoEvento[evento.tipo]}
+              // Formatura em que a pessoa entrou por convite: mostra o papel dela na comissão
+              categoria={
+                !evento.organizador && evento.meuPapel
+                  ? `${rotulosTipoEvento[evento.tipo]} · ${rotulosPapelFormando[evento.meuPapel]}`
+                  : rotulosTipoEvento[evento.tipo]
+              }
               onAcessar={() => onAcessarEvento(evento)}
             />
           ))}

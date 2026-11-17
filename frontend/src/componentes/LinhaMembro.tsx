@@ -6,18 +6,23 @@ import { SeloStatus, type TomSelo } from './SeloStatus'
 const tomPapel: Record<PapelFormando, TomSelo> = {
   Membro: 'sucesso',
   Administrador: 'admin',
+  Financeiro: 'destaque',
+  Fotos: 'neutro',
 }
 
-/** Linha de formando na lista (nome, papel e botão de editar). */
+/** Linha de formando na lista (nome, papel, se já entrou na turma e botão de editar). */
 export function LinhaMembro({
   nome,
   papel,
   email,
+  vinculado,
   onEditar,
 }: {
   nome: string
   papel: PapelFormando
   email?: string | null
+  /** Já aceitou o convite (tem conta ligada). */
+  vinculado: boolean
   onEditar?: () => void
 }) {
   return (
@@ -26,6 +31,9 @@ export function LinhaMembro({
         <div className="min-w-0">
           <span className="block truncate text-[14px] font-medium text-heading">{nome}</span>
           {email && <span className="block truncate font-display text-[12px] text-muted">{email}</span>}
+          <span className={`block font-display text-[12px] ${vinculado ? 'text-success' : 'text-muted'}`}>
+            {vinculado ? 'Entrou na turma' : 'Convite pendente'}
+          </span>
         </div>
         <SeloStatus tom={tomPapel[papel]}>{rotulosPapelFormando[papel]}</SeloStatus>
       </div>

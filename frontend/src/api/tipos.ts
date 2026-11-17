@@ -4,7 +4,9 @@ export type TipoEvento = 'ChaDePanela' | 'Casamento' | 'Aniversario' | 'Formatur
 export type StatusPresenca = 'Pendente' | 'Confirmado' | 'Recusado'
 export type StatusPresente = 'Disponivel' | 'Reservado' | 'Comprado'
 export type StatusFoto = 'Pendente' | 'Aprovada' | 'Recusada'
-export type PapelFormando = 'Membro' | 'Administrador'
+export type PapelFormando = 'Membro' | 'Administrador' | 'Financeiro' | 'Fotos'
+/** O que o usuário pode fazer no evento (calculado pelo backend a partir do papel). */
+export type Permissao = 'VerEvento' | 'GerenciarEvento' | 'GerenciarComissao' | 'Financeiro' | 'ModerarMural'
 
 export interface Usuario {
   id: number
@@ -38,6 +40,13 @@ export interface Evento {
   /** Caminho na API (use urlApi no <img src>); nulo = imagem padrão. */
   bannerUrl: string | null
   criadoEm: string
+  /** Se quem está vendo criou o evento. */
+  organizador: boolean
+  /** Papel na comissão de formatura (null para o organizador que não é formando). */
+  meuPapel: PapelFormando | null
+  permissoes: Permissao[]
+  /** Código de convite geral da turma; só vem para quem gerencia a comissão (null = desativado). */
+  codigoTurma: string | null
 }
 
 export interface DadosEvento {
@@ -191,6 +200,17 @@ export interface CompraCotas {
   pix: Pix | null
 }
 
+export interface FormandoPublico {
+  nome: string
+  slug: string
+}
+
+/** Sub-página pública de um formando. */
+export interface PaginaFormando {
+  evento: EventoPublico
+  formando: FormandoPublico & { mensagem: string | null }
+}
+
 export interface FotoPublica {
   id: number
   nomeAutor: string | null
@@ -207,6 +227,21 @@ export interface Formando {
   email: string | null
   papel: PapelFormando
   criadoEm: string
+  /** Endereço da sub-página pública: /e/{slug do evento}/{slug}. */
+  slug: string
+  mensagem: string | null
+  /** Já entrou na turma por convite (tem conta ligada). */
+  vinculado: boolean
+  /** Código do convite individual; null depois que alguém aceita. */
+  codigoConvite: string | null
+}
+
+export interface Convite {
+  /** Formando: liga a conta a um formando já cadastrado. Turma: cria um formando novo. */
+  tipo: 'Formando' | 'Turma'
+  nomeEvento: string
+  dataEvento: string
+  nomeFormando: string | null
 }
 
 export interface DadosFormando {

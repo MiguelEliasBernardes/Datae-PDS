@@ -10,8 +10,9 @@ public class ServicoConvidado(ContextoBanco banco)
 {
     public async Task<Resultado<List<Convidado>>> ListarAsync(int usuarioId, int eventoId, StatusPresenca? status)
     {
-        if (!await EventoDoUsuarioAsync(usuarioId, eventoId))
-            return Resultado<List<Convidado>>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado.");
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.GerenciarEvento);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<List<Convidado>>();
 
         var consulta = banco.Convidados.Where(c => c.EventoId == eventoId);
         if (status is not null)
@@ -22,14 +23,19 @@ public class ServicoConvidado(ContextoBanco banco)
 
     public async Task<Resultado<Convidado>> ObterAsync(int usuarioId, int eventoId, int id)
     {
-        var convidado = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.GerenciarEvento);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<Convidado>();
+
+        var convidado = await BuscarAsync(eventoId, id);
         return convidado is null ? ConvidadoNaoEncontrado() : Resultado<Convidado>.Ok(convidado);
     }
 
     public async Task<Resultado<Convidado>> CriarAsync(int usuarioId, int eventoId, CriarConvidadoRequisicao requisicao)
     {
-        if (!await EventoDoUsuarioAsync(usuarioId, eventoId))
-            return Resultado<Convidado>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado.");
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.GerenciarEvento);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<Convidado>();
 
         var email = TextoOpcional(requisicao.Email) is null ? null : NormalizarEmail(requisicao.Email);
         var erros = new Dictionary<string, string[]>();
@@ -65,7 +71,11 @@ public class ServicoConvidado(ContextoBanco banco)
     public async Task<Resultado<Convidado>> AtualizarAsync(
         int usuarioId, int eventoId, int id, AtualizarConvidadoRequisicao requisicao)
     {
-        var convidado = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.GerenciarEvento);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<Convidado>();
+
+        var convidado = await BuscarAsync(eventoId, id);
         if (convidado is null)
             return ConvidadoNaoEncontrado();
 
@@ -116,7 +126,11 @@ public class ServicoConvidado(ContextoBanco banco)
 
     public async Task<Resultado<bool>> ExcluirAsync(int usuarioId, int eventoId, int id)
     {
-        var convidado = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var acesso = await ControleAcesso.ExigirAsync(banco, usuarioId, eventoId, Permissao.GerenciarEvento);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<bool>();
+
+        var convidado = await BuscarAsync(eventoId, id);
         if (convidado is null)
             return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Convidado não encontrado.");
 
@@ -126,14 +140,9 @@ public class ServicoConvidado(ContextoBanco banco)
         return Resultado<bool>.Ok(true);
     }
 
-    private Task<bool> EventoDoUsuarioAsync(int usuarioId, int eventoId) =>
-        banco.Eventos.AnyAsync(e => e.Id == eventoId && e.UsuarioId == usuarioId);
-
-    private Task<Convidado?> BuscarDoUsuarioAsync(int usuarioId, int eventoId, int id) =>
-        banco.Convidados.FirstOrDefaultAsync(c =>
-            c.Id == id &&
-            c.EventoId == eventoId &&
-            banco.Eventos.Any(e => e.Id == eventoId && e.UsuarioId == usuarioId));
+    // O acesso ao evento já foi conferido pelo ControleAcesso
+    private Task<Convidado?> BuscarAsync(int eventoId, int id) =>
+        banco.Convidados.FirstOrDefaultAsync(c => c.Id == id && c.EventoId == eventoId);
 
     private static Resultado<Convidado> ConvidadoNaoEncontrado() =>
         Resultado<Convidado>.Falha(TipoErro.NaoEncontrado, "Convidado não encontrado.");

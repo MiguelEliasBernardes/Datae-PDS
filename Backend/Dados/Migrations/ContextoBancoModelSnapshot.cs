@@ -152,6 +152,10 @@ namespace Backend.Dados.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)");
 
+                    b.Property<string>("CodigoTurma")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<string>("CorPrincipal")
                         .HasMaxLength(7)
                         .HasColumnType("character varying(7)");
@@ -207,6 +211,9 @@ namespace Backend.Dados.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CodigoTurma")
+                        .IsUnique();
+
                     b.HasIndex("SlugPublico")
                         .IsUnique();
 
@@ -223,6 +230,10 @@ namespace Backend.Dados.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CodigoConvite")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone");
 
@@ -232,6 +243,10 @@ namespace Backend.Dados.Migrations
 
                     b.Property<int>("EventoId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Mensagem")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -243,9 +258,26 @@ namespace Backend.Dados.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(130)
+                        .HasColumnType("character varying(130)");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("EventoId");
+                    b.HasIndex("CodigoConvite")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("EventoId", "Slug")
+                        .IsUnique();
+
+                    b.HasIndex("EventoId", "UsuarioId")
+                        .IsUnique();
 
                     b.ToTable("Formandos");
                 });
@@ -310,6 +342,9 @@ namespace Backend.Dados.Migrations
                     b.Property<int>("EventoId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("FormandoId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Foto")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -340,6 +375,8 @@ namespace Backend.Dados.Migrations
                     b.HasIndex("ConvidadoId");
 
                     b.HasIndex("EventoId");
+
+                    b.HasIndex("FormandoId");
 
                     b.ToTable("ItensPresente");
                 });
@@ -460,6 +497,11 @@ namespace Backend.Dados.Migrations
                         .HasForeignKey("EventoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Backend.Modelos.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Backend.Modelos.FotoMural", b =>
@@ -483,6 +525,11 @@ namespace Backend.Dados.Migrations
                         .HasForeignKey("EventoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Backend.Modelos.Formando", null)
+                        .WithMany()
+                        .HasForeignKey("FormandoId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Backend.Modelos.PagamentoFormando", b =>

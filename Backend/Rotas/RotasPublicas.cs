@@ -23,6 +23,11 @@ public static class RotasPublicas
         publico.MapGet("/presentes", ListarPresentes);
         publico.MapGet("/fotos", ListarFotos);
 
+        // Formatura: formandos da turma e a sub-página de cada um, com a lista de presentes pessoal
+        publico.MapGet("/formandos", ListarFormandos);
+        publico.MapGet("/formandos/{slugFormando}", ObterFormando);
+        publico.MapGet("/formandos/{slugFormando}/presentes", ListarPresentesFormando);
+
         publico.MapPost("/presenca", ConfirmarPresenca).RequireRateLimiting(PoliticaLimite);
         publico.MapPost("/presentes/{id:int}/reserva", ReservarPresente).RequireRateLimiting(PoliticaLimite);
         publico.MapPost("/presentes/{id:int}/comprado", MarcarComprado).RequireRateLimiting(PoliticaLimite);
@@ -43,6 +48,28 @@ public static class RotasPublicas
     private static async Task<IResult> ListarPresentes(string slug, ServicoPaginaPublica servico)
     {
         var resultado = await servico.ListarPresentesAsync(slug);
+        return ParaHttp(resultado, presentes => Results.Ok(presentes.Select(ParaResposta)));
+    }
+
+    private static async Task<IResult> ListarFormandos(string slug, ServicoPaginaPublica servico)
+    {
+        var resultado = await servico.ListarFormandosAsync(slug);
+        return ParaHttp(resultado, formandos => Results.Ok(formandos.Select(f => new FormandoPublicoResposta(f.Nome, f.Slug))));
+    }
+
+    private static async Task<IResult> ObterFormando(string slug, string slugFormando, ServicoPaginaPublica servico)
+    {
+        var resultado = await servico.ObterFormandoAsync(slug, slugFormando);
+        return ParaHttp(resultado, pagina => Results.Ok(new
+        {
+            evento = ParaResposta(pagina.Evento),
+            formando = new PaginaFormandoResposta(pagina.Formando.Nome, pagina.Formando.Slug, pagina.Formando.Mensagem),
+        }));
+    }
+
+    private static async Task<IResult> ListarPresentesFormando(string slug, string slugFormando, ServicoPaginaPublica servico)
+    {
+        var resultado = await servico.ListarPresentesFormandoAsync(slug, slugFormando);
         return ParaHttp(resultado, presentes => Results.Ok(presentes.Select(ParaResposta)));
     }
 

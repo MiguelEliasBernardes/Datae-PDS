@@ -11,6 +11,7 @@ import { listarConvidados } from '../api/convidados'
 import { atualizarPresente, criarPresente, excluirPresente, listarPresentes } from '../api/presentes'
 import type { DadosPresente, Presente } from '../api/tipos'
 import { AvisoErro } from '../componentes/AvisoErro'
+import { CartaoMinhaPagina } from '../componentes/CartaoMinhaPagina'
 import { Botao } from '../componentes/Botao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CampoTexto } from '../componentes/CampoTexto'
@@ -31,22 +32,28 @@ type Filtro = 'disponiveis' | 'reservados' | 'comprados' | 'cotas'
 /** Presente em edição: null = janela fechada, 'novo' = adicionando. */
 type Edicao = Presente | 'novo' | null
 
-/** Tela O6 - Gestão da Lista de Presentes. */
+/**
+ * Tela O6 - Gestão da Lista de Presentes. Com `minhaLista`, é a lista pessoal do formando
+ * logado (sub-página dele na formatura) em vez da lista do evento.
+ */
 export function Presentes({
   eventoId,
+  minhaLista = false,
   onVoltar,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
   eventoId: number
+  minhaLista?: boolean
   onVoltar: () => void
-  onAbrirConfiguracoes: () => void
+  onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
   // Os convidados vêm junto só para mostrar o nome de quem reservou cada presente
+  // (na lista pessoal o formando não acessa os convidados do evento, então os nomes não aparecem)
   const carregar = useCallback(
-    () => Promise.all([listarPresentes(eventoId), listarConvidados(eventoId)]),
-    [eventoId],
+    () => Promise.all([listarPresentes(eventoId, minhaLista), minhaLista ? Promise.resolve([]) : listarConvidados(eventoId)]),
+    [eventoId, minhaLista],
   )
   const { dados, erro, carregando, recarregar } = useCarregamento(carregar)
   const presentes = dados?.[0] ?? null
@@ -76,14 +83,14 @@ export function Presentes({
   const comprados = lista.filter((p) => p.status === 'Comprado').length
 
   async function salvar(dados: DadosPresente) {
-    if (edicao === 'novo') await criarPresente(eventoId, dados)
-    else if (edicao) await atualizarPresente(eventoId, edicao.id, dados)
+    if (edicao === 'novo') await criarPresente(eventoId, dados, minhaLista)
+    else if (edicao) await atualizarPresente(eventoId, edicao.id, dados, minhaLista)
     setEdicao(null)
     recarregar()
   }
 
   async function excluir() {
-    if (edicao && edicao !== 'novo') await excluirPresente(eventoId, edicao.id)
+    if (edicao && edicao !== 'novo') await excluirPresente(eventoId, edicao.id, minhaLista)
     setEdicao(null)
     recarregar()
   }
@@ -98,7 +105,13 @@ export function Presentes({
     <LayoutPainel itens={navegacao}>
       <BotaoVoltar onVoltar={onVoltar} />
 
-      <TituloDestaque>Lista de Presentes</TituloDestaque>
+      <TituloDestaque>{minhaLista ? 'Meus presentes' : 'Lista de Presentes'}</TituloDestaque>
+
+      {minhaLista && (
+        <div className="mt-5">
+          <CartaoMinhaPagina eventoId={eventoId} />
+        </div>
+      )}
 
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
       <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
@@ -186,7 +199,7 @@ export function Presentes({
           />
         )}
         {edicao !== null && edicao !== 'novo' && edicao.quantidadeCotas !== null && (
-          <ListaCotas eventoId={eventoId} presenteId={edicao.id} onAlterado={recarregar} />
+          <ListaCotas eventoId={eventoId} presenteId={edicao.id} minhaLista={minhaLista} onAlterado={recarregar} />
         )}
       </JanelaModal>
     </LayoutPainel>

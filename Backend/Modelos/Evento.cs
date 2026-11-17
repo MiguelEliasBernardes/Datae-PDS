@@ -25,6 +25,10 @@ public class Evento
     public string? NomeRecebedorPix { get; set; }
     public string? CidadePix { get; set; }
 
+    // Código de convite geral da turma (só formatura): quem entra por ele vira um formando novo.
+    // Nulo = desativado
+    public string? CodigoTurma { get; set; }
+
     // Seções opcionais da página pública (desativadas, somem da página e as rotas públicas recusam o uso)
     public bool ListaPresentesAtiva { get; set; } = true;
     public bool MuralAtivo { get; set; } = true;

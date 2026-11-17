@@ -63,4 +63,9 @@ public record ComprarCotasRequisicao(string Nome, int Quantidade);
 // Pix é nulo quando o evento não tem Pix configurado (o convidado combina o pagamento com o organizador)
 public record CompraCotasResposta(PresentePublicoResposta Presente, int Quantidade, decimal? Valor, PixResposta? Pix);
 
+// Formandos da turma na página pública da formatura (cada um tem a sua sub-página)
+public record FormandoPublicoResposta(string Nome, string Slug);
+
+public record PaginaFormandoResposta(string Nome, string Slug, string? Mensagem);
+
 public record FotoPublicaResposta(int Id, string? NomeAutor, string Url, DateTime EnviadaEm);

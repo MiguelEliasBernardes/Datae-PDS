@@ -5,6 +5,9 @@ public class ItemPresente
     public int Id { get; set; }
     public int EventoId { get; set; }
 
+    // Presente da lista pessoal de um formando (sub-página dele); nulo = lista do evento
+    public int? FormandoId { get; set; }
+
     // Convidado que reservou o presente (nulo enquanto estiver disponível)
     public int? ConvidadoId { get; set; }
 

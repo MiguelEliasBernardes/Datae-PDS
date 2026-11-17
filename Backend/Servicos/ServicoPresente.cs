@@ -6,33 +6,46 @@ using static Backend.Servicos.Validacoes;
 
 namespace Backend.Servicos;
 
+/// <summary>
+/// Presentes de duas listas: a do evento (gerenciada pelo organizador e pelos administradores)
+/// e a lista pessoal de cada formando (minhaLista = true), que só o próprio formando gerencia.
+/// </summary>
 public class ServicoPresente(ContextoBanco banco)
 {
     private const int MinimoCotas = 2;
     private const int MaximoCotas = 100;
 
-    public async Task<Resultado<List<ItemPresente>>> ListarAsync(int usuarioId, int eventoId, StatusPresente? status)
+    public async Task<Resultado<List<ItemPresente>>> ListarAsync(
+        int usuarioId, int eventoId, bool minhaLista, StatusPresente? status)
     {
-        if (!await EventoDoUsuarioAsync(usuarioId, eventoId))
-            return Resultado<List<ItemPresente>>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado.");
+        var lista = await ResolverListaAsync(usuarioId, eventoId, minhaLista);
+        if (!lista.Sucesso)
+            return lista.Repassar<List<ItemPresente>>();
 
-        var consulta = banco.ItensPresente.Where(p => p.EventoId == eventoId);
+        var formandoId = lista.Valor;
+        var consulta = banco.ItensPresente.Where(p => p.EventoId == eventoId && p.FormandoId == formandoId);
         if (status is not null)
             consulta = consulta.Where(p => p.Status == status);
 
         return Resultado<List<ItemPresente>>.Ok(await consulta.OrderBy(p => p.Nome).ToListAsync());
     }
 
-    public async Task<Resultado<ItemPresente>> ObterAsync(int usuarioId, int eventoId, int id)
+    public async Task<Resultado<ItemPresente>> ObterAsync(int usuarioId, int eventoId, bool minhaLista, int id)
     {
-        var presente = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var lista = await ResolverListaAsync(usuarioId, eventoId, minhaLista);
+        if (!lista.Sucesso)
+            return lista.Repassar<ItemPresente>();
+
+        var presente = await BuscarAsync(eventoId, lista.Valor, id);
         return presente is null ? PresenteNaoEncontrado() : Resultado<ItemPresente>.Ok(presente);
     }
 
-    public async Task<Resultado<ItemPresente>> CriarAsync(int usuarioId, int eventoId, CriarPresenteRequisicao requisicao)
+    public async Task<Resultado<ItemPresente>> CriarAsync(
+        int usuarioId, int eventoId, bool minhaLista, CriarPresenteRequisicao requisicao)
     {
-        if (!await EventoDoUsuarioAsync(usuarioId, eventoId))
-            return Resultado<ItemPresente>.Falha(TipoErro.NaoEncontrado, "Evento não encontrado.");
+        var lista = await ResolverListaAsync(usuarioId, eventoId, minhaLista);
+        if (!lista.Sucesso)
+            return lista.Repassar<ItemPresente>();
 
         var erros = new Dictionary<string, string[]>();
 
@@ -52,6 +65,7 @@ public class ServicoPresente(ContextoBanco banco)
         var presente = new ItemPresente
         {
             EventoId = eventoId,
+            FormandoId = lista.Valor,
             Nome = requisicao.Nome.Trim(),
             Descricao = TextoOpcional(requisicao.Descricao),
             ValorEstimado = requisicao.ValorEstimado,
@@ -67,9 +81,13 @@ public class ServicoPresente(ContextoBanco banco)
     }
 
     public async Task<Resultado<ItemPresente>> AtualizarAsync(
-        int usuarioId, int eventoId, int id, AtualizarPresenteRequisicao requisicao)
+        int usuarioId, int eventoId, bool minhaLista, int id, AtualizarPresenteRequisicao requisicao)
     {
-        var presente = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var lista = await ResolverListaAsync(usuarioId, eventoId, minhaLista);
+        if (!lista.Sucesso)
+            return lista.Repassar<ItemPresente>();
+
+        var presente = await BuscarAsync(eventoId, lista.Valor, id);
         if (presente is null)
             return PresenteNaoEncontrado();
 
@@ -120,9 +138,13 @@ public class ServicoPresente(ContextoBanco banco)
         return Resultado<ItemPresente>.Ok(presente);
     }
 
-    public async Task<Resultado<bool>> ExcluirAsync(int usuarioId, int eventoId, int id)
+    public async Task<Resultado<bool>> ExcluirAsync(int usuarioId, int eventoId, bool minhaLista, int id)
     {
-        var presente = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var lista = await ResolverListaAsync(usuarioId, eventoId, minhaLista);
+        if (!lista.Sucesso)
+            return lista.Repassar<bool>();
+
+        var presente = await BuscarAsync(eventoId, lista.Valor, id);
         if (presente is null)
             return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Presente não encontrado.");
 
@@ -131,9 +153,13 @@ public class ServicoPresente(ContextoBanco banco)
         return Resultado<bool>.Ok(true);
     }
 
-    public async Task<Resultado<List<CotaPresente>>> ListarCotasAsync(int usuarioId, int eventoId, int id)
+    public async Task<Resultado<List<CotaPresente>>> ListarCotasAsync(int usuarioId, int eventoId, bool minhaLista, int id)
     {
-        if (await BuscarDoUsuarioAsync(usuarioId, eventoId, id) is null)
+        var lista = await ResolverListaAsync(usuarioId, eventoId, minhaLista);
+        if (!lista.Sucesso)
+            return lista.Repassar<List<CotaPresente>>();
+
+        if (await BuscarAsync(eventoId, lista.Valor, id) is null)
             return Resultado<List<CotaPresente>>.Falha(TipoErro.NaoEncontrado, "Presente não encontrado.");
 
         var cotas = await banco.CotasPresente
@@ -148,9 +174,14 @@ public class ServicoPresente(ContextoBanco banco)
     /// Desfaz uma compra de cotas (ex.: o convidado não pagou). As cotas voltam a ficar disponíveis.
     /// A subtração é feita direto no banco, para não perder uma compra feita ao mesmo tempo na página pública.
     /// </summary>
-    public async Task<Resultado<ItemPresente>> ExcluirCotaAsync(int usuarioId, int eventoId, int id, int cotaId)
+    public async Task<Resultado<ItemPresente>> ExcluirCotaAsync(
+        int usuarioId, int eventoId, bool minhaLista, int id, int cotaId)
     {
-        var presente = await BuscarDoUsuarioAsync(usuarioId, eventoId, id);
+        var lista = await ResolverListaAsync(usuarioId, eventoId, minhaLista);
+        if (!lista.Sucesso)
+            return lista.Repassar<ItemPresente>();
+
+        var presente = await BuscarAsync(eventoId, lista.Valor, id);
         if (presente is null)
             return PresenteNaoEncontrado();
 
@@ -269,14 +300,28 @@ public class ServicoPresente(ContextoBanco banco)
         }
     }
 
-    private Task<bool> EventoDoUsuarioAsync(int usuarioId, int eventoId) =>
-        banco.Eventos.AnyAsync(e => e.Id == eventoId && e.UsuarioId == usuarioId);
+    /// <summary>
+    /// Qual lista o usuário está mexendo: a do evento (nulo; exige gerenciar o evento) ou a pessoal
+    /// dele (o id do formando; exige que ele seja um formando que entrou por convite).
+    /// </summary>
+    private async Task<Resultado<int?>> ResolverListaAsync(int usuarioId, int eventoId, bool minhaLista)
+    {
+        var acesso = await ControleAcesso.ExigirAsync(
+            banco, usuarioId, eventoId, minhaLista ? Permissao.VerEvento : Permissao.GerenciarEvento);
+        if (!acesso.Sucesso)
+            return acesso.Repassar<int?>();
 
-    private Task<ItemPresente?> BuscarDoUsuarioAsync(int usuarioId, int eventoId, int id) =>
-        banco.ItensPresente.FirstOrDefaultAsync(p =>
-            p.Id == id &&
-            p.EventoId == eventoId &&
-            banco.Eventos.Any(e => e.Id == eventoId && e.UsuarioId == usuarioId));
+        if (!minhaLista)
+            return Resultado<int?>.Ok(null);
+
+        return acesso.Valor!.Formando is { } formando
+            ? Resultado<int?>.Ok(formando.Id)
+            : Resultado<int?>.Falha(
+                TipoErro.Conflito, "Só formandos que entraram na turma por convite têm lista de presentes pessoal.");
+    }
+
+    private Task<ItemPresente?> BuscarAsync(int eventoId, int? formandoId, int id) =>
+        banco.ItensPresente.FirstOrDefaultAsync(p => p.Id == id && p.EventoId == eventoId && p.FormandoId == formandoId);
 
     private static Resultado<ItemPresente> PresenteNaoEncontrado() =>
         Resultado<ItemPresente>.Falha(TipoErro.NaoEncontrado, "Presente não encontrado.");

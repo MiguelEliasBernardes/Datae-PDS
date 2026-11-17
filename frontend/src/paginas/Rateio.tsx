@@ -24,9 +24,14 @@ import { useCarregamento } from '../hooks/useCarregamento'
 
 type Filtro = 'pago' | 'pendente'
 
-/** Tela F4 - Rateio de Pagamentos: o total das despesas dividido igualmente entre os formandos. */
+/**
+ * Tela F4 - Rateio de Pagamentos: o total das despesas dividido igualmente entre os formandos.
+ * O financeiro vê todos e registra pagamentos; os demais formandos veem os totais da turma e só
+ * a própria parte (o backend já devolve só a linha deles).
+ */
 export function Rateio({
   eventoId,
+  financeiro,
   onVoltar,
   onAbrirDespesas,
   onAbrirFormandos,
@@ -34,10 +39,11 @@ export function Rateio({
   onAbrirVisualizacao,
 }: {
   eventoId: number
+  financeiro: boolean
   onVoltar: () => void
   onAbrirDespesas: () => void
-  onAbrirFormandos: () => void
-  onAbrirConfiguracoes: () => void
+  onAbrirFormandos?: () => void
+  onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
   const carregar = useCallback(() => obterRateio(eventoId), [eventoId])
@@ -72,7 +78,7 @@ export function Rateio({
     <LayoutPainel itens={navegacao}>
       <BotaoVoltar onVoltar={onVoltar} />
 
-      <TituloDestaque>Rateio de Pagamentos</TituloDestaque>
+      <TituloDestaque>{financeiro ? 'Rateio de Pagamentos' : 'Minha parte no rateio'}</TituloDestaque>
 
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
       <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
@@ -98,27 +104,31 @@ export function Rateio({
 
       <div className="mt-5 flex flex-col gap-3 lg:max-w-xl lg:flex-row">
         <Botao variante="secundario" onClick={onAbrirDespesas}>
-          Gerenciar despesas
+          {financeiro ? 'Gerenciar despesas' : 'Ver despesas'}
         </Botao>
-        <Botao variante="secundario" onClick={onAbrirFormandos}>
-          Gerenciar formandos
-        </Botao>
+        {onAbrirFormandos && (
+          <Botao variante="secundario" onClick={onAbrirFormandos}>
+            Gerenciar formandos
+          </Botao>
+        )}
       </div>
 
-      {/* Busca */}
-      <CampoTexto
-        className="mt-5 lg:max-w-md"
-        name="busca-rateio"
-        placeholder="Formando..."
-        value={busca}
-        onChange={(e) => setBusca(e.target.value)}
-      />
-
-      {/* Filtros */}
-      <div className="mt-3 flex gap-2">
-        <ChipFiltro rotulo="Pago" ativo={filtro === 'pago'} onClick={() => alternarFiltro('pago')} />
-        <ChipFiltro rotulo="Pendente" ativo={filtro === 'pendente'} onClick={() => alternarFiltro('pendente')} />
-      </div>
+      {/* Busca e filtros só fazem sentido para quem vê a turma toda */}
+      {financeiro && (
+        <>
+          <CampoTexto
+            className="mt-5 lg:max-w-md"
+            name="busca-rateio"
+            placeholder="Formando..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+          <div className="mt-3 flex gap-2">
+            <ChipFiltro rotulo="Pago" ativo={filtro === 'pago'} onClick={() => alternarFiltro('pago')} />
+            <ChipFiltro rotulo="Pendente" ativo={filtro === 'pendente'} onClick={() => alternarFiltro('pendente')} />
+          </div>
+        </>
+      )}
 
       <AvisoErro className="mt-4" mensagem={erro} onTentarNovamente={recarregar} />
 
@@ -135,15 +145,18 @@ export function Rateio({
               pago={formatarMoeda(f.valorPago)}
               total={formatarMoeda(f.valorDevido)}
               percentual={f.percentual}
+              rotuloAcao={financeiro ? 'Adicionar Pagamento' : 'Ver meus pagamentos'}
               onAdicionarPagamento={() => setFormandoAberto(f.formandoId)}
             />
           ))
         ) : (
           rateio && (
             <MensagemLista>
-              {rateio.formandos.length === 0
-                ? 'Cadastre os formandos para dividir as despesas.'
-                : 'Nenhum formando encontrado.'}
+              {!financeiro
+                ? 'Você organiza esta formatura, mas não participa do rateio como formando.'
+                : rateio.formandos.length === 0
+                  ? 'Cadastre os formandos para dividir as despesas.'
+                  : 'Nenhum formando encontrado.'}
             </MensagemLista>
           )
         )}
@@ -156,6 +169,7 @@ export function Rateio({
             key={aberto.formandoId}
             eventoId={eventoId}
             formando={aberto}
+            somenteLeitura={!financeiro}
             onAlterado={recarregar}
           />
         )}

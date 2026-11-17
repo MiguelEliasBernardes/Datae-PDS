@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ErroApi, mensagemDeErro } from '../api/cliente'
 import type { DadosFormando, Formando, PapelFormando } from '../api/tipos'
-import { rotulosPapelFormando } from '../dados/formatacao'
+import { descricoesPapelFormando, rotulosPapelFormando } from '../dados/formatacao'
 import { AvisoErro } from './AvisoErro'
 import { Botao } from './Botao'
 import { BotaoOpcao } from './BotaoOpcao'
@@ -84,6 +84,7 @@ export function FormularioFormando({
             <BotaoOpcao key={p} rotulo={rotulosPapelFormando[p]} selecionado={papel === p} onClick={() => setPapel(p)} />
           ))}
         </div>
+        <p className="text-[12px] text-muted">{descricoesPapelFormando[papel]}</p>
         {erro?.doCampo('papel') && <p className="text-[12px] text-danger">{erro.doCampo('papel')}</p>}
       </div>
 

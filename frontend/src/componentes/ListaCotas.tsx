@@ -13,13 +13,19 @@ import { MensagemLista } from './MensagemLista'
 export function ListaCotas({
   eventoId,
   presenteId,
+  minhaLista = false,
   onAlterado,
 }: {
   eventoId: number
   presenteId: number
+  /** Presente da lista pessoal do formando logado. */
+  minhaLista?: boolean
   onAlterado: () => void
 }) {
-  const carregar = useCallback(() => listarCotas(eventoId, presenteId), [eventoId, presenteId])
+  const carregar = useCallback(
+    () => listarCotas(eventoId, presenteId, minhaLista),
+    [eventoId, presenteId, minhaLista],
+  )
   const { dados: cotas, erro, carregando, recarregar } = useCarregamento(carregar)
   const [excluindo, setExcluindo] = useState<number | null>(null)
   const [erroExclusao, setErroExclusao] = useState<string | null>(null)
@@ -28,7 +34,7 @@ export function ListaCotas({
     setErroExclusao(null)
     setExcluindo(cotaId)
     try {
-      await excluirCota(eventoId, presenteId, cotaId)
+      await excluirCota(eventoId, presenteId, cotaId, minhaLista)
       recarregar()
       onAlterado()
     } catch (e) {

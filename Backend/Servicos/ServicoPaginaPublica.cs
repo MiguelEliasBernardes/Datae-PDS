@@ -11,6 +11,7 @@ namespace Backend.Servicos;
 /// <summary>
 /// Tudo o que o convidado faz na página pública do evento, sem login: ver o evento,
 /// confirmar presença, reservar presente, comprar cotas e gerar o Pix. O evento é sempre localizado pelo slug.
+/// Na formatura, cada formando tem uma sub-página (/e/{slug}/{slug do formando}) com a lista de presentes dele.
 /// </summary>
 public class ServicoPaginaPublica(ContextoBanco banco)
 {
@@ -24,24 +25,63 @@ public class ServicoPaginaPublica(ContextoBanco banco)
         return evento is null ? EventoNaoEncontrado<Evento>() : Resultado<Evento>.Ok(evento);
     }
 
+    /// <summary>Lista de presentes do evento (sem as listas pessoais dos formandos).</summary>
     public async Task<Resultado<List<ItemPresente>>> ListarPresentesAsync(string slug)
     {
         var evento = await BuscarPorSlugAsync(slug);
         if (evento is null)
             return EventoNaoEncontrado<List<ItemPresente>>();
 
+        return Resultado<List<ItemPresente>>.Ok(await ListarPresentesDaListaAsync(evento, formandoId: null));
+    }
+
+    /// <summary>Formandos da turma, para a página da formatura linkar as sub-páginas.</summary>
+    public async Task<Resultado<List<Formando>>> ListarFormandosAsync(string slug)
+    {
+        var evento = await BuscarPorSlugAsync(slug);
+        if (evento is null)
+            return EventoNaoEncontrado<List<Formando>>();
+
+        var formandos = await banco.Formandos.Where(f => f.EventoId == evento.Id).OrderBy(f => f.Nome).ToListAsync();
+        return Resultado<List<Formando>>.Ok(formandos);
+    }
+
+    /// <summary>Sub-página do formando: o evento (para o cabeçalho e o tema) e o próprio formando.</summary>
+    public async Task<Resultado<(Evento Evento, Formando Formando)>> ObterFormandoAsync(string slug, string slugFormando)
+    {
+        var evento = await BuscarPorSlugAsync(slug);
+        if (evento is null)
+            return EventoNaoEncontrado<(Evento, Formando)>();
+
+        var formando = await BuscarFormandoAsync(evento.Id, slugFormando);
+        return formando is null
+            ? FormandoNaoEncontrado<(Evento, Formando)>()
+            : Resultado<(Evento, Formando)>.Ok((evento, formando));
+    }
+
+    /// <summary>Lista pessoal do formando. Reserva e cotas usam as mesmas rotas dos presentes do evento.</summary>
+    public async Task<Resultado<List<ItemPresente>>> ListarPresentesFormandoAsync(string slug, string slugFormando)
+    {
+        var pagina = await ObterFormandoAsync(slug, slugFormando);
+        if (!pagina.Sucesso)
+            return pagina.Repassar<List<ItemPresente>>();
+
+        var (evento, formando) = pagina.Valor;
+        return Resultado<List<ItemPresente>>.Ok(await ListarPresentesDaListaAsync(evento, formando.Id));
+    }
+
+    private async Task<List<ItemPresente>> ListarPresentesDaListaAsync(Evento evento, int? formandoId)
+    {
         // Lista desativada nas configurações: a página simplesmente não mostra presentes
         if (!evento.ListaPresentesAtiva)
-            return Resultado<List<ItemPresente>>.Ok([]);
+            return [];
 
         // Disponíveis primeiro, para o convidado achar logo o que ainda pode reservar
-        var presentes = await banco.ItensPresente
-            .Where(p => p.EventoId == evento.Id)
+        return await banco.ItensPresente
+            .Where(p => p.EventoId == evento.Id && p.FormandoId == formandoId)
             .OrderBy(p => p.Status != StatusPresente.Disponivel)
             .ThenBy(p => p.Nome)
             .ToListAsync();
-
-        return Resultado<List<ItemPresente>>.Ok(presentes);
     }
 
     /// <summary>
@@ -325,6 +365,15 @@ public class ServicoPaginaPublica(ContextoBanco banco)
 
     private static Resultado<T> PresenteNaoEncontrado<T>() =>
         Resultado<T>.Falha(TipoErro.NaoEncontrado, "Presente não encontrado.");
+
+    private Task<Formando?> BuscarFormandoAsync(int eventoId, string slugFormando)
+    {
+        var slugNormalizado = (slugFormando ?? string.Empty).Trim().ToLowerInvariant();
+        return banco.Formandos.FirstOrDefaultAsync(f => f.EventoId == eventoId && f.Slug == slugNormalizado);
+    }
+
+    private static Resultado<T> FormandoNaoEncontrado<T>() =>
+        Resultado<T>.Falha(TipoErro.NaoEncontrado, "Formando não encontrado. Confira o link.");
 
     private static Resultado<T> ListaDesativada<T>() =>
         Resultado<T>.Falha(TipoErro.NaoEncontrado, "A lista de presentes deste evento está desativada.");
