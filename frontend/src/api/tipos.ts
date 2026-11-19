@@ -298,3 +298,72 @@ export interface Rateio {
   percentualPago: number
   formandos: RateioFormando[]
 }
+
+// ===== Checklist =====
+
+export type CategoriaChecklist = 'Preparativos' | 'Cerimonia' | 'Decoracao' | 'Brincadeiras' | 'Itens'
+/** Tela que resolve a dica. */
+export type AcaoDica =
+  | 'Configuracoes'
+  | 'Presentes'
+  | 'MeusPresentes'
+  | 'Convidados'
+  | 'Mural'
+  | 'Formandos'
+  | 'Despesas'
+  | 'Rateio'
+
+export interface ItemChecklist {
+  id: number
+  titulo: string
+  descricao: string | null
+  categoria: CategoriaChecklist
+  /** Quantos dias antes do evento (0 = no dia; null = sem prazo). */
+  diasAntes: number | null
+  /** Data limite já calculada pelo backend a partir da data do evento. */
+  prazo: string | null
+  concluido: boolean
+  concluidoEm: string | null
+  origem: 'Sugestao' | 'Manual'
+  responsavelFormandoId: number | null
+  responsavelNome: string | null
+  /** Quem está vendo pode marcar como feito (quem gerencia ou o responsável pelo item). */
+  podeConcluir: boolean
+  /** Item da categoria Itens que pode virar presente da lista do evento. */
+  podeVirarPresente: boolean
+}
+
+/** Dica calculada a partir do estado do evento (não fica gravada). */
+export interface DicaChecklist {
+  chave: string
+  titulo: string
+  descricao: string | null
+  concluida: boolean
+  acao: AcaoDica
+}
+
+export interface Checklist {
+  itens: ItemChecklist[]
+  dicas: DicaChecklist[]
+  /** Pode criar, editar e apagar itens (organizador e administradores). */
+  podeGerenciar: boolean
+}
+
+export interface DadosItemChecklist {
+  titulo: string
+  descricao?: string
+  categoria?: CategoriaChecklist
+  /** Na edição, -1 tira o prazo. */
+  diasAntes?: number | null
+  /** Na edição, 0 tira o responsável. */
+  responsavelFormandoId?: number | null
+}
+
+export interface SugestaoChecklist {
+  chave: string
+  titulo: string
+  descricao: string | null
+  categoria: CategoriaChecklist
+  diasAntes: number | null
+  valorSugerido: number | null
+}

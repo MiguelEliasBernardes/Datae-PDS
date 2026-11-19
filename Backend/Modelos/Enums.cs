@@ -52,3 +52,21 @@ public enum Permissao
     // Moderação do mural de fotos
     ModerarMural,
 }
+
+public enum CategoriaChecklist
+{
+    Preparativos,
+    Cerimonia,
+    Decoracao,
+    Brincadeiras,
+    // Itens que podem virar presentes da lista (ex.: utensílios no chá de panela)
+    Itens,
+}
+
+public enum OrigemItemChecklist
+{
+    // Copiado dos modelos de sugestões do tipo do evento
+    Sugestao,
+    // Criado pelo organizador
+    Manual,
+}

@@ -14,6 +14,7 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
     public DbSet<Formando> Formandos => Set<Formando>();
     public DbSet<Despesa> Despesas => Set<Despesa>();
     public DbSet<PagamentoFormando> PagamentosFormando => Set<PagamentoFormando>();
+    public DbSet<ItemChecklist> ItensChecklist => Set<ItemChecklist>();
 
     protected override void OnModelCreating(ModelBuilder modelo)
     {
@@ -112,6 +113,19 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
 
             despesa.Property(d => d.Descricao).HasMaxLength(200).IsRequired();
             despesa.Property(d => d.Valor).HasPrecision(12, 2);
+        });
+
+        modelo.Entity<ItemChecklist>(item =>
+        {
+            // Excluir o evento exclui a checklist; excluir o formando responsável só deixa o item sem responsável
+            item.HasOne<Evento>().WithMany().HasForeignKey(i => i.EventoId).OnDelete(DeleteBehavior.Cascade);
+            item.HasOne<Formando>().WithMany().HasForeignKey(i => i.ResponsavelFormandoId).OnDelete(DeleteBehavior.SetNull);
+
+            item.Property(i => i.Titulo).HasMaxLength(150).IsRequired();
+            item.Property(i => i.Descricao).HasMaxLength(500);
+            item.Property(i => i.Categoria).HasConversion<string>().HasMaxLength(20);
+            item.Property(i => i.Origem).HasConversion<string>().HasMaxLength(20);
+            item.Property(i => i.ChaveSugestao).HasMaxLength(60);
         });
 
         modelo.Entity<PagamentoFormando>(pagamento =>

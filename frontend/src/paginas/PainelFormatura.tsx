@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import notaDinheiro from '../assets/banknote-arrow-down.svg'
 import livroImagem from '../assets/book-image.svg'
+import circuloCheck from '../assets/circle-check-big.svg'
 import olho from '../assets/eye.svg'
 import presente from '../assets/gift.svg'
 import casa from '../assets/house.svg'
@@ -34,6 +35,7 @@ export function PainelFormatura({
   onAbrirRateio,
   onAbrirConvidados,
   onAbrirMeusPresentes,
+  onAbrirChecklist,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -45,6 +47,7 @@ export function PainelFormatura({
   onAbrirRateio: () => void
   onAbrirConvidados: () => void
   onAbrirMeusPresentes: () => void
+  onAbrirChecklist: () => void
   onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
@@ -66,6 +69,7 @@ export function PainelFormatura({
     if (evento.meuPapel) acessos.push({ icone: presente, titulo: 'Meus presentes', onClick: onAbrirMeusPresentes })
     if (pode(evento, 'ModerarMural')) acessos.push({ icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural })
     if (pode(evento, 'GerenciarEvento')) acessos.push({ icone: emailConfirmado, titulo: 'Convidados', onClick: onAbrirConvidados })
+    acessos.push({ icone: circuloCheck, titulo: 'Checklist', onClick: onAbrirChecklist })
   }
 
   return (

@@ -148,6 +148,9 @@ namespace Backend.Dados.Migrations
                         .HasMaxLength(77)
                         .HasColumnType("character varying(77)");
 
+                    b.Property<DateTime?>("ChecklistCriadaEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("CidadePix")
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)");
@@ -315,6 +318,67 @@ namespace Backend.Dados.Migrations
                     b.HasIndex("EventoId");
 
                     b.ToTable("FotosMural");
+                });
+
+            modelBuilder.Entity("Backend.Modelos.ItemChecklist", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Categoria")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ChaveSugestao")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<bool>("Concluido")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ConcluidoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("DiasAntes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EventoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Origem")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int?>("ResponsavelFormandoId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventoId");
+
+                    b.HasIndex("ResponsavelFormandoId");
+
+                    b.ToTable("ItensChecklist");
                 });
 
             modelBuilder.Entity("Backend.Modelos.ItemPresente", b =>
@@ -511,6 +575,20 @@ namespace Backend.Dados.Migrations
                         .HasForeignKey("EventoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Backend.Modelos.ItemChecklist", b =>
+                {
+                    b.HasOne("Backend.Modelos.Evento", null)
+                        .WithMany()
+                        .HasForeignKey("EventoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Modelos.Formando", null)
+                        .WithMany()
+                        .HasForeignKey("ResponsavelFormandoId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Backend.Modelos.ItemPresente", b =>

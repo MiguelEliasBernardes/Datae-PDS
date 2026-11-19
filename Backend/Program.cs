@@ -51,6 +51,7 @@ builder.Services.AddScoped<ServicoFormando>();
 builder.Services.AddScoped<ServicoDespesa>();
 builder.Services.AddScoped<ServicoRateio>();
 builder.Services.AddScoped<ServicoConvite>();
+builder.Services.AddScoped<ServicoChecklist>();
 builder.Services.AddSingleton<ArmazenamentoArquivos>();
 
 // Limite de requisições por IP nas rotas públicas que gravam dados (RSVP, reserva, cotas, Pix, fotos),
@@ -104,6 +105,7 @@ app.MapearRotasPresente();
 app.MapearRotasMural();
 app.MapearRotasFormatura();
 app.MapearRotasConvite();
+app.MapearRotasChecklist();
 app.MapearRotasPublicas();
 
 app.Run();

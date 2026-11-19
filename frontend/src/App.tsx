@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { sair } from './api/autenticacao'
 import { definirAoExpirarSessao } from './api/cliente'
 import { obterUsuario } from './api/sessao'
-import type { Evento, Permissao, Usuario } from './api/tipos'
+import type { AcaoDica, Evento, Permissao, Usuario } from './api/tipos'
 import { codigoConviteDaUrl, limparUrl, rotaPublicaDaUrl } from './dados/rotas'
 import { AceitarConvite } from './paginas/AceitarConvite'
+import { Checklist } from './paginas/Checklist'
 import { ConfiguracoesPagina } from './paginas/ConfiguracoesPagina'
 import { Convidados } from './paginas/Convidados'
 import { CriarEvento } from './paginas/CriarEvento'
@@ -35,6 +36,7 @@ type Tela =
   | 'formandos'
   | 'despesas'
   | 'rateio'
+  | 'checklist'
 
 /**
  * Evento aberto no momento, qual painel ele usa (formatura tem um painel próprio) e o que o
@@ -152,6 +154,19 @@ function AreaOrganizador() {
     }
     // Sem permissão, o item "Configurações" some da navegação
     const abrirConfiguracoes = pode('GerenciarEvento') ? irPara('configuracoes') : undefined
+    const formatura = evento.painel === 'painel-formatura'
+
+    // Telas que resolvem cada dica da checklist (só as que o usuário pode abrir)
+    const acoesDicas: Partial<Record<AcaoDica, () => void>> = {
+      Configuracoes: abrirConfiguracoes,
+      Presentes: pode('GerenciarEvento') && !formatura ? irPara('presentes') : undefined,
+      MeusPresentes: formatura ? irPara('meus-presentes') : undefined,
+      Convidados: pode('GerenciarEvento') ? irPara('convidados') : undefined,
+      Mural: pode('ModerarMural') ? irPara('mural') : undefined,
+      Formandos: pode('GerenciarComissao') ? irPara('formandos') : undefined,
+      Despesas: formatura ? irPara('despesas') : undefined,
+      Rateio: formatura ? irPara('rateio') : undefined,
+    }
 
     switch (tela) {
       case 'painel-evento':
@@ -162,6 +177,7 @@ function AreaOrganizador() {
             onAbrirConvidados={irPara('convidados')}
             onAbrirPresentes={irPara('presentes')}
             onAbrirMural={irPara('mural')}
+            onAbrirChecklist={irPara('checklist')}
             onAbrirConfiguracoes={irPara('configuracoes')}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -177,6 +193,7 @@ function AreaOrganizador() {
             onAbrirRateio={irPara('rateio')}
             onAbrirConvidados={irPara('convidados')}
             onAbrirMeusPresentes={irPara('meus-presentes')}
+            onAbrirChecklist={irPara('checklist')}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -245,6 +262,17 @@ function AreaOrganizador() {
             somenteLeitura={!pode('Financeiro')}
             onVoltar={voltarAoPainel}
             onAbrirRateio={irPara('rateio')}
+            onAbrirConfiguracoes={abrirConfiguracoes}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'checklist':
+        return (
+          <Checklist
+            eventoId={evento.id}
+            podeEscolherResponsavel={formatura && pode('GerenciarComissao')}
+            acoes={acoesDicas}
+            onVoltar={voltarAoPainel}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />

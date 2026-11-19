@@ -1,4 +1,11 @@
-import type { PapelFormando, StatusFoto, StatusPresenca, StatusPresente, TipoEvento } from '../api/tipos'
+import type {
+  CategoriaChecklist,
+  PapelFormando,
+  StatusFoto,
+  StatusPresenca,
+  StatusPresente,
+  TipoEvento,
+} from '../api/tipos'
 
 /** Rótulos exibidos para cada tipo de evento do backend. */
 export const rotulosTipoEvento: Record<TipoEvento, string> = {
@@ -41,6 +48,28 @@ export const descricoesPapelFormando: Record<PapelFormando, string> = {
   Administrador: 'Pode tudo: formandos, convites, despesas, pagamentos, mural e configurações da página.',
   Financeiro: 'Lança despesas e registra os pagamentos de todos os formandos.',
   Fotos: 'Aprova ou recusa as fotos enviadas para o mural.',
+}
+
+/** Rótulos das categorias da checklist, na ordem em que aparecem na tela. */
+export const rotulosCategoriaChecklist: Record<CategoriaChecklist, string> = {
+  Preparativos: 'Preparativos',
+  Cerimonia: 'Cerimônia',
+  Decoracao: 'Decoração',
+  Brincadeiras: 'Brincadeiras',
+  Itens: 'Itens e presentes',
+}
+
+/**
+ * Prazo de um item da checklist em relação a hoje, ex.: "até 20/12 · faltam 5 dias".
+ * `vencido` indica que a data já passou (o item ainda não foi feito).
+ */
+export function descreverPrazo(prazoIso: string, agora: number): { texto: string; vencido: boolean } {
+  const prazo = new Date(prazoIso)
+  const dias = Math.ceil((prazo.getTime() - agora) / 86_400_000)
+  const data = prazo.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  if (dias < 0) return { texto: `até ${data} · venceu há ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`, vencido: true }
+  if (dias === 0) return { texto: `até ${data} · vence hoje`, vencido: false }
+  return { texto: `até ${data} · ${dias === 1 ? 'falta 1 dia' : `faltam ${dias} dias`}`, vencido: false }
 }
 
 /** Quanto falta até a data, em dias/horas/minutos/segundos (zera quando a data passa). */

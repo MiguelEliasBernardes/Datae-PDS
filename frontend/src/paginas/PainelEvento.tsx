@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import livroImagem from '../assets/book-image.svg'
+import circuloCheck from '../assets/circle-check-big.svg'
 import circuloCifrao from '../assets/circle-dollar-sign.svg'
 import prancheta from '../assets/clipboard.svg'
 import olho from '../assets/eye.svg'
@@ -31,6 +32,7 @@ export function PainelEvento({
   onAbrirConvidados,
   onAbrirPresentes,
   onAbrirMural,
+  onAbrirChecklist,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -39,6 +41,7 @@ export function PainelEvento({
   onAbrirConvidados: () => void
   onAbrirPresentes: () => void
   onAbrirMural: () => void
+  onAbrirChecklist: () => void
   onAbrirConfiguracoes: () => void
   onAbrirVisualizacao: () => void
 }) {
@@ -147,6 +150,7 @@ export function PainelEvento({
             { icone: pessoas, titulo: 'Convidados', onClick: onAbrirConvidados },
             { icone: presente, titulo: 'Presentes', onClick: onAbrirPresentes },
             { icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural },
+            { icone: circuloCheck, titulo: 'Checklist', onClick: onAbrirChecklist },
             // A chave Pix é cadastrada nas configurações da página
             { icone: pix, titulo: 'Financeiro (PIX)', onClick: onAbrirConfiguracoes },
           ]}
