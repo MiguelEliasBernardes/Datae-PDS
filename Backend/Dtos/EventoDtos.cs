@@ -25,7 +25,8 @@ public record AtualizarEventoRequisicao(
     string? NomeRecebedorPix,
     string? CidadePix,
     bool? ListaPresentesAtiva,
-    bool? MuralAtivo);
+    bool? MuralAtivo,
+    string? MensagemAgradecimento = null);
 
 public record EventoResposta(
     int Id,
@@ -50,4 +51,5 @@ public record EventoResposta(
     PapelFormando? MeuPapel,
     List<Permissao> Permissoes,
     // Código de convite da turma; só aparece para quem gerencia a comissão
-    string? CodigoTurma);
+    string? CodigoTurma,
+    string? MensagemAgradecimento);

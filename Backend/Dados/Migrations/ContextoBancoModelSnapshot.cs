@@ -30,6 +30,12 @@ namespace Backend.Dados.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("AgradecimentoEmailEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("AgradecimentoWhatsAppEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Email")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -53,6 +59,10 @@ namespace Backend.Dados.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.HasKey("Id");
 
@@ -184,6 +194,10 @@ namespace Backend.Dados.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("character varying(250)");
 
+                    b.Property<string>("MensagemAgradecimento")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<bool>("MuralAtivo")
                         .HasColumnType("boolean");
 
@@ -198,6 +212,9 @@ namespace Backend.Dados.Migrations
 
                     b.Property<int?>("PlanoAtualId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ResumoEnviadoEm")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("SlugPublico")
                         .IsRequired()

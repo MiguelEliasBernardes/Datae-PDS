@@ -2,10 +2,11 @@ import { useState } from 'react'
 import setaDireita from '../assets/arrow-big-right.svg'
 import { ErroApi, mensagemDeErro } from '../api/cliente'
 import { confirmarPresenca } from '../api/publico'
-import type { Presenca } from '../api/tipos'
+import type { Contato, Presenca } from '../api/tipos'
 import { AvisoErro } from './AvisoErro'
 import { Botao } from './Botao'
 import { CampoTexto } from './CampoTexto'
+import { CamposContato } from './CamposContato'
 
 const MAXIMO_ACOMPANHANTES = 10
 
@@ -24,6 +25,7 @@ export function FormularioPresenca({ slug, somenteLeitura = false }: { slug: str
   const [nome, setNome] = useState('')
   const [acompanhantes, setAcompanhantes] = useState('')
   const [observacao, setObservacao] = useState('')
+  const [contato, setContato] = useState<Contato>({ telefone: '', email: '' })
 
   const [erro, setErro] = useState<ErroApi | null>(null)
   const [mensagemGeral, setMensagemGeral] = useState<string | null>(null)
@@ -58,6 +60,7 @@ export function FormularioPresenca({ slug, somenteLeitura = false }: { slug: str
           vaiComparecer,
           quantidadeAcompanhantes: vaiComparecer ? quantidade : 0,
           observacao,
+          ...contato,
         }),
       )
     } catch (e) {
@@ -139,6 +142,9 @@ export function FormularioPresenca({ slug, somenteLeitura = false }: { slug: str
         onChange={(e) => setObservacao(e.target.value)}
         erro={erro?.doCampo('observacao')}
       />
+      <div className="mt-3">
+        <CamposContato prefixo="presenca" contato={contato} onAlterar={setContato} erro={erro} />
+      </div>
 
       <AvisoErro className="mt-3" mensagem={mensagemGeral} />
 

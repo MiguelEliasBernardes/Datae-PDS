@@ -48,6 +48,7 @@ public class ServicoConvidado(ContextoBanco banco)
             erros["statusPresenca"] = ["Status de presença inválido."];
         if (requisicao.QuantidadeAcompanhantes < 0)
             erros["quantidadeAcompanhantes"] = ["A quantidade de acompanhantes não pode ser negativa."];
+        var (telefone, _) = ValidarContato(requisicao.Telefone, null, erros);
 
         if (erros.Count > 0)
             return Resultado<Convidado>.Invalido(erros);
@@ -57,6 +58,7 @@ public class ServicoConvidado(ContextoBanco banco)
             EventoId = eventoId,
             Nome = requisicao.Nome.Trim(),
             Email = email,
+            Telefone = telefone,
             StatusPresenca = requisicao.StatusPresenca ?? StatusPresenca.Pendente,
             QuantidadeAcompanhantes = requisicao.QuantidadeAcompanhantes ?? 0,
             Observacao = TextoOpcional(requisicao.Observacao),
@@ -116,6 +118,13 @@ public class ServicoConvidado(ContextoBanco banco)
 
         if (requisicao.Observacao is not null)
             convidado.Observacao = TextoOpcional(requisicao.Observacao);
+
+        if (requisicao.Telefone is not null)
+        {
+            var (telefone, _) = ValidarContato(requisicao.Telefone, null, erros);
+            if (!erros.ContainsKey("telefone"))
+                convidado.Telefone = telefone;
+        }
 
         if (erros.Count > 0)
             return Resultado<Convidado>.Invalido(erros);

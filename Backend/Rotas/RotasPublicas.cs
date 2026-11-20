@@ -23,6 +23,9 @@ public static class RotasPublicas
         publico.MapGet("/presentes", ListarPresentes);
         publico.MapGet("/fotos", ListarFotos);
 
+        // Recapitulação: abre depois da data do evento
+        publico.MapGet("/recapitulacao", ObterRecapitulacao);
+
         // Formatura: formandos da turma e a sub-página de cada um, com a lista de presentes pessoal
         publico.MapGet("/formandos", ListarFormandos);
         publico.MapGet("/formandos/{slugFormando}", ObterFormando);
@@ -116,6 +119,12 @@ public static class RotasPublicas
         return ParaHttp(resultado, Results.Ok);
     }
 
+    private static async Task<IResult> ObterRecapitulacao(string slug, ServicoPosEvento servico)
+    {
+        var resultado = await servico.ObterRecapitulacaoPublicaAsync(slug);
+        return ParaHttp(resultado, r => Results.Ok(RotasPosEvento.ParaResposta(r.Evento, r.Dados)));
+    }
+
     private static async Task<IResult> ListarFotos(string slug, ServicoMural servicoMural)
     {
         var resultado = await servicoMural.ListarAprovadasAsync(slug);
@@ -134,7 +143,7 @@ public static class RotasPublicas
             statusCode: StatusCodes.Status201Created));
     }
 
-    private static EventoPublicoResposta ParaResposta(Evento evento) => new(
+    internal static EventoPublicoResposta ParaResposta(Evento evento) => new(
         evento.Tipo,
         evento.DataEvento,
         evento.NomeEvento,

@@ -46,6 +46,7 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             evento.Property(e => e.CidadePix).HasMaxLength(15);
             evento.HasIndex(e => e.CodigoTurma).IsUnique();
             evento.Property(e => e.CodigoTurma).HasMaxLength(16);
+            evento.Property(e => e.MensagemAgradecimento).HasMaxLength(1000);
         });
 
         modelo.Entity<Convidado>(convidado =>
@@ -55,6 +56,7 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
 
             convidado.Property(c => c.Nome).HasMaxLength(120).IsRequired();
             convidado.Property(c => c.Email).HasMaxLength(200);
+            convidado.Property(c => c.Telefone).HasMaxLength(16);
             convidado.Property(c => c.StatusPresenca).HasConversion<string>().HasMaxLength(20);
             convidado.Property(c => c.Observacao).HasMaxLength(500);
         });

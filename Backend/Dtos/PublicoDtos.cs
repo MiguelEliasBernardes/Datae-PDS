@@ -37,7 +37,10 @@ public record ConfirmarPresencaRequisicao(
     string Nome,
     bool VaiComparecer,
     int? QuantidadeAcompanhantes,
-    string? Observacao);
+    string? Observacao,
+    // Contatos opcionais, para o organizador mandar o agradecimento depois do evento
+    string? Telefone = null,
+    string? Email = null);
 
 public record PresencaResposta(
     string Nome,
@@ -46,7 +49,7 @@ public record PresencaResposta(
     string? Observacao);
 
 // JaComprado = true reserva e já marca como comprado de uma vez
-public record ReservarPresenteRequisicao(string Nome, bool? JaComprado);
+public record ReservarPresenteRequisicao(string Nome, bool? JaComprado, string? Telefone = null, string? Email = null);
 
 public record ReservaResposta(PresentePublicoResposta Presente, string CodigoReserva);
 
@@ -58,7 +61,7 @@ public record GerarPixRequisicao(decimal? Valor);
 public record PixResposta(string CopiaECola, string QrCode, decimal? Valor, string NomeRecebedor);
 
 // Compra de cotas de um presente; o convidado paga pelo Pix do evento
-public record ComprarCotasRequisicao(string Nome, int Quantidade);
+public record ComprarCotasRequisicao(string Nome, int Quantidade, string? Telefone = null, string? Email = null);
 
 // Pix é nulo quando o evento não tem Pix configurado (o convidado combina o pagamento com o organizador)
 public record CompraCotasResposta(PresentePublicoResposta Presente, int Quantidade, decimal? Valor, PixResposta? Pix);
@@ -69,3 +72,13 @@ public record FormandoPublicoResposta(string Nome, string Slug);
 public record PaginaFormandoResposta(string Nome, string Slug, string? Mensagem);
 
 public record FotoPublicaResposta(int Id, string? NomeAutor, string Url, DateTime EnviadaEm);
+
+// Página de recapitulação (/e/{slug}/recapitulacao), aberta depois do evento.
+// Só números gerais: nada de valores nem de quem deu cada presente
+public record RecapitulacaoResposta(
+    EventoPublicoResposta Evento,
+    string MensagemAgradecimento,
+    int PessoasPresentes,
+    int PresentesRecebidos,
+    int Presenteadores,
+    List<FotoPublicaResposta> Fotos);

@@ -12,6 +12,57 @@ public static partial class Validacoes
     public static bool EmailValido(string email) =>
         email.Length > 3 && email.Contains('@') && !email.StartsWith('@') && !email.EndsWith('@');
 
+    /// <summary>
+    /// Padroniza o telefone para o formato do WhatsApp (só dígitos, com DDI) e devolve nulo se for inválido.
+    /// Sem DDI, o número é tratado como brasileiro: "(11) 99999-8888" vira "5511999998888".
+    /// Com "+", aceita qualquer país: "+351 912 345 678" vira "351912345678".
+    /// </summary>
+    public static string? NormalizarTelefone(string? telefone)
+    {
+        var texto = (telefone ?? string.Empty).Trim();
+        if (!RegexDocumentoOuTelefone().IsMatch(texto))
+            return null;
+
+        var digitos = new string(texto.Where(char.IsAsciiDigit).ToArray());
+        if (texto.StartsWith('+'))
+            return digitos.Length is >= 8 and <= 15 ? digitos : null;
+        if (digitos.Length is 10 or 11)
+            return $"55{digitos}";
+        if (digitos.Length is 12 or 13 && digitos.StartsWith("55"))
+            return digitos;
+
+        return null;
+    }
+
+    /// <summary>
+    /// Valida os contatos opcionais (telefone e e-mail) e devolve os valores padronizados.
+    /// Campo vazio vira nulo; os erros vão para "telefone" e "email".
+    /// </summary>
+    public static (string? Telefone, string? Email) ValidarContato(
+        string? telefone, string? email, Dictionary<string, string[]> erros)
+    {
+        string? telefoneNormalizado = null;
+        if (TextoOpcional(telefone) is not null)
+        {
+            telefoneNormalizado = NormalizarTelefone(telefone);
+            if (telefoneNormalizado is null)
+                erros["telefone"] = ["Informe o telefone com DDD, ex.: (11) 99999-8888."];
+        }
+
+        string? emailNormalizado = null;
+        if (TextoOpcional(email) is not null)
+        {
+            emailNormalizado = NormalizarEmail(email);
+            if (!EmailValido(emailNormalizado) || emailNormalizado.Length > 200 || emailNormalizado.Contains(' '))
+            {
+                erros["email"] = ["Informe um e-mail válido."];
+                emailNormalizado = null;
+            }
+        }
+
+        return (telefoneNormalizado, emailNormalizado);
+    }
+
     /// <summary>Remove espaços nas pontas e transforma texto vazio em nulo.</summary>
     public static string? TextoOpcional(string? texto) => string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
 

@@ -1,6 +1,7 @@
 import { requisicao } from './cliente'
 import type {
   CompraCotas,
+  Contato,
   DadosPresenca,
   EventoPublico,
   FormandoPublico,
@@ -9,6 +10,7 @@ import type {
   Pix,
   Presenca,
   PresentePublico,
+  Recapitulacao,
   RespostaReserva,
 } from './tipos'
 
@@ -34,8 +36,8 @@ export const listarFotosPublicas = (slug: string) => requisicao<FotoPublica[]>(`
 export const confirmarPresenca = (slug: string, dados: DadosPresenca) =>
   requisicao<Presenca>(`${base(slug)}/presenca`, 'POST', dados)
 
-export const reservarPresente = (slug: string, presenteId: number, nome: string, jaComprado: boolean) =>
-  requisicao<RespostaReserva>(`${base(slug)}/presentes/${presenteId}/reserva`, 'POST', { nome, jaComprado })
+export const reservarPresente = (slug: string, presenteId: number, nome: string, jaComprado: boolean, contato?: Contato) =>
+  requisicao<RespostaReserva>(`${base(slug)}/presentes/${presenteId}/reserva`, 'POST', { nome, jaComprado, ...contato })
 
 export const marcarPresenteComprado = (slug: string, presenteId: number, codigoReserva: string) =>
   requisicao<PresentePublico>(`${base(slug)}/presentes/${presenteId}/comprado`, 'POST', { codigoReserva })
@@ -43,8 +45,11 @@ export const marcarPresenteComprado = (slug: string, presenteId: number, codigoR
 export const cancelarReservaPresente = (slug: string, presenteId: number, codigoReserva: string) =>
   requisicao<PresentePublico>(`${base(slug)}/presentes/${presenteId}/cancelar-reserva`, 'POST', { codigoReserva })
 
-export const comprarCotas = (slug: string, presenteId: number, nome: string, quantidade: number) =>
-  requisicao<CompraCotas>(`${base(slug)}/presentes/${presenteId}/cotas`, 'POST', { nome, quantidade })
+export const comprarCotas = (slug: string, presenteId: number, nome: string, quantidade: number, contato?: Contato) =>
+  requisicao<CompraCotas>(`${base(slug)}/presentes/${presenteId}/cotas`, 'POST', { nome, quantidade, ...contato })
+
+/** Recapitulação do evento: só abre depois da data do evento (antes disso, 404). */
+export const obterRecapitulacao = (slug: string) => requisicao<Recapitulacao>(`${base(slug)}/recapitulacao`)
 
 /** Valor opcional: sem valor, o convidado digita o quanto quiser no app do banco. */
 export const gerarPix = (slug: string, valor: number | null) => requisicao<Pix>(`${base(slug)}/pix`, 'POST', { valor })

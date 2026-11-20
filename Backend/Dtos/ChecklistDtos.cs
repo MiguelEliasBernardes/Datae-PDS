@@ -51,6 +51,7 @@ public enum AcaoDica
     Formandos,
     Despesas,
     Rateio,
+    PosEvento,
 }
 
 /// <summary>Dica calculada a partir do estado do evento; some (ou fica concluída) quando a situação se resolve.</summary>

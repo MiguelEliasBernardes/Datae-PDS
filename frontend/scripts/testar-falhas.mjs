@@ -35,6 +35,7 @@ const publico = await carregar('/src/api/publico.ts')
 const formatura = await carregar('/src/api/formatura.ts')
 const convites = await carregar('/src/api/convites.ts')
 const checklist = await carregar('/src/api/checklist.ts')
+const posEvento = await carregar('/src/api/posEvento.ts')
 
 let aprovados = 0
 const falhas = []
@@ -545,6 +546,94 @@ try {
     usarSessao(tokenB)
     await esperarErro(checklist.obterChecklist(formaturaEvento.id), 404)
     usarSessao(tokenA)
+  })
+
+  console.log('\nPós-evento')
+  const ontem = new Date(Date.now() - 86_400_000).toISOString()
+  let festa = null
+  await testar('telefone e e-mail inválidos na presença → 400 nos campos certos', async () => {
+    festa = await eventos.criarEvento({ tipo: 'Aniversario', dataEvento: ontem, nomeEvento: `Festa passada ${sufixo}` })
+    const erro = await esperarErro(
+      publico.confirmarPresenca(festa.slugPublico, { nome: 'Ana Lima', vaiComparecer: true, telefone: '123', email: 'sem-arroba' }),
+      400,
+    )
+    verificar(erro.doCampo('telefone') && erro.doCampo('email'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('contatos da presença, da reserva e das cotas chegam ao convidado (telefone com DDI)', async () => {
+    await publico.confirmarPresenca(festa.slugPublico, {
+      nome: 'Ana Lima', vaiComparecer: true, quantidadeAcompanhantes: 1, telefone: '(11) 98888-7777', email: 'Ana@Exemplo.com',
+    })
+    const bolo = await presentes.criarPresente(festa.id, { nome: 'Forma de bolo', valorEstimado: 200 })
+    const viagem = await presentes.criarPresente(festa.id, { nome: 'Viagem', valorEstimado: 300, quantidadeCotas: 3 })
+    await publico.reservarPresente(festa.slugPublico, bolo.id, 'Bruno Reis', true, { telefone: '', email: 'bruno@exemplo.com' })
+    // Sem contato desta vez: o telefone e o e-mail que a Ana deixou antes continuam
+    await publico.comprarCotas(festa.slugPublico, viagem.id, 'ana lima', 2)
+    const lista = await convidados.listarConvidados(festa.id)
+    const ana = lista.find((c) => c.nome === 'Ana Lima')
+    verificar(lista.length === 2, `convidados: ${lista.length}`)
+    verificar(ana.telefone === '5511988887777' && ana.email === 'ana@exemplo.com', JSON.stringify(ana))
+  })
+  await testar('resumo soma presentes e cotas e monta os agradecimentos', async () => {
+    const resumo = await posEvento.obterResumoPosEvento(festa.id)
+    verificar(resumo.eventoRealizado && resumo.totalArrecadado === 400, `total: ${resumo.totalArrecadado}`)
+    verificar(resumo.presentesComprados === 1 && resumo.cotasVendidas === 2 && resumo.presenteadores === 2, JSON.stringify(resumo))
+    verificar(resumo.presentes[0].nomeConvidado === 'Bruno Reis', JSON.stringify(resumo.presentes))
+    verificar(resumo.presentesComCotas[0].compras[0].valor === 200, JSON.stringify(resumo.presentesComCotas))
+    const ana = resumo.agradecimentos.find((a) => a.nome === 'Ana Lima')
+    verificar(ana.linkWhatsApp?.startsWith('https://wa.me/5511988887777?text='), ana.linkWhatsApp)
+    verificar(ana.mensagem.startsWith('Olá, Ana!') && ana.mensagem.includes('Viagem') && ana.mensagem.includes('/recapitulacao'), ana.mensagem)
+    const bruno = resumo.agradecimentos.find((a) => a.nome === 'Bruno Reis')
+    verificar(bruno && bruno.linkWhatsApp === null && bruno.email === 'bruno@exemplo.com', JSON.stringify(bruno))
+  })
+  await testar('a mensagem do organizador entra no agradecimento', async () => {
+    await eventos.atualizarEvento(festa.id, { mensagemAgradecimento: 'Valeu demais pela festa!' })
+    const resumo = await posEvento.obterResumoPosEvento(festa.id)
+    verificar(resumo.agradecimentos.every((a) => a.mensagem.includes('Valeu demais pela festa!')), 'mensagem não aplicada')
+  })
+  await testar('WhatsApp aberto fica registrado; sem telefone → 404', async () => {
+    const resumo = await posEvento.obterResumoPosEvento(festa.id)
+    const ana = resumo.agradecimentos.find((a) => a.nome === 'Ana Lima')
+    const bruno = resumo.agradecimentos.find((a) => a.nome === 'Bruno Reis')
+    await posEvento.registrarWhatsApp(festa.id, ana.convidadoId)
+    await esperarErro(posEvento.registrarWhatsApp(festa.id, bruno.convidadoId), 404)
+    const depois = await posEvento.obterResumoPosEvento(festa.id)
+    verificar(depois.agradecimentos.find((a) => a.nome === 'Ana Lima').whatsAppAbertoEm, 'não registrou')
+  })
+  await testar('e-mail de agradecimento vai uma vez para cada um (ou 503 sem e-mail configurado)', async () => {
+    const resumo = await posEvento.obterResumoPosEvento(festa.id)
+    if (!resumo.emailDisponivel) {
+      await esperarErro(posEvento.enviarAgradecimentosEmail(festa.id), 503)
+      await esperarErro(posEvento.enviarResumoPorEmail(festa.id), 503)
+      return
+    }
+    const envio = await posEvento.enviarAgradecimentosEmail(festa.id)
+    verificar(envio.enviados === 2 && envio.falhas === 0, JSON.stringify({ enviados: envio.enviados, falhas: envio.falhas }))
+    verificar(envio.resumo.agradecimentos.every((a) => a.emailEnviadoEm), 'não marcou como enviado')
+    const denovo = await posEvento.enviarAgradecimentosEmail(festa.id)
+    verificar(denovo.enviados === 0, `reenviou ${denovo.enviados}`)
+    const { email } = await posEvento.enviarResumoPorEmail(festa.id)
+    verificar(email === emailA, email)
+  })
+  await testar('recapitulação pública: números gerais depois do evento; antes da data → 404', async () => {
+    const recap = await publico.obterRecapitulacao(festa.slugPublico)
+    verificar(recap.pessoasPresentes === 2 && recap.presentesRecebidos === 2 && recap.presenteadores === 2, JSON.stringify(recap))
+    verificar(recap.mensagemAgradecimento === 'Valeu demais pela festa!', recap.mensagemAgradecimento)
+    verificar(!JSON.stringify(recap).includes('Bruno') && !JSON.stringify(recap).includes('@'), 'a recapitulação expôs dados de convidado')
+    await esperarErro(publico.obterRecapitulacao(evento.slugPublico), 404)
+    const previa = await posEvento.obterRecapitulacaoPrevia(evento.id)
+    verificar(previa.evento.slugPublico === evento.slugPublico, 'a pré-visualização deveria abrir antes da data')
+  })
+  await testar('quem não gerencia não vê o pós-evento (404 de fora, 403 para membro)', async () => {
+    usarSessao(tokenB)
+    await esperarErro(posEvento.obterResumoPosEvento(festa.id), 404)
+    usarSessao(tokenC)
+    await esperarErro(posEvento.obterResumoPosEvento(formaturaEvento.id), 403)
+    usarSessao(tokenA)
+  })
+  await testar('formando chamado "Recapitulação" não ocupa o endereço da recapitulação', async () => {
+    const formando = await formatura.criarFormando(formaturaEvento.id, { nome: 'Recapitulação' })
+    verificar(formando.slug !== 'recapitulacao', formando.slug)
+    await formatura.excluirFormando(formaturaEvento.id, formando.id)
   })
 
   console.log('\nSessão')

@@ -6,11 +6,15 @@
  */
 const PREFIXO_PUBLICO = '/e/'
 const PREFIXO_CONVITE = '/convite/'
+/** Endereço da recapitulação: /e/{slug}/recapitulacao (nenhum formando recebe este slug). */
+const SLUG_RECAPITULACAO = 'recapitulacao'
 
 export const linkPublicoEvento = (slug: string) => `${window.location.origin}${PREFIXO_PUBLICO}${slug}`
 
 export const linkPaginaFormando = (slug: string, slugFormando: string) =>
   `${linkPublicoEvento(slug)}/${slugFormando}`
+
+export const linkRecapitulacao = (slug: string) => `${linkPublicoEvento(slug)}/${SLUG_RECAPITULACAO}`
 
 export const linkConvite = (codigo: string) => `${window.location.origin}${PREFIXO_CONVITE}${codigo}`
 
@@ -25,11 +29,15 @@ function partesDaUrl(prefixo: string): string[] | null {
     .map((parte) => decodeURIComponent(parte))
 }
 
-/** Se a URL atual for de uma página pública: o slug do evento e, na sub-página, o do formando. */
-export function rotaPublicaDaUrl(): { slug: string; slugFormando: string | null } | null {
+/**
+ * Se a URL atual for de uma página pública: o slug do evento e, na sub-página, o do formando.
+ * `recapitulacao` indica a página de recapitulação do evento.
+ */
+export function rotaPublicaDaUrl(): { slug: string; slugFormando: string | null; recapitulacao: boolean } | null {
   const partes = partesDaUrl(PREFIXO_PUBLICO)
   if (!partes?.length) return null
-  return { slug: partes[0], slugFormando: partes[1] ?? null }
+  if (partes[1] === SLUG_RECAPITULACAO) return { slug: partes[0], slugFormando: null, recapitulacao: true }
+  return { slug: partes[0], slugFormando: partes[1] ?? null, recapitulacao: false }
 }
 
 /** Código do convite se a URL atual for /convite/{codigo}, senão null. */

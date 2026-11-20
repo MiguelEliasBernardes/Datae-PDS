@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { ErroApi, mensagemDeErro } from '../api/cliente'
 import { cancelarReservaPresente, marcarPresenteComprado, reservarPresente } from '../api/publico'
-import type { PresentePublico } from '../api/tipos'
+import type { Contato, PresentePublico } from '../api/tipos'
 import { esquecerReserva, guardarReserva } from '../dados/reservas'
 import { formatarMoeda } from '../dados/formatacao'
 import { AvisoErro } from './AvisoErro'
 import { Botao } from './Botao'
 import { CampoTexto } from './CampoTexto'
+import { CamposContato } from './CamposContato'
 
 /**
  * Conteúdo da janela de um presente na página pública.
@@ -29,6 +30,7 @@ export function FormularioReserva({
   onConcluido: (mensagem: string) => void
 }) {
   const [nome, setNome] = useState('')
+  const [contato, setContato] = useState<Contato>({ telefone: '', email: '' })
   const [erro, setErro] = useState<ErroApi | null>(null)
   const [mensagemGeral, setMensagemGeral] = useState<string | null>(null)
   const [enviando, setEnviando] = useState<'reservar' | 'comprado' | 'cancelar' | null>(null)
@@ -54,7 +56,7 @@ export function FormularioReserva({
       return
     }
     void executar(jaComprado ? 'comprado' : 'reservar', async () => {
-      const resposta = await reservarPresente(slug, presente.id, nome, jaComprado)
+      const resposta = await reservarPresente(slug, presente.id, nome, jaComprado, contato)
       guardarReserva(presente.id, resposta.codigoReserva)
       return jaComprado
         ? `Obrigado! "${presente.nome}" foi marcado como comprado.`
@@ -139,6 +141,7 @@ export function FormularioReserva({
         onChange={(e) => setNome(e.target.value)}
         erro={erro?.doCampo('nome')}
       />
+      <CamposContato prefixo="reserva" contato={contato} onAlterar={setContato} erro={erro} />
       <p className="text-[12px] text-muted">
         Ao reservar, ninguém mais pode escolher este presente. Depois de comprar, volte aqui neste mesmo aparelho e
         marque como comprado.

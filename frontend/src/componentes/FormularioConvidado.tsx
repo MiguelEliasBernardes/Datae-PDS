@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ErroApi, mensagemDeErro } from '../api/cliente'
 import type { Convidado, DadosConvidado, StatusPresenca } from '../api/tipos'
-import { rotulosStatusPresenca } from '../dados/formatacao'
+import { formatarTelefone, rotulosStatusPresenca } from '../dados/formatacao'
 import { AreaTexto } from './AreaTexto'
 import { AvisoErro } from './AvisoErro'
 import { Botao } from './Botao'
@@ -25,6 +25,7 @@ export function FormularioConvidado({
 }) {
   const [nome, setNome] = useState(convidado?.nome ?? '')
   const [email, setEmail] = useState(convidado?.email ?? '')
+  const [telefone, setTelefone] = useState(formatarTelefone(convidado?.telefone))
   const [status, setStatus] = useState<StatusPresenca>(convidado?.statusPresenca ?? 'Pendente')
   const [acompanhantes, setAcompanhantes] = useState(String(convidado?.quantidadeAcompanhantes ?? 0))
   const [observacao, setObservacao] = useState(convidado?.observacao ?? '')
@@ -66,6 +67,7 @@ export function FormularioConvidado({
       onSalvar({
         nome,
         email,
+        telefone,
         statusPresenca: status,
         quantidadeAcompanhantes: quantidade,
         observacao,
@@ -91,6 +93,15 @@ export function FormularioConvidado({
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         erro={erro?.doCampo('email')}
+      />
+      <CampoTexto
+        rotulo="WhatsApp (opcional)"
+        type="tel"
+        inputMode="tel"
+        placeholder="(11) 99999-8888"
+        value={telefone}
+        onChange={(e) => setTelefone(e.target.value)}
+        erro={erro?.doCampo('telefone')}
       />
 
       <div className="flex flex-col gap-2">

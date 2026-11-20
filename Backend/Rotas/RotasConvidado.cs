@@ -88,5 +88,6 @@ public static class RotasConvidado
         convidado.Email,
         convidado.StatusPresenca,
         convidado.QuantidadeAcompanhantes,
-        convidado.Observacao);
+        convidado.Observacao,
+        convidado.Telefone);
 }

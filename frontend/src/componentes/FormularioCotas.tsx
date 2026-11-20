@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { ErroApi, mensagemDeErro } from '../api/cliente'
 import { comprarCotas } from '../api/publico'
-import type { CompraCotas, PresentePublico } from '../api/tipos'
+import type { CompraCotas, Contato, PresentePublico } from '../api/tipos'
 import { formatarMoeda } from '../dados/formatacao'
 import { AvisoErro } from './AvisoErro'
 import { Botao } from './Botao'
 import { CampoTexto } from './CampoTexto'
+import { CamposContato } from './CamposContato'
 import { ExibicaoPix } from './ExibicaoPix'
 
 /**
@@ -26,6 +27,7 @@ export function FormularioCotas({
 }) {
   const restantes = (presente.quantidadeCotas ?? 0) - presente.cotasVendidas
   const [nome, setNome] = useState('')
+  const [contato, setContato] = useState<Contato>({ telefone: '', email: '' })
   const [quantidade, setQuantidade] = useState('1')
   const [erro, setErro] = useState<ErroApi | null>(null)
   const [mensagemGeral, setMensagemGeral] = useState<string | null>(null)
@@ -52,7 +54,7 @@ export function FormularioCotas({
     setMensagemGeral(null)
     setEnviando(true)
     try {
-      setCompra(await comprarCotas(slug, presente.id, nome, numero))
+      setCompra(await comprarCotas(slug, presente.id, nome, numero, contato))
       onComprado()
     } catch (e) {
       if (e instanceof ErroApi) setErro(e)
@@ -123,6 +125,8 @@ export function FormularioCotas({
             erro={erro?.doCampo('quantidade')}
           />
           {total !== null && <p className="text-[13px] font-medium text-heading">Total: {formatarMoeda(total)}</p>}
+          <CamposContato prefixo="cotas" contato={contato} onAlterar={setContato} erro={erro} />
+
           <Botao type="submit" disabled={somenteLeitura} carregando={enviando}>
             Dar {numero > 1 ? `${numero} cotas` : 'cota'}
           </Botao>

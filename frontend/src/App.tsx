@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import olho from './assets/eye.svg'
+import casaBranca from './assets/house-white.svg'
+import engrenagem from './assets/settings.svg'
 import { sair } from './api/autenticacao'
 import { definirAoExpirarSessao } from './api/cliente'
 import { obterUsuario } from './api/sessao'
@@ -18,6 +21,8 @@ import { PaginaEvento, PreVisualizacaoEvento } from './paginas/PaginaEvento'
 import { PaginaFormando } from './paginas/PaginaFormando'
 import { PainelEvento } from './paginas/PainelEvento'
 import { PainelFormatura } from './paginas/PainelFormatura'
+import { PaginaRecapitulacao } from './paginas/PaginaRecapitulacao'
+import { PosEvento } from './paginas/PosEvento'
 import { Presentes } from './paginas/Presentes'
 import { Rateio } from './paginas/Rateio'
 
@@ -37,6 +42,8 @@ type Tela =
   | 'despesas'
   | 'rateio'
   | 'checklist'
+  | 'pos-evento'
+  | 'recapitulacao'
 
 /**
  * Evento aberto no momento, qual painel ele usa (formatura tem um painel próprio) e o que o
@@ -49,11 +56,13 @@ interface EventoAberto {
 }
 
 /**
- * Endereços /e/{slug} abrem a página pública do evento e /e/{slug}/{formando} a sub-página de
- * um formando, para convidados (sem login). Qualquer outro endereço abre a área do organizador.
+ * Endereços /e/{slug} abrem a página pública do evento, /e/{slug}/{formando} a sub-página de
+ * um formando e /e/{slug}/recapitulacao a recapitulação, para convidados (sem login).
+ * Qualquer outro endereço abre a área do organizador.
  */
 function App() {
   const rota = rotaPublicaDaUrl()
+  if (rota?.recapitulacao) return <div className="app-shell"><PaginaRecapitulacao slug={rota.slug} /></div>
   if (rota?.slugFormando) {
     return <div className="app-shell"><PaginaFormando slug={rota.slug} slugFormando={rota.slugFormando} /></div>
   }
@@ -166,6 +175,7 @@ function AreaOrganizador() {
       Formandos: pode('GerenciarComissao') ? irPara('formandos') : undefined,
       Despesas: formatura ? irPara('despesas') : undefined,
       Rateio: formatura ? irPara('rateio') : undefined,
+      PosEvento: pode('GerenciarEvento') ? irPara('pos-evento') : undefined,
     }
 
     switch (tela) {
@@ -178,6 +188,7 @@ function AreaOrganizador() {
             onAbrirPresentes={irPara('presentes')}
             onAbrirMural={irPara('mural')}
             onAbrirChecklist={irPara('checklist')}
+            onAbrirPosEvento={irPara('pos-evento')}
             onAbrirConfiguracoes={irPara('configuracoes')}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -194,6 +205,7 @@ function AreaOrganizador() {
             onAbrirConvidados={irPara('convidados')}
             onAbrirMeusPresentes={irPara('meus-presentes')}
             onAbrirChecklist={irPara('checklist')}
+            onAbrirPosEvento={irPara('pos-evento')}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -275,6 +287,27 @@ function AreaOrganizador() {
             onVoltar={voltarAoPainel}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'pos-evento':
+        return (
+          <PosEvento
+            eventoId={evento.id}
+            onVoltar={voltarAoPainel}
+            onAbrirRecapitulacao={irPara('recapitulacao')}
+            onAbrirConfiguracoes={abrirConfiguracoes}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'recapitulacao':
+        return (
+          <PaginaRecapitulacao
+            eventoId={evento.id}
+            navegacao={[
+              { icone: casaBranca, rotulo: 'Inicio', onClick: voltarAoPainel },
+              { icone: olho, rotulo: 'Pós-evento', onClick: irPara('pos-evento') },
+              { icone: engrenagem, rotulo: 'Configurações', onClick: abrirConfiguracoes },
+            ]}
           />
         )
       case 'rateio':

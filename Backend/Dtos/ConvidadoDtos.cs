@@ -7,7 +7,8 @@ public record CriarConvidadoRequisicao(
     string? Email,
     StatusPresenca? StatusPresenca,
     int? QuantidadeAcompanhantes,
-    string? Observacao);
+    string? Observacao,
+    string? Telefone = null);
 
 // Campos nulos não são alterados; texto vazio ("") limpa os campos opcionais
 public record AtualizarConvidadoRequisicao(
@@ -15,7 +16,8 @@ public record AtualizarConvidadoRequisicao(
     string? Email,
     StatusPresenca? StatusPresenca,
     int? QuantidadeAcompanhantes,
-    string? Observacao);
+    string? Observacao,
+    string? Telefone = null);
 
 public record ConvidadoResposta(
     int Id,
@@ -24,4 +26,5 @@ public record ConvidadoResposta(
     string? Email,
     StatusPresenca StatusPresenca,
     int QuantidadeAcompanhantes,
-    string? Observacao);
+    string? Observacao,
+    string? Telefone);

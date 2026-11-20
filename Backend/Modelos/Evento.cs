@@ -37,5 +37,11 @@ public class Evento
     public bool ListaPresentesAtiva { get; set; } = true;
     public bool MuralAtivo { get; set; } = true;
 
+    // Pós-evento: recado do organizador no agradecimento e na página de recapitulação (nulo = texto padrão)
+    public string? MensagemAgradecimento { get; set; }
+
+    // Quando o resumo do pós-evento foi enviado por e-mail ao dono (o envio automático acontece uma vez só)
+    public DateTime? ResumoEnviadoEm { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }

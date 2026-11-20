@@ -15,6 +15,9 @@ obj/
 # Fotos enviadas pelos convidados (mural) — ficam só no servidor
 Backend/Uploads/
 
+# E-mails gravados em arquivo em desenvolvimento (Email:PastaSaida)
+Backend/EmailsEnviados/
+
 # Configurações locais com segredos (use para sobrescrever o appsettings sem commitar)
 appsettings.Local.json
 

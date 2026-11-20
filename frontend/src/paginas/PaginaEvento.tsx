@@ -18,7 +18,7 @@ import { MensagemLista } from '../componentes/MensagemLista'
 import { NavegacaoInferior, type ItemNavegacao } from '../componentes/NavegacaoInferior'
 import { RotuloSecao } from '../componentes/RotuloSecao'
 import { formatarDataPorExtenso, rotulosTipoEvento, tempoRestante } from '../dados/formatacao'
-import { linkPaginaFormando, linkPublicoEvento } from '../dados/rotas'
+import { linkPaginaFormando, linkPublicoEvento, linkRecapitulacao } from '../dados/rotas'
 import { useAgora } from '../hooks/useAgora'
 import { useCarregamento } from '../hooks/useCarregamento'
 
@@ -133,9 +133,12 @@ export function PaginaEvento({
               </h1>
               <div className="absolute inset-x-6 bottom-6 lg:max-w-xs">
                 {eventoJaComecou ? (
-                  <p className="rounded-[12px] bg-white/25 px-2 py-3 text-center text-[15px] font-bold text-white backdrop-blur-sm">
-                    O grande dia chegou!
-                  </p>
+                  <a
+                    href={linkRecapitulacao(slug)}
+                    className="block rounded-[12px] bg-white/25 px-2 py-3 text-center text-[15px] font-bold text-white backdrop-blur-sm hover:bg-white/35"
+                  >
+                    O grande dia chegou! Ver a recapitulação
+                  </a>
                 ) : (
                   <ContagemRegressiva unidades={tempoRestante(evento.dataEvento, agora)} />
                 )}

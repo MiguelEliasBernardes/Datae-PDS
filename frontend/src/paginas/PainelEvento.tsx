@@ -7,6 +7,7 @@ import olho from '../assets/eye.svg'
 import presente from '../assets/gift.svg'
 import casa from '../assets/house.svg'
 import emailConfirmado from '../assets/mail-check.svg'
+import notaDinheiro from '../assets/banknote-arrow-down.svg'
 import pacote from '../assets/package.svg'
 import pix from '../assets/pix.svg'
 import engrenagem from '../assets/settings.svg'
@@ -33,6 +34,7 @@ export function PainelEvento({
   onAbrirPresentes,
   onAbrirMural,
   onAbrirChecklist,
+  onAbrirPosEvento,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -42,6 +44,7 @@ export function PainelEvento({
   onAbrirPresentes: () => void
   onAbrirMural: () => void
   onAbrirChecklist: () => void
+  onAbrirPosEvento: () => void
   onAbrirConfiguracoes: () => void
   onAbrirVisualizacao: () => void
 }) {
@@ -151,6 +154,7 @@ export function PainelEvento({
             { icone: presente, titulo: 'Presentes', onClick: onAbrirPresentes },
             { icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural },
             { icone: circuloCheck, titulo: 'Checklist', onClick: onAbrirChecklist },
+            { icone: notaDinheiro, titulo: 'Pós-evento', onClick: onAbrirPosEvento },
             // A chave Pix é cadastrada nas configurações da página
             { icone: pix, titulo: 'Financeiro (PIX)', onClick: onAbrirConfiguracoes },
           ]}

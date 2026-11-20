@@ -204,6 +204,10 @@ public class ServicoFormando(ContextoBanco banco)
         var slug = slugBase;
         var sufixo = 2;
 
+        // "recapitulacao" é o endereço da página de recapitulação do evento (/e/{slug}/recapitulacao)
+        if (slug == ServicoPosEvento.SlugRecapitulacao)
+            slug = $"{slugBase}-{sufixo++}";
+
         while (await banco.Formandos.AnyAsync(f => f.EventoId == eventoId && f.Slug == slug))
             slug = $"{slugBase}-{sufixo++}";
 

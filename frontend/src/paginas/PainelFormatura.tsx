@@ -6,6 +6,7 @@ import olho from '../assets/eye.svg'
 import presente from '../assets/gift.svg'
 import casa from '../assets/house.svg'
 import emailConfirmado from '../assets/mail-check.svg'
+import obrigado from '../assets/gift-stat.svg'
 import engrenagem from '../assets/settings.svg'
 import dividir from '../assets/split.svg'
 import pessoas from '../assets/users.svg'
@@ -36,6 +37,7 @@ export function PainelFormatura({
   onAbrirConvidados,
   onAbrirMeusPresentes,
   onAbrirChecklist,
+  onAbrirPosEvento,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -48,6 +50,7 @@ export function PainelFormatura({
   onAbrirConvidados: () => void
   onAbrirMeusPresentes: () => void
   onAbrirChecklist: () => void
+  onAbrirPosEvento: () => void
   onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
@@ -70,6 +73,7 @@ export function PainelFormatura({
     if (pode(evento, 'ModerarMural')) acessos.push({ icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural })
     if (pode(evento, 'GerenciarEvento')) acessos.push({ icone: emailConfirmado, titulo: 'Convidados', onClick: onAbrirConvidados })
     acessos.push({ icone: circuloCheck, titulo: 'Checklist', onClick: onAbrirChecklist })
+    if (pode(evento, 'GerenciarEvento')) acessos.push({ icone: obrigado, titulo: 'Pós-evento', onClick: onAbrirPosEvento })
   }
 
   return (

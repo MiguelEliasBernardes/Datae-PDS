@@ -47,6 +47,8 @@ export interface Evento {
   permissoes: Permissao[]
   /** Código de convite geral da turma; só vem para quem gerencia a comissão (null = desativado). */
   codigoTurma: string | null
+  /** Recado do agradecimento pós-evento e da recapitulação (null = texto padrão). */
+  mensagemAgradecimento: string | null
 }
 
 export interface DadosEvento {
@@ -64,6 +66,8 @@ export interface DadosEvento {
   cidadePix?: string
   listaPresentesAtiva?: boolean
   muralAtivo?: boolean
+  /** Texto vazio ("") volta para a mensagem padrão. */
+  mensagemAgradecimento?: string
 }
 
 export interface Convidado {
@@ -71,6 +75,8 @@ export interface Convidado {
   eventoId: number
   nome: string
   email: string | null
+  /** Só dígitos, com DDI (ex.: 5511999998888). */
+  telefone: string | null
   statusPresenca: StatusPresenca
   quantidadeAcompanhantes: number
   observacao: string | null
@@ -79,6 +85,7 @@ export interface Convidado {
 export interface DadosConvidado {
   nome: string
   email?: string
+  telefone?: string
   statusPresenca?: StatusPresenca
   quantidadeAcompanhantes?: number
   observacao?: string
@@ -164,7 +171,13 @@ export interface PresentePublico {
   valorCota: number | null
 }
 
-export interface DadosPresenca {
+/** Contatos opcionais que o convidado deixa na página pública, para receber o agradecimento. */
+export interface Contato {
+  telefone: string
+  email: string
+}
+
+export interface DadosPresenca extends Partial<Contato> {
   nome: string
   vaiComparecer: boolean
   quantidadeAcompanhantes?: number
@@ -312,6 +325,7 @@ export type AcaoDica =
   | 'Formandos'
   | 'Despesas'
   | 'Rateio'
+  | 'PosEvento'
 
 export interface ItemChecklist {
   id: number
@@ -366,4 +380,92 @@ export interface SugestaoChecklist {
   categoria: CategoriaChecklist
   diasAntes: number | null
   valorSugerido: number | null
+}
+
+// ===== Pós-evento =====
+
+export interface PresenteRecebido {
+  id: number
+  nome: string
+  valor: number | null
+  status: StatusPresente
+  nomeConvidado: string | null
+  /** Lista pessoal de um formando (null = lista do evento). */
+  nomeFormando: string | null
+}
+
+export interface CompraCotaResumo {
+  nomeConvidado: string
+  quantidade: number
+  valor: number
+  compradaEm: string
+}
+
+export interface PresenteCotasResumo {
+  id: number
+  nome: string
+  valorEstimado: number | null
+  quantidadeCotas: number
+  cotasVendidas: number
+  valorArrecadado: number
+  nomeFormando: string | null
+  compras: CompraCotaResumo[]
+}
+
+/** Convidado a quem agradecer, com a mensagem já personalizada. */
+export interface Agradecimento {
+  convidadoId: number
+  nome: string
+  telefone: string | null
+  email: string | null
+  motivos: string[]
+  mensagem: string
+  /** Link wa.me com a mensagem pronta (null sem telefone). */
+  linkWhatsApp: string | null
+  emailEnviadoEm: string | null
+  whatsAppAbertoEm: string | null
+}
+
+export interface ResumoPosEvento {
+  nomeEvento: string
+  dataEvento: string
+  eventoRealizado: boolean
+  /** Estimado: presentes inteiros reservados/comprados (com valor) + cotas vendidas. */
+  totalArrecadado: number
+  valorPresentes: number
+  valorCotas: number
+  presentesComprados: number
+  presentesReservados: number
+  cotasVendidas: number
+  presenteadores: number
+  confirmados: number
+  acompanhantes: number
+  recusados: number
+  pendentes: number
+  fotosAprovadas: number
+  presentes: PresenteRecebido[]
+  presentesComCotas: PresenteCotasResumo[]
+  agradecimentos: Agradecimento[]
+  mensagemAgradecimento: string | null
+  mensagemPadrao: string
+  linkRecapitulacao: string
+  /** False quando o servidor não tem e-mail configurado. */
+  emailDisponivel: boolean
+  resumoEnviadoEm: string | null
+}
+
+export interface EnvioAgradecimentos {
+  enviados: number
+  falhas: number
+  resumo: ResumoPosEvento
+}
+
+/** Página de recapitulação: só números gerais, sem valores nem nomes de quem deu presente. */
+export interface Recapitulacao {
+  evento: EventoPublico
+  mensagemAgradecimento: string
+  pessoasPresentes: number
+  presentesRecebidos: number
+  presenteadores: number
+  fotos: FotoPublica[]
 }

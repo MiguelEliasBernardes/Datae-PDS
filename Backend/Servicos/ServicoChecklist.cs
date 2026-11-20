@@ -286,6 +286,19 @@ public class ServicoChecklist(ContextoBanco banco, ServicoRateio servicoRateio)
             dicas.Add(new("pix", "Configure o Pix para receber presentes em dinheiro", null,
                 evento.ChavePix is not null, AcaoDica.Configuracoes));
 
+            // Depois do evento: agradecer quem foi e quem deu presente
+            if (evento.DataEvento <= DateTime.UtcNow)
+            {
+                var faltaAgradecer = await banco.Convidados.AnyAsync(c => c.EventoId == evento.Id
+                    && (c.Telefone != null || c.Email != null)
+                    && c.AgradecimentoEmailEm == null && c.AgradecimentoWhatsAppEm == null
+                    && (c.StatusPresenca == StatusPresenca.Confirmado
+                        || banco.ItensPresente.Any(p => p.ConvidadoId == c.Id)
+                        || banco.CotasPresente.Any(k => k.ConvidadoId == c.Id)));
+                dicas.Add(new("agradecimentos", "Agradeça os convidados",
+                    "Mande a mensagem por WhatsApp ou e-mail com o link da recapitulação.", !faltaAgradecer, AcaoDica.PosEvento));
+            }
+
             if (!formatura && evento.ListaPresentesAtiva)
             {
                 var temPresentes = await banco.ItensPresente.AnyAsync(p => p.EventoId == evento.Id && p.FormandoId == null);

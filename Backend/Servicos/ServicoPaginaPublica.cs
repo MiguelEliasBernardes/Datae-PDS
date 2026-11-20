@@ -107,11 +107,12 @@ public class ServicoPaginaPublica(ContextoBanco banco)
             erros["quantidadeAcompanhantes"] = [$"Informe de 0 a {MaximoAcompanhantes} acompanhantes."];
         if (observacao?.Length > 500)
             erros["observacao"] = ["A observação pode ter no máximo 500 caracteres."];
+        var (telefone, email) = ValidarContato(requisicao.Telefone, requisicao.Email, erros);
 
         if (erros.Count > 0)
             return Resultado<Convidado>.Invalido(erros);
 
-        var convidado = await BuscarOuCriarConvidadoAsync(evento.Id, nome);
+        var convidado = await BuscarOuCriarConvidadoAsync(evento.Id, nome, telefone, email);
         convidado.StatusPresenca = requisicao.VaiComparecer ? StatusPresenca.Confirmado : StatusPresenca.Recusado;
         convidado.QuantidadeAcompanhantes = acompanhantes;
         // Só sobrescreve a observação se o convidado escreveu algo, para não apagar a anotação anterior
@@ -136,10 +137,14 @@ public class ServicoPaginaPublica(ContextoBanco banco)
             return ListaDesativada<(ItemPresente, string)>();
 
         var nome = NormalizarNome(requisicao.Nome);
+        var errosReserva = new Dictionary<string, string[]>();
         if (nome.Length == 0)
-            return Resultado<(ItemPresente, string)>.Invalido(new() { ["nome"] = ["Informe seu nome para reservar."] });
-        if (nome.Length > 120)
-            return Resultado<(ItemPresente, string)>.Invalido(new() { ["nome"] = ["O nome pode ter no máximo 120 caracteres."] });
+            errosReserva["nome"] = ["Informe seu nome para reservar."];
+        else if (nome.Length > 120)
+            errosReserva["nome"] = ["O nome pode ter no máximo 120 caracteres."];
+        var (telefone, email) = ValidarContato(requisicao.Telefone, requisicao.Email, errosReserva);
+        if (errosReserva.Count > 0)
+            return Resultado<(ItemPresente, string)>.Invalido(errosReserva);
 
         var presente = await banco.ItensPresente.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == presenteId && p.EventoId == evento.Id);
@@ -153,7 +158,7 @@ public class ServicoPaginaPublica(ContextoBanco banco)
 
         await using var transacao = await banco.Database.BeginTransactionAsync();
 
-        var convidado = await BuscarOuCriarConvidadoAsync(evento.Id, nome);
+        var convidado = await BuscarOuCriarConvidadoAsync(evento.Id, nome, telefone, email);
         await banco.SaveChangesAsync();
 
         var codigo = Guid.NewGuid().ToString("N");
@@ -241,6 +246,7 @@ public class ServicoPaginaPublica(ContextoBanco banco)
             erros["nome"] = ["O nome pode ter no máximo 120 caracteres."];
         if (quantidade is < 1 or > MaximoCotasPorCompra)
             erros["quantidade"] = ["Escolha pelo menos 1 cota."];
+        var (telefone, email) = ValidarContato(requisicao.Telefone, requisicao.Email, erros);
 
         if (erros.Count > 0)
             return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Invalido(erros);
@@ -263,7 +269,7 @@ public class ServicoPaginaPublica(ContextoBanco banco)
 
         await using var transacao = await banco.Database.BeginTransactionAsync();
 
-        var convidado = await BuscarOuCriarConvidadoAsync(evento.Id, nome);
+        var convidado = await BuscarOuCriarConvidadoAsync(evento.Id, nome, telefone, email);
         await banco.SaveChangesAsync();
 
         var alterados = await banco.ItensPresente
@@ -323,7 +329,11 @@ public class ServicoPaginaPublica(ContextoBanco banco)
         return Resultado<ItemPresente>.Ok(presente);
     }
 
-    private async Task<Convidado> BuscarOuCriarConvidadoAsync(int eventoId, string nome)
+    /// <summary>
+    /// Acha o convidado pelo nome ou cria um novo. Telefone e e-mail informados agora substituem os antigos;
+    /// se vierem vazios, os que já estavam guardados continuam.
+    /// </summary>
+    private async Task<Convidado> BuscarOuCriarConvidadoAsync(int eventoId, string nome, string? telefone, string? email)
     {
         var nomeMinusculo = nome.ToLower();
         var convidado = await banco.Convidados
@@ -336,6 +346,11 @@ public class ServicoPaginaPublica(ContextoBanco banco)
             convidado = new Convidado { EventoId = eventoId, Nome = nome };
             banco.Convidados.Add(convidado);
         }
+
+        if (telefone is not null)
+            convidado.Telefone = telefone;
+        if (email is not null)
+            convidado.Email = email;
 
         return convidado;
     }

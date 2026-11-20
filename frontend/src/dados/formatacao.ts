@@ -99,6 +99,16 @@ export function formatarDataPorExtenso(iso: string) {
 }
 
 /** 199.9 → "R$ 199,90". */
+/**
+ * Telefone guardado só com dígitos e DDI ("5511999998888") para exibir: "(11) 99999-8888".
+ * Números de outros países aparecem como "+351912345678".
+ */
+export function formatarTelefone(telefone: string | null | undefined) {
+  if (!telefone) return ''
+  const brasil = /^55(\d{2})(\d{4,5})(\d{4})$/.exec(telefone)
+  return brasil ? `(${brasil[1]}) ${brasil[2]}-${brasil[3]}` : `+${telefone}`
+}
+
 export function formatarMoeda(valor: number | null | undefined) {
   if (valor === null || valor === undefined) return 'Sem valor definido'
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })

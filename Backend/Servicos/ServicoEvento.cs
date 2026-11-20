@@ -109,6 +109,10 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         ValidarCores(requisicao.CorPrincipal, requisicao.CorSecundaria, erros);
         AplicarPix(evento, requisicao, erros);
 
+        var mensagemAgradecimento = TextoOpcional(requisicao.MensagemAgradecimento);
+        if (mensagemAgradecimento?.Length > 1000)
+            erros["mensagemAgradecimento"] = ["A mensagem pode ter no máximo 1000 caracteres."];
+
         if (erros.Count > 0)
             return Resultado<AcessoEvento>.Invalido(erros);
 
@@ -124,6 +128,8 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
             evento.ListaPresentesAtiva = listaPresentesAtiva;
         if (requisicao.MuralAtivo is bool muralAtivo)
             evento.MuralAtivo = muralAtivo;
+        if (requisicao.MensagemAgradecimento is not null)
+            evento.MensagemAgradecimento = mensagemAgradecimento;
 
         await banco.SaveChangesAsync();
         return acesso;
