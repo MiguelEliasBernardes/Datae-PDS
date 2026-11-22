@@ -10,6 +10,7 @@ import sacola from '../assets/shopping-bag.svg'
 import { listarConvidados } from '../api/convidados'
 import { atualizarPresente, criarPresente, excluirPresente, listarPresentes } from '../api/presentes'
 import type { DadosPresente, Presente } from '../api/tipos'
+import { AssistentePresentes } from '../componentes/AssistentePresentes'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { CartaoMinhaPagina } from '../componentes/CartaoMinhaPagina'
 import { Botao } from '../componentes/Botao'
@@ -62,9 +63,11 @@ export function Presentes({
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState<Filtro | null>(null)
   const [edicao, setEdicao] = useState<Edicao>(null)
+  const [assistenteAberto, setAssistenteAberto] = useState(false)
 
   const alternarFiltro = (f: Filtro) => setFiltro((atual) => (atual === f ? null : f))
   const fecharJanela = useCallback(() => setEdicao(null), [])
+  const fecharAssistente = useCallback(() => setAssistenteAberto(false), [])
 
   const visiveis = useMemo(() => {
     return (presentes ?? []).filter((p) => {
@@ -130,14 +133,19 @@ export function Presentes({
         <CartaoEstatistica icone={circuloCheck} valor={String(disponiveis)} tom="pessego" rotulo="Disponíveis" />
       </div>
 
-      {/* Adicionar presente */}
-      <Botao
-        className="mt-5 lg:max-w-xs"
-        onClick={() => setEdicao('novo')}
-        icone={<img src={circuloMais} alt="" width={24} height={24} />}
-      >
-        Adicionar Presente
-      </Botao>
+      {/* Adicionar presente (à mão ou com as sugestões do assistente de IA) */}
+      <div className="mt-5 flex flex-col gap-2 lg:flex-row lg:gap-3">
+        <Botao
+          className="lg:max-w-xs"
+          onClick={() => setEdicao('novo')}
+          icone={<img src={circuloMais} alt="" width={24} height={24} />}
+        >
+          Adicionar Presente
+        </Botao>
+        <Botao className="lg:max-w-xs" variante="secundario" onClick={() => setAssistenteAberto(true)}>
+          Sugerir com IA
+        </Botao>
+      </div>
 
       {/* Busca */}
       <CampoTexto
@@ -200,6 +208,19 @@ export function Presentes({
         )}
         {edicao !== null && edicao !== 'novo' && edicao.quantidadeCotas !== null && (
           <ListaCotas eventoId={eventoId} presenteId={edicao.id} minhaLista={minhaLista} onAlterado={recarregar} />
+        )}
+      </JanelaModal>
+
+      <JanelaModal titulo="Sugestões com IA" aberta={assistenteAberto} onFechar={fecharAssistente}>
+        {assistenteAberto && (
+          <AssistentePresentes
+            eventoId={eventoId}
+            minhaLista={minhaLista}
+            onAdicionados={() => {
+              setAssistenteAberto(false)
+              recarregar()
+            }}
+          />
         )}
       </JanelaModal>
     </LayoutPainel>

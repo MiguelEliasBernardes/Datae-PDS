@@ -36,6 +36,7 @@ const formatura = await carregar('/src/api/formatura.ts')
 const convites = await carregar('/src/api/convites.ts')
 const checklist = await carregar('/src/api/checklist.ts')
 const posEvento = await carregar('/src/api/posEvento.ts')
+const assistente = await carregar('/src/api/assistente.ts')
 
 let aprovados = 0
 const falhas = []
@@ -634,6 +635,55 @@ try {
     const formando = await formatura.criarFormando(formaturaEvento.id, { nome: 'Recapitulação' })
     verificar(formando.slug !== 'recapitulacao', formando.slug)
     await formatura.excluirFormando(formaturaEvento.id, formando.id)
+  })
+
+  console.log('\nAssistente de IA')
+  // Nada aqui chama a IA de verdade (cada chamada custa dinheiro): só o status, as validações,
+  // as permissões e o 503 quando a chave não está configurada
+  let statusIa = null
+  await testar('status do assistente mostra o limite de gerações', async () => {
+    statusIa = await assistente.obterStatusAssistente(evento.id)
+    verificar(statusIa.limiteGeracoes === 3 && statusIa.geracoesRestantes === 3, JSON.stringify(statusIa))
+  })
+  await testar('pedido de presentes inválido → 400 nos campos certos', async () => {
+    const erro = await esperarErro(
+      assistente.sugerirPresentes(evento.id, { valorMinimo: 500, valorMaximo: 100, quantidade: 50 }),
+      400,
+    )
+    verificar(erro.doCampo('valorMaximo') && erro.doCampo('quantidade'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('pedido de roteiro com horário e duração inválidos → 400', async () => {
+    const erro = await esperarErro(
+      assistente.sugerirRoteiro(evento.id, { horarioInicio: '25:99', duracaoHoras: 30, publico: 'Adultos' }),
+      400,
+    )
+    verificar(erro.doCampo('horarioInicio') && erro.doCampo('duracaoHoras'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('sem a chave da IA no servidor → 503 (e a geração não é contada)', async () => {
+    if (statusIa?.disponivel) return // com a chave configurada, o teste não gasta uma chamada de verdade
+    await esperarErro(assistente.sugerirPresentes(evento.id, { quantidade: 5 }), 503)
+    await esperarErro(
+      assistente.sugerirRoteiro(evento.id, { horarioInicio: '19:00', duracaoHoras: 4, publico: 'Familia' }),
+      503,
+    )
+    const depois = await assistente.obterStatusAssistente(evento.id)
+    verificar(depois.geracoesRestantes === 3, `restantes: ${depois.geracoesRestantes}`)
+  })
+  await testar('lista pessoal só para formandos (409 fora da formatura)', async () => {
+    await esperarErro(assistente.obterStatusAssistente(evento.id, true), 409)
+  })
+  await testar('quem não gerencia não usa o assistente (404 de fora, 403 para membro)', async () => {
+    usarSessao(tokenB)
+    await esperarErro(assistente.obterStatusAssistente(evento.id), 404)
+    usarSessao(tokenC)
+    await esperarErro(
+      assistente.sugerirRoteiro(formaturaEvento.id, { horarioInicio: '19:00', duracaoHoras: 4, publico: 'Jovens' }),
+      403,
+    )
+    // O membro tem a própria lista pessoal, com as gerações dele
+    const minhaLista = await assistente.obterStatusAssistente(formaturaEvento.id, true)
+    verificar(minhaLista.geracoesRestantes === 3, JSON.stringify(minhaLista))
+    usarSessao(tokenA)
   })
 
   console.log('\nSessão')

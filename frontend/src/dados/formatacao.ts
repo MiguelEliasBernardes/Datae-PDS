@@ -1,6 +1,8 @@
 import type {
   CategoriaChecklist,
+  EstiloPresente,
   PapelFormando,
+  PublicoEvento,
   StatusFoto,
   StatusPresenca,
   StatusPresente,
@@ -57,6 +59,25 @@ export const rotulosCategoriaChecklist: Record<CategoriaChecklist, string> = {
   Decoracao: 'Decoração',
   Brincadeiras: 'Brincadeiras',
   Itens: 'Itens e presentes',
+}
+
+/** Estilos de presente que o assistente de IA aceita. */
+export const rotulosEstiloPresente: Record<EstiloPresente, string> = {
+  Cozinha: 'Cozinha',
+  Casa: 'Casa e utilidades',
+  Decoracao: 'Decoração',
+  Tecnologia: 'Tecnologia',
+  Experiencias: 'Experiências',
+  Pessoal: 'Uso pessoal',
+  Lazer: 'Lazer',
+}
+
+/** Público do evento, para o roteiro sugerido pelo assistente. */
+export const rotulosPublicoEvento: Record<PublicoEvento, string> = {
+  Adultos: 'Adultos',
+  Familia: 'Famílias',
+  Jovens: 'Jovens',
+  Criancas: 'Crianças',
 }
 
 /**

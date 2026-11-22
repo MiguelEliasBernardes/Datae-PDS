@@ -12,6 +12,9 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Segredos locais (ex.: Ia:ChaveApi) num arquivo que o git ignora
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -54,6 +57,8 @@ builder.Services.AddScoped<ServicoConvite>();
 builder.Services.AddScoped<ServicoChecklist>();
 builder.Services.AddScoped<ServicoPosEvento>();
 builder.Services.AddSingleton<ServicoEmail>();
+builder.Services.AddSingleton<ClienteIa>();
+builder.Services.AddScoped<ServicoAssistente>();
 builder.Services.AddHostedService<ResumoPosEventoAutomatico>();
 builder.Services.AddSingleton<ArmazenamentoArquivos>();
 
@@ -110,6 +115,7 @@ app.MapearRotasFormatura();
 app.MapearRotasConvite();
 app.MapearRotasChecklist();
 app.MapearRotasPosEvento();
+app.MapearRotasAssistente();
 app.MapearRotasPublicas();
 
 app.Run();

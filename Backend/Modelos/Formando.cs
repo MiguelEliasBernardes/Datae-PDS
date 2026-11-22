@@ -25,5 +25,8 @@ public class Formando
     // Recado do formando na sub-página pública (ex.: agradecimento aos convidados)
     public string? Mensagem { get; set; }
 
+    // Quantas sugestões do assistente de IA a lista pessoal do formando já usou (ver ServicoAssistente)
+    public int GeracoesIa { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }

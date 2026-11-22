@@ -25,6 +25,7 @@ import { PaginaRecapitulacao } from './paginas/PaginaRecapitulacao'
 import { PosEvento } from './paginas/PosEvento'
 import { Presentes } from './paginas/Presentes'
 import { Rateio } from './paginas/Rateio'
+import { Roteiro } from './paginas/Roteiro'
 
 type Tela =
   | 'login'
@@ -44,6 +45,7 @@ type Tela =
   | 'checklist'
   | 'pos-evento'
   | 'recapitulacao'
+  | 'roteiro'
 
 /**
  * Evento aberto no momento, qual painel ele usa (formatura tem um painel próprio) e o que o
@@ -189,6 +191,7 @@ function AreaOrganizador() {
             onAbrirMural={irPara('mural')}
             onAbrirChecklist={irPara('checklist')}
             onAbrirPosEvento={irPara('pos-evento')}
+            onAbrirRoteiro={irPara('roteiro')}
             onAbrirConfiguracoes={irPara('configuracoes')}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -206,6 +209,7 @@ function AreaOrganizador() {
             onAbrirMeusPresentes={irPara('meus-presentes')}
             onAbrirChecklist={irPara('checklist')}
             onAbrirPosEvento={irPara('pos-evento')}
+            onAbrirRoteiro={irPara('roteiro')}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -285,6 +289,16 @@ function AreaOrganizador() {
             podeEscolherResponsavel={formatura && pode('GerenciarComissao')}
             acoes={acoesDicas}
             onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={abrirConfiguracoes}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'roteiro':
+        return (
+          <Roteiro
+            eventoId={evento.id}
+            onVoltar={voltarAoPainel}
+            onAbrirChecklist={irPara('checklist')}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />

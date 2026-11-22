@@ -469,3 +469,63 @@ export interface Recapitulacao {
   presenteadores: number
   fotos: FotoPublica[]
 }
+
+/* ===== Assistente de IA (só sugere; o que o organizador escolher é salvo pelas rotas normais) ===== */
+
+export type EstiloPresente = 'Cozinha' | 'Casa' | 'Decoracao' | 'Tecnologia' | 'Experiencias' | 'Pessoal' | 'Lazer'
+export type PublicoEvento = 'Adultos' | 'Familia' | 'Jovens' | 'Criancas'
+
+export interface StatusAssistente {
+  /** False quando o servidor não tem a chave da IA configurada. */
+  disponivel: boolean
+  geracoesRestantes: number
+  limiteGeracoes: number
+}
+
+export interface PedidoSugestoesPresentes {
+  minhaLista?: boolean
+  valorMinimo?: number | null
+  valorMaximo?: number | null
+  estilos?: EstiloPresente[]
+  quantidade?: number
+  observacoes?: string
+}
+
+export interface PresenteSugerido {
+  nome: string
+  descricao: string | null
+  valorEstimado: number | null
+  /** Nulo = presente inteiro. */
+  quantidadeCotas: number | null
+}
+
+export interface SugestoesPresentes {
+  presentes: PresenteSugerido[]
+  geracoesRestantes: number
+}
+
+export interface PedidoRoteiro {
+  /** HH:mm */
+  horarioInicio: string
+  duracaoHoras: number
+  publico: PublicoEvento
+  observacoes?: string
+}
+
+export interface MomentoRoteiro {
+  horario: string
+  titulo: string
+  descricao: string | null
+}
+
+export interface BrincadeiraSugerida {
+  titulo: string
+  descricao: string | null
+  materiais: string | null
+}
+
+export interface Roteiro {
+  momentos: MomentoRoteiro[]
+  brincadeiras: BrincadeiraSugerida[]
+  geracoesRestantes: number
+}

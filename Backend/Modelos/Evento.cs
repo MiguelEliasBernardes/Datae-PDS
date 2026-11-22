@@ -43,5 +43,8 @@ public class Evento
     // Quando o resumo do pós-evento foi enviado por e-mail ao dono (o envio automático acontece uma vez só)
     public DateTime? ResumoEnviadoEm { get; set; }
 
+    // Quantas sugestões do assistente de IA (presentes e roteiro) o evento já usou (ver ServicoAssistente)
+    public int GeracoesIa { get; set; }
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }
