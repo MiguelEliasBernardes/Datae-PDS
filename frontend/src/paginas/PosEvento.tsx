@@ -158,11 +158,11 @@ export function PosEvento({
       <section className={secao}>
         <RotuloSecao>ARRECADAÇÃO</RotuloSecao>
         <div className="rounded-[16px] bg-primary-strong p-5 text-white lg:p-6">
-          <p className="text-[13px] text-theme-lilac">Total arrecadado (estimado)</p>
+          <p className="text-[13px] text-primary-soft">Total arrecadado (estimado)</p>
           <p className="mt-1 font-heading text-[32px] leading-tight font-bold lg:text-[40px]">
             {formatarMoeda(resumo.totalArrecadado)}
           </p>
-          <p className="mt-2 text-[12px] text-theme-lilac">
+          <p className="mt-2 text-[12px] text-primary-soft">
             Presentes: {formatarMoeda(resumo.valorPresentes)} · Cotas: {formatarMoeda(resumo.valorCotas)}
           </p>
         </div>

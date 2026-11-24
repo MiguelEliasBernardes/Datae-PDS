@@ -1,3 +1,5 @@
+import { Icone } from './Icone'
+
 export interface ItemNavegacao {
   icone: string
   rotulo: string
@@ -16,7 +18,8 @@ export function NavegacaoInferior({
 }) {
   return (
     <nav
-      className={`sticky bottom-4 mt-auto flex items-center gap-1 rounded-[30px] bg-primary-strong p-1.5 shadow-[0px_0px_5px_rgba(0,0,0,0.5)] ${className}`}
+      // tema-padrao: o menu é do sistema, então não muda com a cor do evento na pré-visualização
+      className={`tema-padrao sticky bottom-4 mt-auto flex items-center gap-1 rounded-[30px] bg-primary-strong p-1.5 shadow-[0px_0px_5px_rgba(0,0,0,0.5)] ${className}`}
     >
       {itens.filter((item) => item.ativo || item.onClick).map((item) => (
         <button
@@ -28,7 +31,7 @@ export function NavegacaoInferior({
             item.ativo ? 'bg-surface text-primary-strong' : 'text-surface'
           }`}
         >
-          <img src={item.icone} alt="" width={22} height={22} />
+          <Icone src={item.icone} tamanho={22} />
           {item.rotulo}
         </button>
       ))}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import calendario from '../assets/calendar.svg'
 import imagemCapa from '../assets/event-hero.png'
 import olhoAtivo from '../assets/eye-active.svg'
@@ -9,6 +9,7 @@ import { obterEvento } from '../api/eventos'
 import { listarFormandosPublicos, listarFotosPublicas, listarPresentesPublicos, obterEventoPublico } from '../api/publico'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { BarraLateral } from '../componentes/BarraLateral'
+import { Icone } from '../componentes/Icone'
 import { CartaoPix } from '../componentes/CartaoPix'
 import { ContagemRegressiva } from '../componentes/ContagemRegressiva'
 import { EnvioFotosMural } from '../componentes/EnvioFotosMural'
@@ -19,6 +20,7 @@ import { NavegacaoInferior, type ItemNavegacao } from '../componentes/NavegacaoI
 import { RotuloSecao } from '../componentes/RotuloSecao'
 import { formatarDataPorExtenso, rotulosTipoEvento, tempoRestante } from '../dados/formatacao'
 import { linkPaginaFormando, linkPublicoEvento, linkRecapitulacao } from '../dados/rotas'
+import { estiloTemaEvento } from '../dados/coresTema'
 import { useAgora } from '../hooks/useAgora'
 import { useCarregamento } from '../hooks/useCarregamento'
 
@@ -84,10 +86,8 @@ export function PaginaEvento({
   const eventoJaComecou = new Date(evento.dataEvento).getTime() <= agora
   const fotosVisiveis = todasFotos ? fotos : fotos.slice(0, FOTOS_INICIAIS)
 
-  // A cor escolhida nas configurações substitui o roxo padrão nesta página
-  const estiloTema = evento.corPrincipal
-    ? ({ '--color-primary': evento.corPrincipal } as CSSProperties)
-    : undefined
+  // A cor escolhida nas configurações substitui todos os tons de roxo do tema nesta página
+  const estiloTema = estiloTemaEvento(evento.corPrincipal)
 
   // Aviso no lugar de uma seção desativada (só o organizador vê, na pré-visualização)
   const avisoSecaoDesativada = (secao: string) => (
@@ -155,7 +155,7 @@ export function PaginaEvento({
                 {evento.descricao ?? 'Confirme presença, escolha um presente e traga a família.'}
               </p>
               <div className="mt-6 flex items-center gap-2">
-                <img src={calendario} alt="" width={24} height={24} />
+                <Icone src={calendario} className="text-heading" />
                 <span className="text-[14px] font-medium text-primary">{dataPorExtenso}</span>
               </div>
 
@@ -285,7 +285,7 @@ export function PaginaEvento({
                   ? Array.from({ length: 6 }).map((_, i) => (
                       <div
                         key={i}
-                        className={`aspect-square rounded-[10px] ${i % 2 === 0 ? 'bg-surface' : 'bg-theme-lilac'}`}
+                        className={`aspect-square rounded-[10px] ${i % 2 === 0 ? 'bg-surface' : 'bg-primary-soft'}`}
                       />
                     ))
                   : fotosVisiveis.map((f) => (
@@ -321,8 +321,8 @@ export function PaginaEvento({
         {/* Rodapé */}
         <footer className="bg-primary-strong py-9 text-center lg:py-14">
           <p className="text-[14px] font-bold text-white lg:text-[18px]">{evento.nomeEvento}</p>
-          <p className="mt-1 text-[12px] text-theme-lilac lg:text-[14px]">{dataPorExtenso}</p>
-          <p className="mt-4 text-[11px] text-theme-lilac">
+          <p className="mt-1 text-[12px] text-primary-soft lg:text-[14px]">{dataPorExtenso}</p>
+          <p className="mt-4 text-[11px] text-primary-soft">
             Página criada com Dataê
           </p>
         </footer>

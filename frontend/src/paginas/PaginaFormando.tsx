@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type CSSProperties } from 'react'
+import { useCallback, useEffect } from 'react'
 import imagemCapa from '../assets/event-formatura.png'
 import { urlApi } from '../api/cliente'
 import { listarPresentesFormando, obterPaginaFormando } from '../api/publico'
@@ -9,6 +9,7 @@ import { MensagemLista } from '../componentes/MensagemLista'
 import { RotuloSecao } from '../componentes/RotuloSecao'
 import { formatarDataPorExtenso } from '../dados/formatacao'
 import { linkPublicoEvento } from '../dados/rotas'
+import { estiloTemaEvento } from '../dados/coresTema'
 import { useCarregamento } from '../hooks/useCarregamento'
 
 const titulo = 'font-heading text-[19px] font-bold text-heading lg:text-[28px]'
@@ -45,7 +46,7 @@ export function PaginaFormando({ slug, slugFormando }: { slug: string; slugForma
   const dataPorExtenso = formatarDataPorExtenso(evento.dataEvento)
 
   // A cor escolhida nas configurações da formatura substitui o roxo padrão
-  const estiloTema = evento.corPrincipal ? ({ '--color-primary': evento.corPrincipal } as CSSProperties) : undefined
+  const estiloTema = estiloTemaEvento(evento.corPrincipal)
 
   return (
     <main className="min-h-screen w-full bg-page pb-6" style={estiloTema}>
@@ -119,8 +120,8 @@ export function PaginaFormando({ slug, slugFormando }: { slug: string; slugForma
       {/* Rodapé */}
       <footer className="mt-10 bg-primary-strong py-9 text-center lg:mt-16 lg:py-14">
         <p className="text-[14px] font-bold text-white lg:text-[18px]">{evento.nomeEvento}</p>
-        <p className="mt-1 text-[12px] text-theme-lilac lg:text-[14px]">{dataPorExtenso}</p>
-        <p className="mt-4 text-[11px] text-theme-lilac">Página criada com Dataê</p>
+        <p className="mt-1 text-[12px] text-primary-soft lg:text-[14px]">{dataPorExtenso}</p>
+        <p className="mt-4 text-[11px] text-primary-soft">Página criada com Dataê</p>
       </footer>
     </main>
   )

@@ -9,6 +9,7 @@
   --color-primary: #534ab7; /* roxo principal — botões, links */
   --color-primary-strong: #3c3489; /* texto sobre botão secundário */
   --color-heading: #26215c; /* títulos / labels */
+  --color-primary-soft: #afa9ec; /* lilás: textos sobre fundo escuro e placeholders de imagem */
   --color-accent: #d85a30; /* laranja do logo */
   --color-muted: #5f5e5a; /* texto de apoio */
   --color-placeholder: #9c9a92; /* placeholders e texto "ou" */
@@ -64,4 +65,17 @@ body {
 .app-shell {
   min-height: 100svh;
   background: var(--color-backdrop);
+}
+
+/*
+ * Volta para o roxo padrão do Dataê dentro de uma página com a cor do evento
+ * (ex.: o menu na pré-visualização, que é do sistema e não do evento).
+ * Os valores são os mesmos do @theme acima.
+ */
+.tema-padrao {
+  --color-primary: #534ab7;
+  --color-primary-strong: #3c3489;
+  --color-heading: #26215c;
+  --color-primary-soft: #afa9ec;
+  --color-badge: #eeedfe;
 }

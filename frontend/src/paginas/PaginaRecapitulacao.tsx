@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type CSSProperties } from 'react'
+import { useCallback, useEffect } from 'react'
 import imagemCapa from '../assets/event-hero.png'
 import { urlApi } from '../api/cliente'
 import { obterRecapitulacaoPrevia } from '../api/posEvento'
@@ -11,6 +11,7 @@ import { NavegacaoInferior, type ItemNavegacao } from '../componentes/NavegacaoI
 import { RotuloSecao } from '../componentes/RotuloSecao'
 import { formatarDataPorExtenso, rotulosTipoEvento } from '../dados/formatacao'
 import { linkPublicoEvento } from '../dados/rotas'
+import { estiloTemaEvento } from '../dados/coresTema'
 import { useCarregamento } from '../hooks/useCarregamento'
 
 const envoltorio = 'mx-auto w-full max-w-5xl px-6 lg:px-10'
@@ -64,7 +65,7 @@ export function PaginaRecapitulacao({
   }
 
   const { evento, fotos } = dados
-  const estiloTema = evento.corPrincipal ? ({ '--color-primary': evento.corPrincipal } as CSSProperties) : undefined
+  const estiloTema = estiloTemaEvento(evento.corPrincipal)
   const numeros = [
     { valor: dados.pessoasPresentes, singular: 'pessoa confirmou presença', plural: 'pessoas confirmaram presença' },
     { valor: dados.presentesRecebidos, singular: 'presente recebido', plural: 'presentes recebidos' },
@@ -158,11 +159,11 @@ export function PaginaRecapitulacao({
           <p className="text-[14px] font-bold text-white lg:text-[18px]">{evento.nomeEvento}</p>
           <a
             href={linkPublicoEvento(evento.slugPublico)}
-            className="mt-2 inline-block text-[12px] font-medium text-theme-lilac underline lg:text-[14px]"
+            className="mt-2 inline-block text-[12px] font-medium text-primary-soft underline lg:text-[14px]"
           >
             Ver a página do evento
           </a>
-          <p className="mt-4 text-[11px] text-theme-lilac">Página criada com Dataê</p>
+          <p className="mt-4 text-[11px] text-primary-soft">Página criada com Dataê</p>
         </footer>
 
         {navegacao && <NavegacaoInferior className="mx-auto w-[min(100%-3rem,28rem)] lg:hidden" itens={navegacao} />}

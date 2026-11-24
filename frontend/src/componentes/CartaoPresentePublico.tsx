@@ -16,7 +16,7 @@ export function CartaoPresentePublico({ nome, preco, status, acao, imagem, link,
   return (
     <div className="flex gap-3 rounded-[12px] bg-surface p-3 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.12)]">
       <div
-        className="size-20 shrink-0 overflow-hidden rounded-[10px] bg-theme-lilac"
+        className="size-20 shrink-0 overflow-hidden rounded-[10px] bg-primary-soft"
       >
         {imagem && (
           <img src={imagem} alt="" className="size-full object-cover" />

@@ -28,7 +28,7 @@ export function ExibicaoPix({ pix }: { pix: Pix }) {
         alt="QR Code do Pix"
         className="size-52 rounded-[10px] bg-white p-2 [image-rendering:pixelated]"
       />
-      <p className="text-[12px] text-theme-lilac">Abra o app do seu banco, escolha Pix e leia o QR Code ou use o copia e cola:</p>
+      <p className="text-[12px] text-primary-soft">Abra o app do seu banco, escolha Pix e leia o QR Code ou use o copia e cola:</p>
       <textarea
         readOnly
         aria-label="Pix copia e cola"
