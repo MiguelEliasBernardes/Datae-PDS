@@ -13,6 +13,7 @@ import { Botao } from '../componentes/Botao'
 import { BotaoOpcao } from '../componentes/BotaoOpcao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CampoTexto } from '../componentes/CampoTexto'
+import { JanelaModal } from '../componentes/JanelaModal'
 import { LayoutPainel } from '../componentes/LayoutPainel'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { RotuloSecao } from '../componentes/RotuloSecao'
@@ -164,10 +165,19 @@ export function Roteiro({
     }
   }
 
+  // O roteiro gerado só existe nesta tela: sair com sugestões que não foram para a checklist pede confirmação
+  const temSugestoesNaoSalvas = momentos !== null && momentos.length + brincadeiras.length > 0
+  const [saidaPendente, setSaidaPendente] = useState<(() => void) | null>(null)
+  const cancelarSaida = useCallback(() => setSaidaPendente(null), [])
+  const sairCom = (acao: () => void) => () => {
+    if (temSugestoesNaoSalvas) setSaidaPendente(() => acao)
+    else acao()
+  }
+
   const navegacao = [
-    { icone: casaBranca, rotulo: 'Inicio', onClick: onVoltar },
-    { icone: olho, rotulo: 'Visualizar', onClick: onAbrirVisualizacao },
-    { icone: engrenagem, rotulo: 'Configurações', onClick: onAbrirConfiguracoes },
+    { icone: casaBranca, rotulo: 'Inicio', onClick: sairCom(onVoltar) },
+    { icone: olho, rotulo: 'Visualizar', onClick: sairCom(onAbrirVisualizacao) },
+    { icone: engrenagem, rotulo: 'Configurações', onClick: onAbrirConfiguracoes && sairCom(onAbrirConfiguracoes) },
   ]
 
   function conteudo() {
@@ -193,7 +203,7 @@ export function Roteiro({
               <p className="text-[13px] font-medium text-heading">
                 {adicionados} {adicionados === 1 ? 'item foi adicionado' : 'itens foram adicionados'} à checklist.
               </p>
-              <Botao tamanho="pequeno" variante="secundario" className="sm:max-w-xs" onClick={onAbrirChecklist}>
+              <Botao tamanho="pequeno" variante="secundario" className="sm:max-w-xs" onClick={sairCom(onAbrirChecklist)}>
                 Abrir a checklist
               </Botao>
             </div>
@@ -346,9 +356,29 @@ export function Roteiro({
 
   return (
     <LayoutPainel itens={navegacao}>
-      <BotaoVoltar onVoltar={onVoltar} />
+      <BotaoVoltar onVoltar={sairCom(onVoltar)} />
       <TituloDestaque>Roteiro com IA</TituloDestaque>
       {conteudo()}
+
+      <JanelaModal titulo="Sair sem salvar o roteiro?" aberta={saidaPendente !== null} onFechar={cancelarSaida}>
+        <div className="flex flex-col gap-3">
+          <p className="text-[13px] text-text">
+            O roteiro sugerido não fica salvo. Se sair agora, as sugestões que você não adicionou à checklist serão
+            perdidas, e gerar de novo usa mais uma das gerações do assistente.
+          </p>
+          <Botao onClick={cancelarSaida}>Continuar no roteiro</Botao>
+          <Botao
+            variante="perigo"
+            onClick={() => {
+              const acao = saidaPendente
+              setSaidaPendente(null)
+              acao?.()
+            }}
+          >
+            Sair mesmo assim
+          </Botao>
+        </div>
+      </JanelaModal>
     </LayoutPainel>
   )
 }

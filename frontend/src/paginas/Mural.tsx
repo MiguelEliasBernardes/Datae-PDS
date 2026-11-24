@@ -11,6 +11,7 @@ import { AvisoErro } from '../componentes/AvisoErro'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { CartaoFotoModeracao } from '../componentes/CartaoFotoModeracao'
+import { VisualizadorFotos } from '../componentes/VisualizadorFotos'
 import { ChipFiltro } from '../componentes/ChipFiltro'
 import { LayoutPainel } from '../componentes/LayoutPainel'
 import { MensagemLista } from '../componentes/MensagemLista'
@@ -35,6 +36,10 @@ export function Mural({
   // Começa mostrando o que precisa de atenção: as pendentes
   const [filtro, setFiltro] = useState<StatusFoto | null>('Pendente')
   const alternarFiltro = (f: StatusFoto) => setFiltro((atual) => (atual === f ? null : f))
+
+  // Foto ampliada no visualizador (índice em `visiveis`); null = fechado
+  const [fotoAberta, setFotoAberta] = useState<number | null>(null)
+  const fecharFoto = useCallback(() => setFotoAberta(null), [])
 
   const lista = useMemo(() => fotos ?? [], [fotos])
   const visiveis = useMemo(() => (filtro ? lista.filter((f) => f.status === filtro) : lista), [lista, filtro])
@@ -92,10 +97,11 @@ export function Mural({
         <MensagemLista>Carregando fotos...</MensagemLista>
       ) : visiveis.length > 0 ? (
         <div className="mt-4 mb-24 grid grid-cols-2 gap-3 lg:mb-0 lg:grid-cols-4 lg:gap-5">
-          {visiveis.map((f) => (
+          {visiveis.map((f, i) => (
             <CartaoFotoModeracao
               key={f.id}
               foto={f}
+              onAmpliar={() => setFotoAberta(i)}
               onModerar={(status) => moderar(f.id, status)}
               onExcluir={() => excluir(f.id)}
             />
@@ -104,6 +110,9 @@ export function Mural({
       ) : (
         fotos && <MensagemLista>{filtro ? mensagemVazia[filtro] : 'Nenhuma foto enviada ainda.'}</MensagemLista>
       )}
+
+      {/* As setas passam pelas fotos do filtro atual */}
+      <VisualizadorFotos fotos={visiveis} indice={fotoAberta} onTrocar={setFotoAberta} onFechar={fecharFoto} />
     </LayoutPainel>
   )
 }

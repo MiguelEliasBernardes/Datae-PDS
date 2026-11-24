@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import imagemCapa from '../assets/event-hero.png'
 import { urlApi } from '../api/cliente'
 import { obterRecapitulacaoPrevia } from '../api/posEvento'
@@ -9,6 +9,7 @@ import { BarraLateral } from '../componentes/BarraLateral'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { NavegacaoInferior, type ItemNavegacao } from '../componentes/NavegacaoInferior'
 import { RotuloSecao } from '../componentes/RotuloSecao'
+import { VisualizadorFotos } from '../componentes/VisualizadorFotos'
 import { formatarDataPorExtenso, rotulosTipoEvento } from '../dados/formatacao'
 import { linkPublicoEvento } from '../dados/rotas'
 import { estiloTemaEvento } from '../dados/coresTema'
@@ -38,6 +39,9 @@ export function PaginaRecapitulacao({
   )
   const { dados, erro, carregando, recarregar } = useCarregamento(carregar)
   const preVisualizacao = eventoId !== undefined
+  // Foto da grade aberta no visualizador; null = fechado
+  const [fotoAberta, setFotoAberta] = useState<number | null>(null)
+  const fecharFoto = useCallback(() => setFotoAberta(null), [])
 
   const nomeEvento = dados?.evento.nomeEvento
   useEffect(() => {
@@ -137,19 +141,19 @@ export function PaginaRecapitulacao({
                 <ApresentacaoFotos fotos={fotos} />
               </div>
               <div className="mt-6 grid grid-cols-3 gap-2 lg:mt-8 lg:grid-cols-6 lg:gap-4">
-                {fotos.map((f) => (
-                  <a
+                {fotos.map((f, i) => (
+                  <button
                     key={f.id}
-                    href={urlApi(f.url)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="aspect-square overflow-hidden rounded-[10px] bg-surface"
+                    type="button"
+                    onClick={() => setFotoAberta(i)}
+                    className="aspect-square cursor-zoom-in overflow-hidden rounded-[10px] bg-surface"
                     title={f.nomeAutor ? `Enviada por ${f.nomeAutor}` : undefined}
                   >
                     <img src={urlApi(f.url)} alt={f.nomeAutor ? `Foto de ${f.nomeAutor}` : 'Foto do evento'} loading="lazy" className="size-full object-cover" />
-                  </a>
+                  </button>
                 ))}
               </div>
+              <VisualizadorFotos fotos={fotos} indice={fotoAberta} onTrocar={setFotoAberta} onFechar={fecharFoto} />
             </div>
           </section>
         )}

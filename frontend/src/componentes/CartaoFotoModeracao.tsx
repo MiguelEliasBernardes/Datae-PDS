@@ -14,10 +14,13 @@ const tomStatus: Record<StatusFoto, TomSelo> = {
 /** Foto enviada por um convidado, com as ações de moderação do organizador. */
 export function CartaoFotoModeracao({
   foto,
+  onAmpliar,
   onModerar,
   onExcluir,
 }: {
   foto: Foto
+  /** Abre a foto ampliada no visualizador. */
+  onAmpliar: () => void
   onModerar: (status: StatusFoto) => Promise<void>
   onExcluir: () => Promise<void>
 }) {
@@ -39,9 +42,9 @@ export function CartaoFotoModeracao({
 
   return (
     <div className="flex flex-col overflow-hidden rounded-[12px] bg-surface shadow-[0px_1px_4px_0px_rgba(0,0,0,0.25)]">
-      <a href={urlApi(foto.url)} target="_blank" rel="noreferrer" className="aspect-square bg-badge">
+      <button type="button" onClick={onAmpliar} className="aspect-square cursor-zoom-in bg-badge" aria-label="Ampliar foto">
         <img src={urlApi(foto.url)} alt={foto.nomeAutor ? `Foto de ${foto.nomeAutor}` : 'Foto do mural'} loading="lazy" className="size-full object-cover" />
-      </a>
+      </button>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="flex items-start justify-between gap-2">

@@ -18,6 +18,7 @@ import { ListaPresentesPublica } from '../componentes/ListaPresentesPublica'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { NavegacaoInferior, type ItemNavegacao } from '../componentes/NavegacaoInferior'
 import { RotuloSecao } from '../componentes/RotuloSecao'
+import { VisualizadorFotos } from '../componentes/VisualizadorFotos'
 import { formatarDataPorExtenso, rotulosTipoEvento, tempoRestante } from '../dados/formatacao'
 import { linkPaginaFormando, linkPublicoEvento, linkRecapitulacao } from '../dados/rotas'
 import { estiloTemaEvento } from '../dados/coresTema'
@@ -61,6 +62,9 @@ export function PaginaEvento({
   const agora = useAgora()
 
   const [todasFotos, setTodasFotos] = useState(false)
+  // Foto do mural aberta no visualizador (índice em `fotos`); null = fechado
+  const [fotoAberta, setFotoAberta] = useState<number | null>(null)
+  const fecharFoto = useCallback(() => setFotoAberta(null), [])
 
   const nomeEvento = dados?.[0].nomeEvento
   useEffect(() => {
@@ -288,17 +292,16 @@ export function PaginaEvento({
                         className={`aspect-square rounded-[10px] ${i % 2 === 0 ? 'bg-surface' : 'bg-primary-soft'}`}
                       />
                     ))
-                  : fotosVisiveis.map((f) => (
-                      <a
+                  : fotosVisiveis.map((f, i) => (
+                      <button
                         key={f.id}
-                        href={urlApi(f.url)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="aspect-square overflow-hidden rounded-[10px] bg-surface"
+                        type="button"
+                        onClick={() => setFotoAberta(i)}
+                        className="aspect-square cursor-zoom-in overflow-hidden rounded-[10px] bg-surface"
                         title={f.nomeAutor ? `Enviada por ${f.nomeAutor}` : undefined}
                       >
                         <img src={urlApi(f.url)} alt={f.nomeAutor ? `Foto de ${f.nomeAutor}` : 'Foto do mural'} loading="lazy" className="size-full object-cover" />
-                      </a>
+                      </button>
                     ))}
               </div>
               {fotos.length === 0 && (
@@ -314,6 +317,8 @@ export function PaginaEvento({
                 </button>
               )}
               <EnvioFotosMural slug={slug} somenteLeitura={preVisualizacao} />
+              {/* As setas passam por todas as fotos aprovadas, mesmo as que ainda não aparecem na grade */}
+              <VisualizadorFotos fotos={fotos} indice={fotoAberta} onTrocar={setFotoAberta} onFechar={fecharFoto} />
             </div>
           </section>
         )}
