@@ -75,7 +75,7 @@ public static class RotasUsuario
     }
 
     private static UsuarioResposta ParaResposta(Usuario usuario) =>
-        new(usuario.Id, usuario.Nome, usuario.Email, usuario.CriadoEm);
+        new(usuario.Id, usuario.Nome, usuario.Email, usuario.CriadoEm, usuario.SenhaHash is not null);
 
     private static LoginResposta CriarLoginResposta(Usuario usuario, ServicoToken servicoToken)
     {

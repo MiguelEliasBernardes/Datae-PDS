@@ -129,6 +129,13 @@ public class ServicoUsuario(
 
         var erros = new Dictionary<string, string[]>();
 
+        // Trocar o e-mail ou a senha exige a senha atual, para quem pegar uma sessão aberta não tomar a conta.
+        // Conta criada pelo Google ainda não tem senha: pode trocar sem informar (o Google já confirmou quem é)
+        var senhaAtualCorreta = usuario.SenhaHash is null || (requisicao.SenhaAtual is not null &&
+            hasher.VerifyHashedPassword(usuario, usuario.SenhaHash, requisicao.SenhaAtual) != PasswordVerificationResult.Failed);
+        void ExigirSenhaAtual() =>
+            erros["senhaAtual"] = [requisicao.SenhaAtual is null ? "Informe a senha atual." : "A senha atual está incorreta."];
+
         if (requisicao.Nome is not null)
         {
             if (string.IsNullOrWhiteSpace(requisicao.Nome))
@@ -142,20 +149,21 @@ public class ServicoUsuario(
             var email = NormalizarEmail(requisicao.Email);
             if (!EmailValido(email))
                 erros["email"] = ["Informe um e-mail válido."];
-            else if (email != usuario.Email && await EmailEmUsoAsync(email))
-                return Resultado<Usuario>.Falha(TipoErro.Conflito, "Já existe uma conta com este e-mail.");
-            else
-                usuario.Email = email;
+            else if (email != usuario.Email)
+            {
+                if (!senhaAtualCorreta)
+                    ExigirSenhaAtual();
+                else if (await EmailEmUsoAsync(email))
+                    return Resultado<Usuario>.Falha(TipoErro.Conflito, "Já existe uma conta com este e-mail.");
+                else
+                    usuario.Email = email;
+            }
         }
 
         if (requisicao.NovaSenha is not null)
         {
-            // Conta criada pelo Google ainda não tem senha: pode definir a primeira sem informar a atual
-            var senhaAtualCorreta = usuario.SenhaHash is null || (requisicao.SenhaAtual is not null &&
-                hasher.VerifyHashedPassword(usuario, usuario.SenhaHash, requisicao.SenhaAtual) != PasswordVerificationResult.Failed);
-
             if (!senhaAtualCorreta)
-                erros["senhaAtual"] = ["A senha atual está incorreta."];
+                ExigirSenhaAtual();
             else if (!SenhaValida(requisicao.NovaSenha))
                 erros["novaSenha"] = [$"A nova senha deve ter pelo menos {TamanhoMinimoSenha} caracteres."];
             else

@@ -147,7 +147,8 @@ function AreaOrganizador() {
     if (!evento || tela === 'meus-eventos') {
       return (
         <MeusEventos
-          nomeUsuario={usuario.nome}
+          usuario={usuario}
+          onUsuarioAtualizado={setUsuario}
           onCriar={irPara('criar-evento')}
           onAcessarEvento={abrirEvento}
           onUsarCodigo={setCodigoConvite}

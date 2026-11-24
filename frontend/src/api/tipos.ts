@@ -13,6 +13,16 @@ export interface Usuario {
   nome: string
   email: string
   criadoEm: string
+  /** False: conta criada pelo Google que ainda não definiu uma senha. */
+  temSenha: boolean
+}
+
+/** Alteração da conta logada: só os campos enviados mudam. E-mail e senha novos exigem a senha atual. */
+export interface DadosConta {
+  nome?: string
+  email?: string
+  senhaAtual?: string
+  novaSenha?: string
 }
 
 export interface RespostaLogin {

@@ -37,6 +37,7 @@ const convites = await carregar('/src/api/convites.ts')
 const checklist = await carregar('/src/api/checklist.ts')
 const posEvento = await carregar('/src/api/posEvento.ts')
 const assistente = await carregar('/src/api/assistente.ts')
+const usuarios = await carregar('/src/api/usuarios.ts')
 
 let aprovados = 0
 const falhas = []
@@ -684,6 +685,32 @@ try {
     const minhaLista = await assistente.obterStatusAssistente(formaturaEvento.id, true)
     verificar(minhaLista.geracoesRestantes === 3, JSON.stringify(minhaLista))
     usarSessao(tokenA)
+  })
+
+  console.log('\nMinha conta')
+  usarSessao(tokenA)
+  await testar('trocar e-mail ou senha sem a senha atual (ou com a errada) → 400 no campo senhaAtual', async () => {
+    const conta = await usuarios.obterMinhaConta()
+    verificar(conta.temSenha === true && conta.email === emailA, JSON.stringify(conta))
+    const semSenha = await esperarErro(usuarios.atualizarMinhaConta({ email: `outro.${emailA}` }), 400)
+    verificar(semSenha.doCampo('senhaAtual'), JSON.stringify(semSenha.errosCampos))
+    const errada = await esperarErro(usuarios.atualizarMinhaConta({ novaSenha: 'nova-senha-1', senhaAtual: 'errada' }), 400)
+    verificar(errada.doCampo('senhaAtual'), JSON.stringify(errada.errosCampos))
+  })
+  await testar('nome muda sem senha; e-mail e senha mudam com a senha atual (e o login usa os novos)', async () => {
+    const renomeado = await usuarios.atualizarMinhaConta({ nome: 'Teste Falhas A2' })
+    verificar(renomeado.nome === 'Teste Falhas A2', renomeado.nome)
+    const novoEmail = `novo.${emailA}`
+    const trocado = await usuarios.atualizarMinhaConta({ email: novoEmail, novaSenha: 'nova-senha-1', senhaAtual: senha })
+    verificar(trocado.email === novoEmail, trocado.email)
+    await esperarErro(autenticacao.entrar(emailA, senha), 401)
+    await autenticacao.entrar(novoEmail, 'nova-senha-1')
+    tokenA = sessao.obterToken()
+    // Volta como estava, para os testes seguintes
+    await usuarios.atualizarMinhaConta({ email: emailA, novaSenha: senha, senhaAtual: 'nova-senha-1' })
+  })
+  await testar('e-mail de outra conta → 409', async () => {
+    await esperarErro(usuarios.atualizarMinhaConta({ email: emailB, senhaAtual: senha }), 409)
   })
 
   console.log('\nSessão')

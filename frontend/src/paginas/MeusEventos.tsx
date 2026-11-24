@@ -4,25 +4,29 @@ import imagemFormatura from '../assets/event-formatura.png'
 import imagemEvento from '../assets/event-marina-rafael.png'
 import { urlApi } from '../api/cliente'
 import { listarEventos } from '../api/eventos'
-import type { Evento } from '../api/tipos'
+import type { Evento, Usuario } from '../api/tipos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { Botao } from '../componentes/Botao'
 import { CartaoEvento } from '../componentes/CartaoEvento'
 import { EntrarComCodigo } from '../componentes/EntrarComCodigo'
 import { MensagemLista } from '../componentes/MensagemLista'
+import { MenuUsuario } from '../componentes/MenuUsuario'
 import { TituloDestaque } from '../componentes/TituloDestaque'
 import { formatarData, rotulosPapelFormando, rotulosTipoEvento } from '../dados/formatacao'
 import { useCarregamento } from '../hooks/useCarregamento'
 
 /** Tela O2 - "Meus Eventos". */
 export function MeusEventos({
-  nomeUsuario,
+  usuario,
+  onUsuarioAtualizado,
   onCriar,
   onAcessarEvento,
   onUsarCodigo,
   onSair,
 }: {
-  nomeUsuario?: string
+  usuario: Usuario
+  /** Depois de editar a conta (nome, e-mail ou senha). */
+  onUsuarioAtualizado: (usuario: Usuario) => void
   onCriar: () => void
   onAcessarEvento: (evento: Evento) => void
   /** Abre a tela de aceitar convite com o código digitado. */
@@ -35,12 +39,10 @@ export function MeusEventos({
   return (
     <div className="min-h-screen w-full bg-surface">
       <div className="mx-auto w-full max-w-[402px] px-6 pt-12 pb-10 lg:max-w-5xl lg:px-10 lg:pt-16">
-        {/* Usuário logado */}
+        {/* Usuário logado: o ícone abre o menu com "Minha conta" e "Sair" */}
         <div className="mb-6 flex items-center justify-between text-[13px] text-muted">
-          <span>{nomeUsuario ? `Olá, ${nomeUsuario}` : ''}</span>
-          <button type="button" onClick={onSair} className="font-medium text-primary">
-            Sair
-          </button>
+          <span>Olá, {usuario.nome}</span>
+          <MenuUsuario usuario={usuario} onAtualizado={onUsuarioAtualizado} onSair={onSair} />
         </div>
 
         {/* Cabeçalho */}

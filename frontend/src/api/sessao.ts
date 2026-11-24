@@ -11,6 +11,11 @@ export function salvarSessao({ token, expiraEm, usuario }: RespostaLogin) {
   localStorage.setItem(CHAVE_USUARIO, JSON.stringify(usuario))
 }
 
+/** Troca os dados do usuário guardados (ex.: depois de editar a conta), mantendo o token. */
+export function salvarUsuario(usuario: Usuario) {
+  localStorage.setItem(CHAVE_USUARIO, JSON.stringify(usuario))
+}
+
 export function limparSessao() {
   localStorage.removeItem(CHAVE_TOKEN)
   localStorage.removeItem(CHAVE_EXPIRACAO)
