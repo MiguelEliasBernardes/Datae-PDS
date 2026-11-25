@@ -59,6 +59,8 @@ export interface Evento {
   codigoTurma: string | null
   /** Recado do agradecimento pós-evento e da recapitulação (null = texto padrão). */
   mensagemAgradecimento: string | null
+  /** Ajuda a organizar o evento (convidado pelo dono; não é formatura). */
+  coOrganizador: boolean
 }
 
 export interface DadosEvento {
@@ -300,8 +302,11 @@ export interface Formando {
 }
 
 export interface Convite {
-  /** Formando: liga a conta a um formando já cadastrado. Turma: cria um formando novo. */
-  tipo: 'Formando' | 'Turma'
+  /**
+   * Formando: liga a conta a um formando já cadastrado. Turma: cria um formando novo.
+   * Organizacao: entra como co-organizador de um evento que não é formatura.
+   */
+  tipo: 'Formando' | 'Turma' | 'Organizacao'
   nomeEvento: string
   dataEvento: string
   nomeFormando: string | null
@@ -588,4 +593,23 @@ export interface Roteiro {
   momentos: MomentoRoteiro[]
   brincadeiras: BrincadeiraSugerida[]
   geracoesRestantes: number
+}
+
+/* ===== Organização (eventos que não são formatura) ===== */
+
+export interface CoOrganizador {
+  id: number
+  nome: string
+  email: string
+  entrouEm: string
+}
+
+export interface Organizacao {
+  nomeDono: string
+  coOrganizadores: CoOrganizador[]
+  limiteCoOrganizadores: number
+  /** Código de convite (null = desligado); só o dono vê. */
+  codigoConvite: string | null
+  /** Quem está vendo é o dono (convida, troca o código e remove pessoas). */
+  podeGerenciar: boolean
 }

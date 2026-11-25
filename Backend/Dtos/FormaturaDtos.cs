@@ -31,6 +31,8 @@ public enum TipoConvite
     Formando,
     // Código geral da turma: cria um formando novo
     Turma,
+    // Código da organização de um evento que não é formatura: quem aceita vira co-organizador
+    Organizacao,
 }
 
 // O que aparece antes de aceitar o convite (não exige login)

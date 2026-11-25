@@ -7,9 +7,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Servicos;
 
 /// <summary>
-/// Convites para a comissão de formatura. Há dois tipos de código:
+/// Convites para ajudar a organizar um evento. Há três tipos de código:
 /// - o do formando (individual): liga a conta de quem aceitar àquele formando já cadastrado e deixa de valer;
-/// - o da turma (geral, liga/desliga): quem aceitar vira um formando novo, com papel Membro.
+/// - o da turma (geral, liga/desliga): quem aceitar vira um formando novo, com papel Membro;
+/// - o da organização (geral, liga/desliga; eventos que não são formatura): quem aceitar vira co-organizador.
 /// O link do convite é /convite/{codigo}; para aceitar é preciso estar logado.
 /// </summary>
 public class ServicoConvite(ContextoBanco banco)
@@ -25,7 +26,7 @@ public class ServicoConvite(ContextoBanco banco)
         {
             var codigo = new string(RandomNumberGenerator.GetItems<char>(Alfabeto, TamanhoCodigo));
             var emUso = await banco.Formandos.AnyAsync(f => f.CodigoConvite == codigo)
-                || await banco.Eventos.AnyAsync(e => e.CodigoTurma == codigo);
+                || await banco.Eventos.AnyAsync(e => e.CodigoTurma == codigo || e.CodigoOrganizacao == codigo);
             if (!emUso)
                 return codigo;
         }
@@ -44,10 +45,14 @@ public class ServicoConvite(ContextoBanco banco)
                 TipoConvite.Formando, eventoDoFormando.NomeEvento, eventoDoFormando.DataEvento, formando.Nome));
         }
 
-        var evento = await BuscarTurmaAsync(codigoNormalizado);
-        return evento is null
+        var turma = await BuscarTurmaAsync(codigoNormalizado);
+        if (turma is not null)
+            return Resultado<ConviteResposta>.Ok(new ConviteResposta(TipoConvite.Turma, turma.NomeEvento, turma.DataEvento, null));
+
+        var organizacao = await BuscarOrganizacaoAsync(codigoNormalizado);
+        return organizacao is null
             ? ConviteInvalido<ConviteResposta>()
-            : Resultado<ConviteResposta>.Ok(new ConviteResposta(TipoConvite.Turma, evento.NomeEvento, evento.DataEvento, null));
+            : Resultado<ConviteResposta>.Ok(new ConviteResposta(TipoConvite.Organizacao, organizacao.NomeEvento, organizacao.DataEvento, null));
     }
 
     /// <summary>Entra na formatura com o código. Devolve o acesso já com o papel de formando.</summary>
@@ -58,6 +63,10 @@ public class ServicoConvite(ContextoBanco banco)
             return Resultado<AcessoEvento>.Falha(TipoErro.NaoAutorizado, "Sua sessão expirou. Entre novamente.");
 
         var codigoNormalizado = Normalizar(codigo);
+
+        if (await BuscarOrganizacaoAsync(codigoNormalizado) is { } organizacao)
+            return await EntrarNaOrganizacaoAsync(usuarioId, organizacao);
+
         var formando = await banco.Formandos.FirstOrDefaultAsync(f => f.CodigoConvite == codigoNormalizado);
         var eventoId = formando?.EventoId ?? (await BuscarTurmaAsync(codigoNormalizado))?.Id;
         if (eventoId is null)
@@ -126,6 +135,36 @@ public class ServicoConvite(ContextoBanco banco)
         await banco.SaveChangesAsync();
         return acesso;
     }
+
+    /// <summary>Entra como co-organizador, respeitando o limite de pessoas da organização.</summary>
+    private async Task<Resultado<AcessoEvento>> EntrarNaOrganizacaoAsync(int usuarioId, Evento evento)
+    {
+        if (evento.UsuarioId == usuarioId)
+            return Resultado<AcessoEvento>.Falha(TipoErro.Conflito, "Você é quem criou este evento: ele já está em \"Meus Eventos\".");
+        if (await banco.CoOrganizadores.AnyAsync(c => c.EventoId == evento.Id && c.UsuarioId == usuarioId))
+            return Resultado<AcessoEvento>.Falha(TipoErro.Conflito, "Você já ajuda a organizar este evento.");
+        if (await banco.CoOrganizadores.CountAsync(c => c.EventoId == evento.Id) >= ServicoOrganizacao.LimiteCoOrganizadores)
+            return Resultado<AcessoEvento>.Falha(
+                TipoErro.Conflito,
+                $"A organização deste evento já está completa ({ServicoOrganizacao.LimiteCoOrganizadores} pessoas). Fale com quem criou o evento.");
+
+        banco.CoOrganizadores.Add(new CoOrganizador { EventoId = evento.Id, UsuarioId = usuarioId });
+        try
+        {
+            await banco.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Dois aceites da mesma conta ao mesmo tempo (o índice único barra o segundo)
+            return Resultado<AcessoEvento>.Falha(TipoErro.Conflito, "Você já ajuda a organizar este evento.");
+        }
+
+        var acesso = await ControleAcesso.ObterAsync(banco, usuarioId, evento.Id);
+        return Resultado<AcessoEvento>.Ok(acesso!);
+    }
+
+    private Task<Evento?> BuscarOrganizacaoAsync(string codigo) =>
+        banco.Eventos.FirstOrDefaultAsync(e => e.CodigoOrganizacao == codigo && e.Tipo != TipoEvento.Formatura);
 
     private Task<Evento?> BuscarTurmaAsync(string codigo) =>
         banco.Eventos.FirstOrDefaultAsync(e => e.CodigoTurma == codigo && e.Tipo == TipoEvento.Formatura);

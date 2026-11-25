@@ -60,7 +60,7 @@ export function MeusEventos({
         {/* Divisor (só mobile) */}
         <span className="mx-auto mt-4 block h-px w-3/5 bg-field-border lg:hidden" />
 
-        {/* Entrar numa formatura com o código do convite (para quem não recebeu o link) */}
+        {/* Entrar com o código do convite (organização de um evento ou comissão de formatura), para quem não recebeu o link */}
         <div className="mt-6">
           <EntrarComCodigo onUsarCodigo={onUsarCodigo} />
         </div>
@@ -72,8 +72,8 @@ export function MeusEventos({
           {carregando && !eventos && <MensagemLista>Carregando eventos...</MensagemLista>}
           {eventos?.length === 0 && (
             <MensagemLista>
-              Você ainda não tem eventos. Clique em "Criar Evento" para começar ou use o código de convite da sua
-              formatura.
+              Você ainda não tem eventos. Clique em "Criar Evento" para começar ou use um código de convite para
+              ajudar a organizar um evento.
             </MensagemLista>
           )}
           {eventos?.map((evento) => (
@@ -90,7 +90,9 @@ export function MeusEventos({
               data={formatarData(evento.dataEvento)}
               // Formatura em que a pessoa entrou por convite: mostra o papel dela na comissão
               categoria={
-                !evento.organizador && evento.meuPapel
+                evento.coOrganizador
+                  ? `${rotulosTipoEvento[evento.tipo]} · Co-organizador`
+                  : !evento.organizador && evento.meuPapel
                   ? `${rotulosTipoEvento[evento.tipo]} · ${rotulosPapelFormando[evento.meuPapel]}`
                   : rotulosTipoEvento[evento.tipo]
               }

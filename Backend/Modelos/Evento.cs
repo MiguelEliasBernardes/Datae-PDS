@@ -29,6 +29,10 @@ public class Evento
     // Nulo = desativado
     public string? CodigoTurma { get; set; }
 
+    // Código de convite da organização (eventos que não são formatura): quem entra por ele vira co-organizador.
+    // Nulo = desativado
+    public string? CodigoOrganizacao { get; set; }
+
     // Quando as sugestões da checklist foram copiadas para o evento (nulo = checklist ainda não aberta).
     // Assim as sugestões entram uma vez só, mesmo que o organizador apague todos os itens depois
     public DateTime? ChecklistCriadaEm { get; set; }

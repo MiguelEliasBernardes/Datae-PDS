@@ -337,7 +337,8 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
         />
       </div>
 
-      {/* Zona de perigo */}
+      {/* Zona de perigo: só quem criou o evento pode excluí-lo */}
+      {evento.organizador && (
       <div className="mb-24 flex flex-col gap-2 lg:mb-0 lg:max-w-xs">
         {confirmandoExclusao ? (
           <>
@@ -359,6 +360,7 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
           </Botao>
         )}
       </div>
+      )}
     </>
   )
 }

@@ -16,6 +16,7 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
     public DbSet<PagamentoFormando> PagamentosFormando => Set<PagamentoFormando>();
     public DbSet<ItemChecklist> ItensChecklist => Set<ItemChecklist>();
     public DbSet<PixInformado> PixInformados => Set<PixInformado>();
+    public DbSet<CoOrganizador> CoOrganizadores => Set<CoOrganizador>();
 
     protected override void OnModelCreating(ModelBuilder modelo)
     {
@@ -47,6 +48,8 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             evento.Property(e => e.CidadePix).HasMaxLength(15);
             evento.HasIndex(e => e.CodigoTurma).IsUnique();
             evento.Property(e => e.CodigoTurma).HasMaxLength(16);
+            evento.HasIndex(e => e.CodigoOrganizacao).IsUnique();
+            evento.Property(e => e.CodigoOrganizacao).HasMaxLength(16);
             evento.Property(e => e.MensagemAgradecimento).HasMaxLength(1000);
         });
 
@@ -129,6 +132,16 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             item.Property(i => i.Categoria).HasConversion<string>().HasMaxLength(20);
             item.Property(i => i.Origem).HasConversion<string>().HasMaxLength(20);
             item.Property(i => i.ChaveSugestao).HasMaxLength(60);
+        });
+
+        modelo.Entity<CoOrganizador>(coOrganizador =>
+        {
+            // Excluir o evento ou a conta tira a pessoa da organização
+            coOrganizador.HasOne<Evento>().WithMany().HasForeignKey(c => c.EventoId).OnDelete(DeleteBehavior.Cascade);
+            coOrganizador.HasOne<Usuario>().WithMany().HasForeignKey(c => c.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+
+            // Uma conta entra uma vez só em cada evento
+            coOrganizador.HasIndex(c => new { c.EventoId, c.UsuarioId }).IsUnique();
         });
 
         modelo.Entity<PixInformado>(pix =>

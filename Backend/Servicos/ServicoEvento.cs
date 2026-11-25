@@ -16,14 +16,24 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
     {
         var formandos = await banco.Formandos.Where(f => f.UsuarioId == usuarioId).ToListAsync();
         var idsComoFormando = formandos.Select(f => f.EventoId).ToList();
+        var idsComoCoOrganizador = await banco.CoOrganizadores
+            .Where(c => c.UsuarioId == usuarioId)
+            .Select(c => c.EventoId)
+            .ToListAsync();
 
         var eventos = await banco.Eventos
-            .Where(e => e.UsuarioId == usuarioId || (e.Tipo == TipoEvento.Formatura && idsComoFormando.Contains(e.Id)))
+            .Where(e => e.UsuarioId == usuarioId
+                || (e.Tipo == TipoEvento.Formatura && idsComoFormando.Contains(e.Id))
+                || (e.Tipo != TipoEvento.Formatura && idsComoCoOrganizador.Contains(e.Id)))
             .OrderBy(e => e.DataEvento)
             .ToListAsync();
 
         var acessos = eventos
-            .Select(e => new AcessoEvento(e, formandos.FirstOrDefault(f => f.EventoId == e.Id), e.UsuarioId == usuarioId))
+            .Select(e => new AcessoEvento(
+                e,
+                formandos.FirstOrDefault(f => f.EventoId == e.Id),
+                e.UsuarioId == usuarioId,
+                e.UsuarioId != usuarioId && e.Tipo != TipoEvento.Formatura && idsComoCoOrganizador.Contains(e.Id)))
             .ToList();
 
         return Resultado<List<AcessoEvento>>.Ok(acessos);
@@ -80,6 +90,9 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
             else if (evento.Tipo == TipoEvento.Formatura && tipo != TipoEvento.Formatura
                 && await banco.Formandos.AnyAsync(f => f.EventoId == evento.Id))
                 erros["tipo"] = ["Esta formatura já tem formandos. Exclua os formandos antes de mudar o tipo do evento."];
+            else if (evento.Tipo != TipoEvento.Formatura && tipo == TipoEvento.Formatura
+                && await banco.CoOrganizadores.AnyAsync(c => c.EventoId == evento.Id))
+                erros["tipo"] = ["Este evento tem co-organizadores. Remova-os antes de transformá-lo em formatura (lá a equipe é a comissão)."];
             else
                 evento.Tipo = tipo;
         }

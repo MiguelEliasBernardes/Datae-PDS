@@ -8,13 +8,15 @@ namespace Backend.Servicos;
 /// Quem é o usuário dentro de um evento: o organizador (dono do evento) e/ou o formando
 /// ligado à conta dele por convite. Nos eventos que não são formatura, só o organizador participa.
 /// </summary>
-public record AcessoEvento(Evento Evento, Formando? Formando, bool Organizador)
+public record AcessoEvento(Evento Evento, Formando? Formando, bool Organizador, bool CoOrganizador = false)
 {
     /// <summary>Papel na comissão; nulo para o organizador que não é formando.</summary>
     public PapelFormando? Papel => Formando?.Papel;
 
     public bool Pode(Permissao permissao) =>
-        Organizador || permissao == Permissao.VerEvento || (Papel switch
+        // O co-organizador pode tudo no evento; o que é só do dono (excluir o evento e gerenciar a organização)
+        // é conferido à parte, com Organizador
+        Organizador || CoOrganizador || permissao == Permissao.VerEvento || (Papel switch
         {
             PapelFormando.Administrador => true,
             PapelFormando.Financeiro => permissao == Permissao.Financeiro,
@@ -47,7 +49,14 @@ public static class ControleAcesso
             : null;
 
         var organizador = evento.UsuarioId == usuarioId;
-        return organizador || formando is not null ? new AcessoEvento(evento, formando, organizador) : null;
+
+        // Fora da formatura, quem ajuda a organizar entra como co-organizador
+        var coOrganizador = !organizador && evento.Tipo != TipoEvento.Formatura
+            && await banco.CoOrganizadores.AnyAsync(c => c.EventoId == eventoId && c.UsuarioId == usuarioId);
+
+        return organizador || formando is not null || coOrganizador
+            ? new AcessoEvento(evento, formando, organizador, coOrganizador)
+            : null;
     }
 
     /// <summary>

@@ -129,6 +129,7 @@ public static class RotasEvento
             acesso.Papel,
             acesso.Permissoes,
             acesso.Pode(Permissao.GerenciarComissao) ? evento.CodigoTurma : null,
-            evento.MensagemAgradecimento);
+            evento.MensagemAgradecimento,
+            acesso.CoOrganizador);
     }
 }

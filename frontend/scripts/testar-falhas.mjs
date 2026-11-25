@@ -39,6 +39,7 @@ const posEvento = await carregar('/src/api/posEvento.ts')
 const assistente = await carregar('/src/api/assistente.ts')
 const usuarios = await carregar('/src/api/usuarios.ts')
 const relatorioPix = await carregar('/src/api/pix.ts')
+const organizacao = await carregar('/src/api/organizacao.ts')
 
 let aprovados = 0
 const falhas = []
@@ -750,6 +751,71 @@ try {
     usarSessao(tokenC)
     await esperarErro(relatorioPix.obterRelatorioPix(formaturaEvento.id), 403)
     usarSessao(tokenA)
+  })
+
+  console.log('\nOrganização (co-organizadores)')
+  usarSessao(tokenA)
+  // As rotas de convite têm limite de 30 requisições por minuto por IP, e os testes anteriores já usaram boa
+  // parte dele: se vier 429, espera a janela do limite passar e tenta de novo (uma vez)
+  async function semLimite(chamada) {
+    try {
+      return await chamada()
+    } catch (e) {
+      if (e?.status !== 429) throw e
+      console.log('    (limite de requisições por IP atingido; esperando 1 minuto)')
+      await new Promise((resolver) => setTimeout(resolver, 61_000))
+      return chamada()
+    }
+  }
+  let codigoOrganizacao = null
+  await testar('dono liga o código; convite aparece como Organizacao', async () => {
+    const inicial = await organizacao.obterOrganizacao(evento.id)
+    verificar(inicial.podeGerenciar && inicial.codigoConvite === null && inicial.coOrganizadores.length === 0, JSON.stringify(inicial))
+    const ligada = await organizacao.gerarCodigoOrganizacao(evento.id)
+    codigoOrganizacao = ligada.codigoConvite
+    verificar(codigoOrganizacao && ligada.limiteCoOrganizadores === 5, JSON.stringify(ligada))
+    verificar((await semLimite(() => convites.obterConvite(codigoOrganizacao))).tipo === 'Organizacao', 'tipo do convite')
+    // O próprio dono não entra de novo
+    await esperarErro(semLimite(() => convites.aceitarConvite(codigoOrganizacao)), 409)
+  })
+  await testar('quem aceita vira co-organizador e gerencia o evento', async () => {
+    usarSessao(tokenB)
+    const aceito = await semLimite(() => convites.aceitarConvite(codigoOrganizacao))
+    verificar(aceito.coOrganizador && !aceito.organizador && aceito.permissoes.includes('GerenciarEvento'), JSON.stringify(aceito))
+    await esperarErro(semLimite(() => convites.aceitarConvite(codigoOrganizacao)), 409)
+    const lista = await eventos.listarEventos()
+    verificar(lista.some((e) => e.id === evento.id && e.coOrganizador), 'o evento não apareceu em Meus Eventos')
+    const novo = await convidados.criarConvidado(evento.id, { nome: 'Convidado do co-organizador' })
+    await convidados.excluirConvidado(evento.id, novo.id)
+    const vista = await organizacao.obterOrganizacao(evento.id)
+    verificar(!vista.podeGerenciar && vista.codigoConvite === null && vista.coOrganizadores.length === 1, JSON.stringify(vista))
+  })
+  await testar('co-organizador não exclui o evento nem mexe na organização (403)', async () => {
+    usarSessao(tokenB)
+    await esperarErro(eventos.excluirEvento(evento.id), 403)
+    await esperarErro(organizacao.gerarCodigoOrganizacao(evento.id), 403)
+    const vista = await organizacao.obterOrganizacao(evento.id)
+    await esperarErro(organizacao.removerCoOrganizador(evento.id, vista.coOrganizadores[0].id), 403)
+    usarSessao(tokenA)
+  })
+  await testar('evento com co-organizadores não vira formatura; formatura não tem organização (409)', async () => {
+    const erro = await esperarErro(eventos.atualizarEvento(evento.id, { tipo: 'Formatura' }), 400)
+    verificar(erro.doCampo('tipo'), JSON.stringify(erro.errosCampos))
+    await esperarErro(organizacao.obterOrganizacao(formaturaEvento.id), 409)
+  })
+  await testar('dono remove; co-organizador pode sair; código desligado deixa de valer', async () => {
+    const vista = await organizacao.obterOrganizacao(evento.id)
+    const depois = await organizacao.removerCoOrganizador(evento.id, vista.coOrganizadores[0].id)
+    verificar(depois.coOrganizadores.length === 0, JSON.stringify(depois))
+    usarSessao(tokenB)
+    await esperarErro(eventos.obterEvento(evento.id), 404)
+    await semLimite(() => convites.aceitarConvite(codigoOrganizacao))
+    await organizacao.sairDaOrganizacao(evento.id)
+    await esperarErro(eventos.obterEvento(evento.id), 404)
+    usarSessao(tokenA)
+    await esperarErro(organizacao.sairDaOrganizacao(evento.id), 409)
+    await organizacao.desativarCodigoOrganizacao(evento.id)
+    await esperarErro(semLimite(() => convites.obterConvite(codigoOrganizacao)), 404)
   })
 
   console.log('\nMinha conta')

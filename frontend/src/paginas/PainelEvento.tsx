@@ -38,6 +38,7 @@ export function PainelEvento({
   onAbrirPosEvento,
   onAbrirRoteiro,
   onAbrirFinanceiroPix,
+  onAbrirOrganizacao,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -50,6 +51,7 @@ export function PainelEvento({
   onAbrirPosEvento: () => void
   onAbrirRoteiro: () => void
   onAbrirFinanceiroPix: () => void
+  onAbrirOrganizacao: () => void
   onAbrirConfiguracoes: () => void
   onAbrirVisualizacao: () => void
 }) {
@@ -160,6 +162,7 @@ export function PainelEvento({
             { icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural },
             { icone: circuloCheck, titulo: 'Checklist', onClick: onAbrirChecklist },
             { icone: prancheta, titulo: 'Roteiro com IA', onClick: onAbrirRoteiro },
+            { icone: compartilhar, titulo: 'Organização', onClick: onAbrirOrganizacao },
             { icone: notaDinheiro, titulo: 'Pós-evento', onClick: onAbrirPosEvento },
             // Relatório dos Pix avisados pelos convidados (a chave Pix fica nas configurações)
             { icone: pix, titulo: 'Financeiro (PIX)', onClick: onAbrirFinanceiroPix },

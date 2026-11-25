@@ -52,4 +52,6 @@ public record EventoResposta(
     List<Permissao> Permissoes,
     // Código de convite da turma; só aparece para quem gerencia a comissão
     string? CodigoTurma,
-    string? MensagemAgradecimento);
+    string? MensagemAgradecimento,
+    // Ajuda a organizar o evento (convidado pelo dono; não é formatura)
+    bool CoOrganizador);

@@ -22,6 +22,33 @@ namespace Backend.Dados.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Backend.Modelos.CoOrganizador", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("EntrouEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EventoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("EventoId", "UsuarioId")
+                        .IsUnique();
+
+                    b.ToTable("CoOrganizadores");
+                });
+
             modelBuilder.Entity("Backend.Modelos.Convidado", b =>
                 {
                     b.Property<int>("Id")
@@ -165,6 +192,10 @@ namespace Backend.Dados.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)");
 
+                    b.Property<string>("CodigoOrganizacao")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<string>("CodigoTurma")
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
@@ -233,6 +264,9 @@ namespace Backend.Dados.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CodigoOrganizacao")
+                        .IsUnique();
 
                     b.HasIndex("CodigoTurma")
                         .IsUnique();
@@ -590,6 +624,21 @@ namespace Backend.Dados.Migrations
                         .IsUnique();
 
                     b.ToTable("Usuarios");
+                });
+
+            modelBuilder.Entity("Backend.Modelos.CoOrganizador", b =>
+                {
+                    b.HasOne("Backend.Modelos.Evento", null)
+                        .WithMany()
+                        .HasForeignKey("EventoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Modelos.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Backend.Modelos.Convidado", b =>

@@ -60,6 +60,7 @@ builder.Services.AddSingleton<ServicoEmail>();
 builder.Services.AddSingleton<ClienteIa>();
 builder.Services.AddScoped<ServicoAssistente>();
 builder.Services.AddScoped<ServicoPixInformado>();
+builder.Services.AddScoped<ServicoOrganizacao>();
 builder.Services.AddHostedService<ResumoPosEventoAutomatico>();
 builder.Services.AddSingleton<ArmazenamentoArquivos>();
 
@@ -118,6 +119,7 @@ app.MapearRotasChecklist();
 app.MapearRotasPosEvento();
 app.MapearRotasAssistente();
 app.MapearRotasPix();
+app.MapearRotasOrganizacao();
 app.MapearRotasPublicas();
 
 app.Run();

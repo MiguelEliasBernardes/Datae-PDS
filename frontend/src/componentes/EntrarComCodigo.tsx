@@ -4,7 +4,8 @@ import { CampoTexto } from './CampoTexto'
 
 /**
  * Campo para quem recebeu só o código do convite (sem o link). Ao enviar, abre a mesma
- * tela de aceitar convite do link, que confere o código e mostra de qual formatura ele é.
+ * tela de aceitar convite do link, que confere o código e mostra de qual evento ele é
+ * (organização de um evento ou comissão de uma formatura).
  */
 export function EntrarComCodigo({ onUsarCodigo }: { onUsarCodigo: (codigo: string) => void }) {
   const [codigo, setCodigo] = useState('')
@@ -30,9 +31,9 @@ export function EntrarComCodigo({ onUsarCodigo }: { onUsarCodigo: (codigo: strin
       noValidate
       className="flex flex-col gap-2 rounded-[12px] border-[1.5px] border-field-border p-4 lg:max-w-xl"
     >
-      <span className="font-display text-[14px] font-semibold text-primary-strong">Recebeu um convite de formatura?</span>
+      <span className="font-display text-[14px] font-semibold text-primary-strong">Recebeu um código de convite?</span>
       <p className="font-display text-[11px] text-muted">
-        Digite o código que a comissão enviou para entrar na formatura.
+        Digite o código para ajudar a organizar um evento ou entrar na comissão da sua formatura.
       </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
         <CampoTexto

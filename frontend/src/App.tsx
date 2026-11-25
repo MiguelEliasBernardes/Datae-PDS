@@ -18,6 +18,7 @@ import { Login } from './paginas/Login'
 import { FinanceiroPix } from './paginas/FinanceiroPix'
 import { MeusEventos } from './paginas/MeusEventos'
 import { Mural } from './paginas/Mural'
+import { Organizacao } from './paginas/Organizacao'
 import { PaginaEvento, PreVisualizacaoEvento } from './paginas/PaginaEvento'
 import { PaginaFormando } from './paginas/PaginaFormando'
 import { PainelEvento } from './paginas/PainelEvento'
@@ -48,6 +49,7 @@ type Tela =
   | 'recapitulacao'
   | 'roteiro'
   | 'financeiro-pix'
+  | 'organizacao'
 
 /**
  * Evento aberto no momento, qual painel ele usa (formatura tem um painel próprio) e o que o
@@ -196,6 +198,7 @@ function AreaOrganizador() {
             onAbrirPosEvento={irPara('pos-evento')}
             onAbrirRoteiro={irPara('roteiro')}
             onAbrirFinanceiroPix={irPara('financeiro-pix')}
+            onAbrirOrganizacao={irPara('organizacao')}
             onAbrirConfiguracoes={irPara('configuracoes')}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -294,6 +297,16 @@ function AreaOrganizador() {
             podeEscolherResponsavel={formatura && pode('GerenciarComissao')}
             acoes={acoesDicas}
             onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={abrirConfiguracoes}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'organizacao':
+        return (
+          <Organizacao
+            eventoId={evento.id}
+            onVoltar={voltarAoPainel}
+            onSaiu={voltarAosEventos}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
