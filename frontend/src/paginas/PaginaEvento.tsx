@@ -128,24 +128,32 @@ export function PaginaEvento({
                 alt=""
                 className="size-full object-cover"
               />
-              <div className="absolute inset-0 bg-black/20" />
-              <span className="absolute top-4 right-4 text-[10px] font-bold tracking-[1.8px] text-white uppercase lg:top-6 lg:right-6 lg:text-[12px]">
-                {rotulosTipoEvento[evento.tipo]}
-              </span>
-              <h1 className="absolute top-8 left-3 max-w-[85%] font-heading text-[34px] leading-tight font-bold text-primary [text-shadow:0px_2px_4px_rgba(255,255,255,0.3)] lg:top-12 lg:left-6 lg:text-[44px]">
-                {evento.nomeEvento}
-              </h1>
-              <div className="absolute inset-x-6 bottom-6 lg:max-w-xs">
-                {eventoJaComecou ? (
-                  <a
-                    href={linkRecapitulacao(slug)}
-                    className="block rounded-[12px] bg-white/25 px-2 py-3 text-center text-[15px] font-bold text-white backdrop-blur-sm hover:bg-white/35"
-                  >
-                    O grande dia chegou! Ver a recapitulação
-                  </a>
-                ) : (
-                  <ContagemRegressiva unidades={tempoRestante(evento.dataEvento, agora)} />
-                )}
+              {/* Degradê só na parte de baixo: a foto fica viva em cima e o texto sempre tem contraste */}
+              <div className="absolute inset-x-0 bottom-0 h-3/4 bg-linear-to-t from-black/80 via-black/35 to-transparent" />
+
+              {/* Tipo, nome e data juntos, logo acima do timer */}
+              <div className="absolute inset-x-6 bottom-6 flex flex-col gap-4 lg:inset-x-8 lg:bottom-8">
+                <div className="flex flex-col items-start gap-2">
+                  <span className="rounded-full bg-primary px-3 py-1 text-[10px] font-bold tracking-[1.8px] text-white uppercase lg:text-[11px]">
+                    {rotulosTipoEvento[evento.tipo]}
+                  </span>
+                  <h1 className="font-heading text-[34px] leading-tight font-bold text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.35)] lg:text-[44px]">
+                    {evento.nomeEvento}
+                  </h1>
+                  <p className="text-[13px] font-medium text-white/85 lg:text-[15px]">{dataPorExtenso}</p>
+                </div>
+                <div className="lg:max-w-xs">
+                  {eventoJaComecou ? (
+                    <a
+                      href={linkRecapitulacao(slug)}
+                      className="block rounded-[12px] bg-white/25 px-2 py-3 text-center text-[15px] font-bold text-white backdrop-blur-sm hover:bg-white/35"
+                    >
+                      O grande dia chegou! Ver a recapitulação
+                    </a>
+                  ) : (
+                    <ContagemRegressiva unidades={tempoRestante(evento.dataEvento, agora)} />
+                  )}
+                </div>
               </div>
             </div>
 
