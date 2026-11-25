@@ -1,8 +1,8 @@
 import { requisicao } from './cliente'
-import type { Checklist, DadosItemChecklist, SugestaoChecklist } from './tipos'
+import type { Checklist, DadosItemChecklist } from './tipos'
 
 /**
- * Checklist do evento. Na primeira abertura, o backend copia as sugestões do tipo do evento.
+ * Checklist do evento. Ela começa vazia: os itens são criados à mão ou pelo Roteiro com IA.
  * Todas as alterações devolvem a checklist inteira (com o progresso e as dicas atualizados).
  */
 const base = (eventoId: number) => `/api/eventos/${eventoId}/checklist`
@@ -24,11 +24,3 @@ export const excluirItemChecklist = (eventoId: number, id: number) =>
 /** Cria um presente na lista do evento a partir do item (categoria Itens) e marca o item como feito. */
 export const adicionarItemComoPresente = (eventoId: number, id: number) =>
   requisicao<Checklist>(`${base(eventoId)}/itens/${id}/presente`, 'POST')
-
-/** Sugestões do tipo do evento que ainda não estão na checklist (ex.: foram apagadas). */
-export const listarSugestoesChecklist = (eventoId: number) =>
-  requisicao<SugestaoChecklist[]>(`${base(eventoId)}/sugestoes`)
-
-/** Sem chaves, adiciona todas as sugestões que faltam. */
-export const adicionarSugestoesChecklist = (eventoId: number, chaves: string[]) =>
-  requisicao<Checklist>(`${base(eventoId)}/sugestoes`, 'POST', { chaves })

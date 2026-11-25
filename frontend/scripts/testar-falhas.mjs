@@ -470,18 +470,10 @@ try {
 
   console.log('\nChecklist')
   let lista = null
-  await testar('primeira abertura traz as sugestões do tipo do evento (chá de panela)', async () => {
+  await testar('a checklist começa vazia (sem tarefas padrão), com as dicas', async () => {
     lista = await checklist.obterChecklist(evento.id)
-    verificar(lista.podeGerenciar && lista.itens.length >= 20, `itens: ${lista.itens.length}`)
-    verificar(lista.itens.every((i) => i.origem === 'Sugestao' && !i.concluido), 'esperava só sugestões pendentes')
-    verificar(lista.itens.some((i) => i.categoria === 'Itens') && lista.itens.some((i) => i.categoria === 'Brincadeiras'), 'categorias')
-    const comPrazo = lista.itens.find((i) => i.diasAntes === 30)
-    const esperado = new Date(new Date(evento.dataEvento).getTime() - 30 * 86_400_000).toISOString().slice(0, 10)
-    verificar(comPrazo?.prazo?.slice(0, 10) === esperado, `prazo: ${comPrazo?.prazo} (esperava ${esperado})`)
-  })
-  await testar('abrir de novo não duplica as sugestões', async () => {
-    const denovo = await checklist.obterChecklist(evento.id)
-    verificar(denovo.itens.length === lista.itens.length, `${denovo.itens.length} != ${lista.itens.length}`)
+    verificar(lista.podeGerenciar && lista.itens.length === 0, `itens: ${lista.itens.length}`)
+    verificar(lista.dicas.length > 0, 'as dicas deveriam continuar')
   })
   await testar('dicas refletem o estado do evento', async () => {
     const dica = (chave) => lista.dicas.find((d) => d.chave === chave)
@@ -489,50 +481,47 @@ try {
     verificar(dica('pix')?.concluida, 'o Pix foi configurado nos testes de cotas')
     verificar(dica('presentes')?.concluida, 'o evento já tem presentes')
   })
-  await testar('item sem título → 400; item manual entra com prazo calculado', async () => {
+  let alugarMesas = null
+  await testar('item sem título → 400; item manual entra com prazo calculado pela data do evento', async () => {
     const erro = await esperarErro(checklist.criarItemChecklist(evento.id, { titulo: ' ' }), 400)
     verificar(erro.doCampo('titulo'), JSON.stringify(erro.errosCampos))
-    const nova = await checklist.criarItemChecklist(evento.id, { titulo: 'Alugar mesas', categoria: 'Preparativos', diasAntes: 3 })
-    const item = nova.itens.find((i) => i.titulo === 'Alugar mesas')
-    verificar(item?.origem === 'Manual' && item.prazo, JSON.stringify(item))
+    const nova = await checklist.criarItemChecklist(evento.id, { titulo: 'Alugar mesas', categoria: 'Preparativos', diasAntes: 30 })
+    alugarMesas = nova.itens.find((i) => i.titulo === 'Alugar mesas')
+    const esperado = new Date(new Date(evento.dataEvento).getTime() - 30 * 86_400_000).toISOString().slice(0, 10)
+    verificar(alugarMesas?.origem === 'Manual' && alugarMesas.prazo?.slice(0, 10) === esperado, JSON.stringify(alugarMesas))
   })
   await testar('responsável por item só existe na formatura → 400', async () => {
     const erro = await esperarErro(checklist.criarItemChecklist(evento.id, { titulo: 'X', responsavelFormandoId: 1 }), 400)
     verificar(erro.doCampo('responsavelFormandoId'), JSON.stringify(erro.errosCampos))
   })
   await testar('marcar e desmarcar como feito', async () => {
-    const item = lista.itens[0]
-    const marcada = await checklist.atualizarItemChecklist(evento.id, item.id, { concluido: true })
-    verificar(marcada.itens.find((i) => i.id === item.id)?.concluido, 'não marcou')
-    const desmarcada = await checklist.atualizarItemChecklist(evento.id, item.id, { concluido: false })
-    verificar(!desmarcada.itens.find((i) => i.id === item.id)?.concluido, 'não desmarcou')
+    const marcada = await checklist.atualizarItemChecklist(evento.id, alugarMesas.id, { concluido: true })
+    verificar(marcada.itens.find((i) => i.id === alugarMesas.id)?.concluido, 'não marcou')
+    const desmarcada = await checklist.atualizarItemChecklist(evento.id, alugarMesas.id, { concluido: false })
+    verificar(!desmarcada.itens.find((i) => i.id === alugarMesas.id)?.concluido, 'não desmarcou')
   })
-  await testar('item de "Itens" vira presente com o valor sugerido (e não duplica)', async () => {
-    const panelas = lista.itens.find((i) => i.titulo === 'Jogo de panelas')
+  await testar('item de "Itens" vira presente (sem valor) e não duplica', async () => {
+    await checklist.criarItemChecklist(evento.id, { titulo: 'Jogo de panelas', categoria: 'Itens' })
+    const comItens = await checklist.criarItemChecklist(evento.id, { titulo: 'Faqueiro 24 peças', categoria: 'Itens' })
+    const panelas = comItens.itens.find((i) => i.titulo === 'Jogo de panelas')
     // Já existe "Jogo de Panelas" na lista (criado nos testes de presentes): nome igual, sem diferenciar maiúsculas
     await esperarErro(checklist.adicionarItemComoPresente(evento.id, panelas.id), 409)
-    const talheres = lista.itens.find((i) => i.titulo.startsWith('Faqueiro'))
+    const talheres = comItens.itens.find((i) => i.titulo === 'Faqueiro 24 peças')
     const depois = await checklist.adicionarItemComoPresente(evento.id, talheres.id)
     const item = depois.itens.find((i) => i.id === talheres.id)
     verificar(item.concluido && !item.podeVirarPresente, JSON.stringify(item))
     const presente = (await presentes.listarPresentes(evento.id)).find((p) => p.nome === talheres.titulo)
-    verificar(presente?.valorEstimado === 150, JSON.stringify(presente))
-  })
-  await testar('sugestão apagada volta pela lista de sugestões', async () => {
-    const quiz = lista.itens.find((i) => i.titulo === 'Quiz sobre o casal')
-    await checklist.excluirItemChecklist(evento.id, quiz.id)
-    const faltantes = await checklist.listarSugestoesChecklist(evento.id)
-    verificar(faltantes.length === 1 && faltantes[0].chave === 'cha-quiz', JSON.stringify(faltantes))
-    const devolta = await checklist.adicionarSugestoesChecklist(evento.id, ['cha-quiz'])
-    verificar(devolta.itens.some((i) => i.titulo === 'Quiz sobre o casal'), 'a sugestão não voltou')
-    verificar((await checklist.listarSugestoesChecklist(evento.id)).length === 0, 'ainda sobram sugestões')
+    verificar(presente && presente.valorEstimado === null, JSON.stringify(presente))
   })
   await testar('na formatura, o responsável marca o próprio item, mas não edita nem marca os outros (403)', async () => {
     const formandosDaTurma = await formatura.listarFormandos(formaturaEvento.id)
     const doC = formandosDaTurma.find((f) => f.nome === 'Teste Falhas C')
-    const daFormatura = await checklist.obterChecklist(formaturaEvento.id)
-    verificar(daFormatura.itens.some((i) => i.categoria === 'Cerimonia') && !daFormatura.itens.some((i) => i.categoria === 'Itens'), 'sugestões da formatura')
-    const [doTesteC, outro] = daFormatura.itens
+    const vazia = await checklist.obterChecklist(formaturaEvento.id)
+    verificar(vazia.itens.length === 0, `a formatura não deveria vir com tarefas: ${vazia.itens.length}`)
+    await checklist.criarItemChecklist(formaturaEvento.id, { titulo: 'Reservar o salão', categoria: 'Cerimonia' })
+    const daFormatura = await checklist.criarItemChecklist(formaturaEvento.id, { titulo: 'Contratar fotógrafo', categoria: 'Preparativos' })
+    const doTesteC = daFormatura.itens.find((i) => i.titulo === 'Reservar o salão')
+    const outro = daFormatura.itens.find((i) => i.titulo === 'Contratar fotógrafo')
     await checklist.atualizarItemChecklist(formaturaEvento.id, doTesteC.id, { responsavelFormandoId: doC.id })
 
     usarSessao(tokenC)

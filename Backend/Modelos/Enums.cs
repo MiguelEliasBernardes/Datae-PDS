@@ -65,8 +65,7 @@ public enum CategoriaChecklist
 
 public enum OrigemItemChecklist
 {
-    // Copiado dos modelos de sugestões do tipo do evento
-    Sugestao,
-    // Criado pelo organizador
+    // Criado pelo organizador (à mão ou pelo Roteiro com IA). As tarefas padrão por tipo de evento
+    // ("Sugestao") foram removidas: a checklist começa vazia
     Manual,
 }

@@ -23,10 +23,6 @@ public static class RotasChecklist
         checklist.MapPut("/itens/{id:int}", AtualizarItem);
         checklist.MapDelete("/itens/{id:int}", ExcluirItem);
         checklist.MapPost("/itens/{id:int}/presente", AdicionarComoPresente);
-
-        // Sugestões do tipo do evento que ainda não estão na checklist
-        checklist.MapGet("/sugestoes", ListarSugestoes);
-        checklist.MapPost("/sugestoes", AdicionarSugestoes);
     }
 
     private static async Task<IResult> Obter(int eventoId, ClaimsPrincipal principal, ServicoChecklist servico)
@@ -73,26 +69,6 @@ public static class RotasChecklist
             return Results.Unauthorized();
 
         var resultado = await servico.AdicionarComoPresenteAsync(usuarioId, eventoId, id);
-        return ParaHttp(resultado, checklist => Results.Ok(ParaResposta(checklist)));
-    }
-
-    private static async Task<IResult> ListarSugestoes(int eventoId, ClaimsPrincipal principal, ServicoChecklist servico)
-    {
-        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
-            return Results.Unauthorized();
-
-        var resultado = await servico.ListarSugestoesFaltantesAsync(usuarioId, eventoId);
-        return ParaHttp(resultado, sugestoes => Results.Ok(sugestoes.Select(s => new SugestaoChecklistResposta(
-            s.Chave, s.Titulo, s.Descricao, s.Categoria, s.DiasAntes, s.ValorSugerido))));
-    }
-
-    private static async Task<IResult> AdicionarSugestoes(
-        int eventoId, AdicionarSugestoesRequisicao requisicao, ClaimsPrincipal principal, ServicoChecklist servico)
-    {
-        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
-            return Results.Unauthorized();
-
-        var resultado = await servico.AdicionarSugestoesAsync(usuarioId, eventoId, requisicao);
         return ParaHttp(resultado, checklist => Results.Ok(ParaResposta(checklist)));
     }
 

@@ -131,7 +131,6 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             item.Property(i => i.Descricao).HasMaxLength(500);
             item.Property(i => i.Categoria).HasConversion<string>().HasMaxLength(20);
             item.Property(i => i.Origem).HasConversion<string>().HasMaxLength(20);
-            item.Property(i => i.ChaveSugestao).HasMaxLength(60);
         });
 
         modelo.Entity<CoOrganizador>(coOrganizador =>

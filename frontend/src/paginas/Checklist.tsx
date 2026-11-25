@@ -25,7 +25,6 @@ import { LayoutPainel } from '../componentes/LayoutPainel'
 import { LinhaChecklist } from '../componentes/LinhaChecklist'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { RotuloSecao } from '../componentes/RotuloSecao'
-import { SugestoesChecklist } from '../componentes/SugestoesChecklist'
 import { TituloDestaque } from '../componentes/TituloDestaque'
 import { rotulosCategoriaChecklist } from '../dados/formatacao'
 import { useAgora } from '../hooks/useAgora'
@@ -35,19 +34,21 @@ const categorias = Object.keys(rotulosCategoriaChecklist) as CategoriaChecklist[
 
 type Filtro = 'pendentes' | 'concluidos'
 
-/** Janela aberta: um item em edição, um item novo ou as sugestões que faltam. */
-type Janela = ItemChecklist | 'novo' | 'sugestoes' | null
+/** Janela aberta: um item em edição ou um item novo. */
+type Janela = ItemChecklist | 'novo' | null
 
 /**
- * Tela da Checklist do evento. Na primeira abertura, o backend já traz as sugestões do tipo do evento
- * (itens, decoração, brincadeiras...). Em cima ficam as dicas calculadas a partir do estado do evento.
- * Quem gerencia o evento edita tudo; na formatura, o responsável por um item pode marcá-lo como feito.
+ * Tela da Checklist do evento. Ela começa vazia: o organizador adiciona os itens à mão ou gera um
+ * roteiro com IA (os momentos e as brincadeiras escolhidos viram itens). Em cima ficam as dicas calculadas
+ * a partir do estado do evento. Quem gerencia o evento edita tudo; na formatura, o responsável por um
+ * item pode marcá-lo como feito.
  */
 export function Checklist({
   eventoId,
   podeEscolherResponsavel,
   acoes,
   onVoltar,
+  onAbrirRoteiro,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -57,6 +58,8 @@ export function Checklist({
   /** Telas que resolvem cada dica (as que o usuário pode abrir). */
   acoes: Partial<Record<AcaoDica, () => void>>
   onVoltar: () => void
+  /** Roteiro com IA (só para quem gerencia o evento). */
+  onAbrirRoteiro?: () => void
   onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
@@ -97,12 +100,12 @@ export function Checklist({
 
   async function salvar(dadosItem: DadosItemChecklist) {
     if (janela === 'novo') setAtualizada(await criarItemChecklist(eventoId, dadosItem))
-    else if (janela && janela !== 'sugestoes') setAtualizada(await atualizarItemChecklist(eventoId, janela.id, dadosItem))
+    else if (janela) setAtualizada(await atualizarItemChecklist(eventoId, janela.id, dadosItem))
     setJanela(null)
   }
 
   async function excluir() {
-    if (janela && janela !== 'novo' && janela !== 'sugestoes') setAtualizada(await excluirItemChecklist(eventoId, janela.id))
+    if (janela && janela !== 'novo') setAtualizada(await excluirItemChecklist(eventoId, janela.id))
     setJanela(null)
   }
 
@@ -148,9 +151,11 @@ export function Checklist({
               <Botao onClick={() => setJanela('novo')} icone={<img src={circuloMais} alt="" width={24} height={24} />}>
                 Adicionar item
               </Botao>
-              <Botao variante="secundario" onClick={() => setJanela('sugestoes')}>
-                Ver mais sugestões
-              </Botao>
+              {onAbrirRoteiro && (
+                <Botao variante="secundario" onClick={onAbrirRoteiro}>
+                  Gerar roteiro com IA
+                </Botao>
+              )}
             </div>
           )}
 
@@ -172,7 +177,9 @@ export function Checklist({
             {visiveis.length === 0 && (
               <MensagemLista>
                 {itens.length === 0
-                  ? 'A checklist está vazia. Adicione um item ou traga as sugestões de volta.'
+                  ? checklist.podeGerenciar
+                    ? 'A checklist está vazia. Adicione os itens do seu evento ou gere um roteiro com IA.'
+                    : 'A checklist ainda está vazia.'
                   : filtro === 'pendentes'
                     ? 'Nenhum item pendente. Tudo feito!'
                     : 'Nenhum item encontrado.'}
@@ -216,20 +223,11 @@ export function Checklist({
       )}
 
       <JanelaModal
-        titulo={janela === 'sugestoes' ? 'Sugestões' : janela === 'novo' ? 'Adicionar item' : 'Editar item'}
+        titulo={janela === 'novo' ? 'Adicionar item' : 'Editar item'}
         aberta={janela !== null}
         onFechar={fecharJanela}
       >
-        {janela === 'sugestoes' && (
-          <SugestoesChecklist
-            eventoId={eventoId}
-            onAdicionadas={(nova) => {
-              setAtualizada(nova)
-              setJanela(null)
-            }}
-          />
-        )}
-        {janela !== null && janela !== 'sugestoes' && (
+        {janela !== null && (
           <FormularioItemChecklist
             // key recria o formulário com os dados certos ao trocar de item
             key={janela === 'novo' ? 'novo' : janela.id}

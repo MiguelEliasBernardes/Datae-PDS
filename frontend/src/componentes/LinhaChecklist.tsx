@@ -53,7 +53,6 @@ export function LinhaChecklist({
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-display text-[11px]">
           {prazo && <span className={atrasado ? 'font-semibold text-danger' : 'text-muted'}>{prazo.texto}</span>}
           {item.responsavelNome && <span className="text-muted">Responsável: {item.responsavelNome}</span>}
-          {item.origem === 'Manual' && <span className="text-muted">Criado por você</span>}
         </div>
 
         {(onEditar || onVirarPresente) && (

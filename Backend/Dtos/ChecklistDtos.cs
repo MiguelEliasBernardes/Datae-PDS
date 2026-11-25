@@ -20,9 +20,6 @@ public record AtualizarItemChecklistRequisicao(
     bool? Concluido,
     int? ResponsavelFormandoId);
 
-// Chaves nulas ou vazias = todas as sugestões que ainda não estão na checklist
-public record AdicionarSugestoesRequisicao(List<string>? Chaves);
-
 public record ItemChecklistResposta(
     int Id,
     string Titulo,
@@ -58,11 +55,3 @@ public enum AcaoDica
 public record DicaChecklistResposta(string Chave, string Titulo, string? Descricao, bool Concluida, AcaoDica Acao);
 
 public record ChecklistResposta(List<ItemChecklistResposta> Itens, List<DicaChecklistResposta> Dicas, bool PodeGerenciar);
-
-public record SugestaoChecklistResposta(
-    string Chave,
-    string Titulo,
-    string? Descricao,
-    CategoriaChecklist Categoria,
-    int? DiasAntes,
-    decimal? ValorSugerido);

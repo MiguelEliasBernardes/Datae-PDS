@@ -185,9 +185,6 @@ namespace Backend.Dados.Migrations
                         .HasMaxLength(77)
                         .HasColumnType("character varying(77)");
 
-                    b.Property<DateTime?>("ChecklistCriadaEm")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("CidadePix")
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)");
@@ -389,10 +386,6 @@ namespace Backend.Dados.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
-
-                    b.Property<string>("ChaveSugestao")
-                        .HasMaxLength(60)
-                        .HasColumnType("character varying(60)");
 
                     b.Property<bool>("Concluido")
                         .HasColumnType("boolean");

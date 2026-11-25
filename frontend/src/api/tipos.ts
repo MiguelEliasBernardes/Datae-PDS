@@ -393,7 +393,7 @@ export interface ItemChecklist {
   prazo: string | null
   concluido: boolean
   concluidoEm: string | null
-  origem: 'Sugestao' | 'Manual'
+  origem: 'Manual'
   responsavelFormandoId: number | null
   responsavelNome: string | null
   /** Quem está vendo pode marcar como feito (quem gerencia ou o responsável pelo item). */
@@ -426,15 +426,6 @@ export interface DadosItemChecklist {
   diasAntes?: number | null
   /** Na edição, 0 tira o responsável. */
   responsavelFormandoId?: number | null
-}
-
-export interface SugestaoChecklist {
-  chave: string
-  titulo: string
-  descricao: string | null
-  categoria: CategoriaChecklist
-  diasAntes: number | null
-  valorSugerido: number | null
 }
 
 // ===== Pós-evento =====

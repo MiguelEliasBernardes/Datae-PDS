@@ -297,6 +297,7 @@ function AreaOrganizador() {
             podeEscolherResponsavel={formatura && pode('GerenciarComissao')}
             acoes={acoesDicas}
             onVoltar={voltarAoPainel}
+            onAbrirRoteiro={pode('GerenciarEvento') ? irPara('roteiro') : undefined}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />

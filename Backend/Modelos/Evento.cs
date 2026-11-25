@@ -33,9 +33,6 @@ public class Evento
     // Nulo = desativado
     public string? CodigoOrganizacao { get; set; }
 
-    // Quando as sugestões da checklist foram copiadas para o evento (nulo = checklist ainda não aberta).
-    // Assim as sugestões entram uma vez só, mesmo que o organizador apague todos os itens depois
-    public DateTime? ChecklistCriadaEm { get; set; }
 
     // Seções opcionais da página pública (desativadas, somem da página e as rotas públicas recusam o uso)
     public bool ListaPresentesAtiva { get; set; } = true;

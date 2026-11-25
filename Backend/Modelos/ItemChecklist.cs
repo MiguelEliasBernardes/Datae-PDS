@@ -1,6 +1,6 @@
 namespace Backend.Modelos;
 
-/// <summary>Tarefa da checklist de um evento (sugerida pelo tipo do evento ou criada pelo organizador).</summary>
+/// <summary>Tarefa da checklist de um evento, criada pelo organizador (à mão ou pelo Roteiro com IA).</summary>
 public class ItemChecklist
 {
     public int Id { get; set; }
@@ -18,9 +18,6 @@ public class ItemChecklist
     public DateTime? ConcluidoEm { get; set; }
 
     public OrigemItemChecklist Origem { get; set; }
-
-    // Identificador da sugestão de origem (ver ModelosChecklist); nulo nos itens manuais
-    public string? ChaveSugestao { get; set; }
 
     // Formatura: integrante da comissão responsável pelo item (ele também pode marcar como feito)
     public int? ResponsavelFormandoId { get; set; }

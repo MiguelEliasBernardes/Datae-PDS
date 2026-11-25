@@ -15,9 +15,9 @@ public record Checklist(
     List<DicaChecklistResposta> Dicas);
 
 /// <summary>
-/// Checklist por tipo de evento, em duas camadas:
-/// - itens: na primeira vez que a checklist é aberta, as sugestões do tipo do evento (ModelosChecklist)
-///   são copiadas para o evento; depois o organizador marca, edita, apaga e cria itens próprios;
+/// Checklist do evento, em duas camadas:
+/// - itens: a checklist começa vazia; o organizador cria os itens à mão (ou pelo Roteiro com IA, que cria
+///   os momentos do dia e as brincadeiras), depois marca, edita e apaga;
 /// - dicas: calculadas na hora a partir do estado do evento (lista vazia, Pix sem configurar,
 ///   convidados sem confirmar...). Não ficam gravadas e somem quando a situação se resolve.
 /// Quem gerencia o evento altera tudo; um formando responsável por um item pode marcá-lo como feito.
@@ -35,8 +35,7 @@ public class ServicoChecklist(ContextoBanco banco, ServicoRateio servicoRateio)
         if (!acesso.Sucesso)
             return acesso.Repassar<Checklist>();
 
-        await CriarSugestoesIniciaisAsync(acesso.Valor!.Evento);
-        return Resultado<Checklist>.Ok(await MontarAsync(usuarioId, acesso.Valor));
+        return Resultado<Checklist>.Ok(await MontarAsync(usuarioId, acesso.Valor!));
     }
 
     public async Task<Resultado<Checklist>> CriarItemAsync(int usuarioId, int eventoId, CriarItemChecklistRequisicao requisicao)
@@ -160,38 +159,9 @@ public class ServicoChecklist(ContextoBanco banco, ServicoRateio servicoRateio)
         return Resultado<Checklist>.Ok(await MontarAsync(usuarioId, acesso.Valor!));
     }
 
-    /// <summary>Sugestões do tipo do evento que ainda não estão na checklist (ex.: foram apagadas).</summary>
-    public async Task<Resultado<List<SugestaoChecklist>>> ListarSugestoesFaltantesAsync(int usuarioId, int eventoId)
-    {
-        var acesso = await ExigirGestaoAsync(usuarioId, eventoId);
-        if (!acesso.Sucesso)
-            return acesso.Repassar<List<SugestaoChecklist>>();
-
-        return Resultado<List<SugestaoChecklist>>.Ok(await SugestoesFaltantesAsync(acesso.Valor!.Evento));
-    }
-
-    public async Task<Resultado<Checklist>> AdicionarSugestoesAsync(
-        int usuarioId, int eventoId, AdicionarSugestoesRequisicao requisicao)
-    {
-        var acesso = await ExigirGestaoAsync(usuarioId, eventoId);
-        if (!acesso.Sucesso)
-            return acesso.Repassar<Checklist>();
-
-        var faltantes = await SugestoesFaltantesAsync(acesso.Valor!.Evento);
-        var escolhidas = requisicao.Chaves is { Count: > 0 } chaves
-            ? faltantes.Where(s => chaves.Contains(s.Chave)).ToList()
-            : faltantes;
-
-        var ordem = await ProximaOrdemAsync(eventoId);
-        banco.ItensChecklist.AddRange(escolhidas.Select(s => NovoItem(eventoId, s, ordem++)));
-        await banco.SaveChangesAsync();
-
-        return Resultado<Checklist>.Ok(await MontarAsync(usuarioId, acesso.Valor));
-    }
-
     /// <summary>
-    /// Transforma um item da categoria Itens (ex.: "Jogo de panelas") num presente da lista do evento,
-    /// com o valor sugerido, e marca o item como feito.
+    /// Transforma um item da categoria Itens (ex.: "Jogo de panelas") num presente da lista do evento
+    /// (sem valor: o organizador completa depois) e marca o item como feito.
     /// </summary>
     public async Task<Resultado<Checklist>> AdicionarComoPresenteAsync(int usuarioId, int eventoId, int id)
     {
@@ -214,41 +184,17 @@ public class ServicoChecklist(ContextoBanco banco, ServicoRateio servicoRateio)
                 p.EventoId == eventoId && p.FormandoId == null && p.Nome.ToLower() == nomeMinusculo))
             return Resultado<Checklist>.Falha(TipoErro.Conflito, "Já existe um presente com este nome na lista.");
 
-        var sugestao = ModelosChecklist.DoTipo(evento.Tipo).FirstOrDefault(s => s.Chave == item.ChaveSugestao);
         banco.ItensPresente.Add(new ItemPresente
         {
             EventoId = eventoId,
             Nome = item.Titulo,
             Descricao = item.Descricao,
-            ValorEstimado = sugestao?.ValorSugerido,
         });
         item.Concluido = true;
         item.ConcluidoEm = DateTime.UtcNow;
         await banco.SaveChangesAsync();
 
         return Resultado<Checklist>.Ok(await MontarAsync(usuarioId, acesso.Valor));
-    }
-
-    /// <summary>
-    /// Copia as sugestões do tipo do evento na primeira abertura. O UPDATE condicionado garante que,
-    /// se duas pessoas abrirem ao mesmo tempo, só uma copia.
-    /// </summary>
-    private async Task CriarSugestoesIniciaisAsync(Evento evento)
-    {
-        if (evento.ChecklistCriadaEm is not null)
-            return;
-
-        var agora = DateTime.UtcNow;
-        var marcou = await banco.Eventos
-            .Where(e => e.Id == evento.Id && e.ChecklistCriadaEm == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.ChecklistCriadaEm, agora));
-        evento.ChecklistCriadaEm = agora;
-        if (marcou == 0)
-            return;
-
-        var ordem = 0;
-        banco.ItensChecklist.AddRange(ModelosChecklist.DoTipo(evento.Tipo).Select(s => NovoItem(evento.Id, s, ordem++)));
-        await banco.SaveChangesAsync();
     }
 
     private async Task<Checklist> MontarAsync(int usuarioId, AcessoEvento acesso)
@@ -379,16 +325,6 @@ public class ServicoChecklist(ContextoBanco banco, ServicoRateio servicoRateio)
         return dicas;
     }
 
-    private async Task<List<SugestaoChecklist>> SugestoesFaltantesAsync(Evento evento)
-    {
-        var chavesNoEvento = await banco.ItensChecklist
-            .Where(i => i.EventoId == evento.Id && i.ChaveSugestao != null)
-            .Select(i => i.ChaveSugestao!)
-            .ToListAsync();
-
-        return ModelosChecklist.DoTipo(evento.Tipo).Where(s => !chavesNoEvento.Contains(s.Chave)).ToList();
-    }
-
     private async Task ValidarResponsavelAsync(Evento evento, int? formandoId, Dictionary<string, string[]> erros)
     {
         if (formandoId is not int id)
@@ -409,18 +345,6 @@ public class ServicoChecklist(ContextoBanco banco, ServicoRateio servicoRateio)
         if (descricao?.Length > 500)
             erros["descricao"] = ["A descrição pode ter no máximo 500 caracteres."];
     }
-
-    private static ItemChecklist NovoItem(int eventoId, SugestaoChecklist sugestao, int ordem) => new()
-    {
-        EventoId = eventoId,
-        Titulo = sugestao.Titulo,
-        Descricao = sugestao.Descricao,
-        Categoria = sugestao.Categoria,
-        DiasAntes = sugestao.DiasAntes,
-        Origem = OrigemItemChecklist.Sugestao,
-        ChaveSugestao = sugestao.Chave,
-        Ordem = ordem,
-    };
 
     public static bool EhResponsavel(AcessoEvento acesso, ItemChecklist item) =>
         item.ResponsavelFormandoId is not null && item.ResponsavelFormandoId == acesso.Formando?.Id;
