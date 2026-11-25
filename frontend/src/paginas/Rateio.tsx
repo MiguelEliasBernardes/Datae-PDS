@@ -11,6 +11,7 @@ import { AvisoErro } from '../componentes/AvisoErro'
 import { Botao } from '../componentes/Botao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CampoTexto } from '../componentes/CampoTexto'
+import { CarrosselEstatisticas } from '../componentes/CarrosselEstatisticas'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { ChipFiltro } from '../componentes/ChipFiltro'
 import { JanelaModal } from '../componentes/JanelaModal'
@@ -81,7 +82,7 @@ export function Rateio({
       <TituloDestaque>{financeiro ? 'Rateio de Pagamentos' : 'Minha parte no rateio'}</TituloDestaque>
 
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
-      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
+      <CarrosselEstatisticas className="mt-5">
         <CartaoEstatistica
           icone={notaDinheiro}
           valor={formatarMoeda(rateio?.totalDespesas ?? 0)}
@@ -100,7 +101,7 @@ export function Rateio({
           tom="pessego"
           rotulo="Valor por formando"
         />
-      </div>
+      </CarrosselEstatisticas>
 
       <div className="mt-5 flex flex-col gap-3 lg:max-w-xl lg:flex-row">
         <Botao variante="secundario" onClick={onAbrirDespesas}>

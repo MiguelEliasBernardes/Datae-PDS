@@ -12,6 +12,7 @@ import { AvisoErro } from '../componentes/AvisoErro'
 import { Botao } from '../componentes/Botao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CampoTexto } from '../componentes/CampoTexto'
+import { CarrosselEstatisticas } from '../componentes/CarrosselEstatisticas'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { ChipFiltro } from '../componentes/ChipFiltro'
 import { FormularioConvidado } from '../componentes/FormularioConvidado'
@@ -92,7 +93,7 @@ export function Convidados({
       <TituloDestaque>Convidados</TituloDestaque>
 
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
-      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
+      <CarrosselEstatisticas className="mt-5">
         <CartaoEstatistica
           icone={emailConfirmado}
           valor={String(pessoasConfirmadas)}
@@ -108,7 +109,7 @@ export function Convidados({
         />
         <CartaoEstatistica icone={emailRecusado} valor={String(recusados)} tom="rosa" rotulo="Recusados" />
         <CartaoEstatistica icone={mensagemAviso} valor={String(comObservacao)} tom="pessego" rotulo="Observações" />
-      </div>
+      </CarrosselEstatisticas>
 
       {/* Adicionar convidado */}
       <Botao

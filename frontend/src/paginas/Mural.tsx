@@ -9,6 +9,7 @@ import { excluirFoto, listarFotos, moderarFoto } from '../api/mural'
 import type { StatusFoto } from '../api/tipos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
+import { CarrosselEstatisticas } from '../componentes/CarrosselEstatisticas'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { CartaoFotoModeracao } from '../componentes/CartaoFotoModeracao'
 import { VisualizadorFotos } from '../componentes/VisualizadorFotos'
@@ -77,11 +78,11 @@ export function Mural({
       </p>
 
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
-      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
+      <CarrosselEstatisticas className="mt-5">
         <CartaoEstatistica icone={livroImagem} valor={String(contar('Pendente'))} tom="pessego" rotulo="Pendentes" />
         <CartaoEstatistica icone={circuloCheck} valor={String(contar('Aprovada'))} tom="menta" rotulo="Aprovadas" />
         <CartaoEstatistica icone={emailRecusado} valor={String(contar('Recusada'))} tom="rosa" rotulo="Recusadas" />
-      </div>
+      </CarrosselEstatisticas>
 
       {/* Filtros */}
       <div className="mt-5 flex gap-2">

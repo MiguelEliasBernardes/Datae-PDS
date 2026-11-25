@@ -11,6 +11,7 @@ import type { RelatorioPix } from '../api/tipos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { Botao } from '../componentes/Botao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
+import { CarrosselEstatisticas } from '../componentes/CarrosselEstatisticas'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { ChipFiltro } from '../componentes/ChipFiltro'
 import { LayoutPainel } from '../componentes/LayoutPainel'
@@ -98,7 +99,7 @@ export function FinanceiroPix({
 
       {/* Totais: carrossel no mobile, grade no desktop */}
       {relatorio && (
-        <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
+        <CarrosselEstatisticas className="mt-5">
           <CartaoEstatistica icone={notaDinheiro} valor={formatarMoeda(relatorio.totalInformado)} tom="lilas" rotulo="Total avisado" />
           <CartaoEstatistica icone={circuloCheck} valor={formatarMoeda(relatorio.totalConferido)} tom="menta" rotulo="Conferido no extrato" />
           <CartaoEstatistica
@@ -107,7 +108,7 @@ export function FinanceiroPix({
             tom="pessego"
             rotulo="Aguardando conferência"
           />
-        </div>
+        </CarrosselEstatisticas>
       )}
 
       {/* Filtros */}

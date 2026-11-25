@@ -15,6 +15,7 @@ import { BarraProgresso } from '../componentes/BarraProgresso'
 import { Botao } from '../componentes/Botao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CampoTexto } from '../componentes/CampoTexto'
+import { CarrosselEstatisticas } from '../componentes/CarrosselEstatisticas'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { LayoutPainel } from '../componentes/LayoutPainel'
 import { LinhaAgradecimento } from '../componentes/LinhaAgradecimento'
@@ -167,7 +168,7 @@ export function PosEvento({
             {resumo.pix.length > 0 && ` · Pix: ${formatarMoeda(resumo.valorPix)}`}
           </p>
         </div>
-        <div className="-mx-6 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0">
+        <CarrosselEstatisticas>
           <CartaoEstatistica
             icone={presenteIcone}
             tom="menta"
@@ -180,7 +181,7 @@ export function PosEvento({
             rotulo="Confirmados"
             valor={`${resumo.confirmados}${resumo.acompanhantes > 0 ? ` +${resumo.acompanhantes}` : ''}`}
           />
-        </div>
+        </CarrosselEstatisticas>
         <p className="text-[12px] text-muted">
           {resumo.presenteadores === 1 ? '1 pessoa deu presente' : `${resumo.presenteadores} pessoas deram presente`} ·{' '}
           {resumo.recusados} não puderam ir · {resumo.pendentes} sem resposta · {resumo.fotosAprovadas} fotos no mural.

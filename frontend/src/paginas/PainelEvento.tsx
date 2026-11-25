@@ -18,6 +18,7 @@ import { obterEvento } from '../api/eventos'
 import { listarPresentes } from '../api/presentes'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
+import { CarrosselEstatisticas } from '../componentes/CarrosselEstatisticas'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { GradeAcessos } from '../componentes/GradeAcessos'
 import { LayoutPainel } from '../componentes/LayoutPainel'
@@ -113,7 +114,7 @@ export function PainelEvento({
       <AvisoErro className="mt-4" mensagem={erro} onTentarNovamente={recarregar} />
 
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
-      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
+      <CarrosselEstatisticas className="mt-5">
         <CartaoEstatistica icone={emailConfirmado} valor={String(pessoasConfirmadas)} rotulo="Pessoas confirmadas" tom="lilas" />
         {/* Pix estático não avisa quando o pagamento cai: o valor recebido só aparece no extrato do banco */}
         <CartaoEstatistica
@@ -123,7 +124,7 @@ export function PainelEvento({
           tom="menta"
         />
         <CartaoEstatistica icone={pacote} valor={`${reservados}/${presentes.length}`} rotulo="Itens reservados" tom="pessego" />
-      </div>
+      </CarrosselEstatisticas>
 
       {/* Link para convidados */}
       <div className="mt-5 flex flex-col gap-2 lg:max-w-xl">

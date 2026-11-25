@@ -11,6 +11,7 @@ import { AvisoErro } from '../componentes/AvisoErro'
 import { Botao } from '../componentes/Botao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
 import { CampoTexto } from '../componentes/CampoTexto'
+import { CarrosselEstatisticas } from '../componentes/CarrosselEstatisticas'
 import { CartaoEstatistica } from '../componentes/CartaoEstatistica'
 import { FormularioDespesa } from '../componentes/FormularioDespesa'
 import { JanelaModal } from '../componentes/JanelaModal'
@@ -82,7 +83,7 @@ export function Despesas({
       <TituloDestaque>Despesas</TituloDestaque>
 
       {/* Estatísticas: carrossel no mobile, grade no desktop */}
-      <div className="-mx-6 mt-5 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
+      <CarrosselEstatisticas className="mt-5">
         <CartaoEstatistica icone={notaDinheiro} valor={formatarMoeda(total)} tom="lilas" rotulo="Total despesas" />
         <CartaoEstatistica
           icone={circuloCifrao}
@@ -90,7 +91,7 @@ export function Despesas({
           tom="pessego"
           rotulo="Despesas cadastradas"
         />
-      </div>
+      </CarrosselEstatisticas>
 
       <div className="mt-5 flex flex-col gap-3 lg:max-w-xl lg:flex-row">
         {!somenteLeitura && (
