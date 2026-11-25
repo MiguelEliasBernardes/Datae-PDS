@@ -221,6 +221,46 @@ export interface CompraCotas {
   valor: number | null
   /** Null quando o evento não tem Pix configurado. */
   pix: Pix | null
+  /** Usado no "Já fiz o Pix" das cotas (com o mesmo nome da compra). */
+  cotaId: number
+}
+
+/**
+ * "Já fiz o Pix": o convidado avisa o organizador. Com `cotaId`, é o Pix de uma compra de cotas
+ * (o valor vem da compra); sem ele, é o Pix livre e `valor` é obrigatório.
+ */
+export interface DadosPixInformado extends Partial<Contato> {
+  nome: string
+  valor?: number | null
+  recado?: string
+  cotaId?: number
+  /** Pix livre feito pela sub-página de um formando. */
+  slugFormando?: string
+}
+
+export type OrigemPix = 'Livre' | 'Cotas'
+
+/** Aviso de Pix no relatório do organizador (Financeiro > Pix). */
+export interface PixInformado {
+  id: number
+  nomeConvidado: string
+  valor: number
+  recado: string | null
+  origem: OrigemPix
+  /** Ex.: "2 cotas de Viagem" ou "Lista de Ana". */
+  detalhe: string | null
+  conferido: boolean
+  informadoEm: string
+  conferidoEm: string | null
+}
+
+export interface RelatorioPix {
+  itens: PixInformado[]
+  totalInformado: number
+  totalConferido: number
+  aguardandoConferencia: number
+  /** False: o evento ainda não tem chave Pix configurada. */
+  pixConfigurado: boolean
 }
 
 export interface FormandoPublico {
@@ -404,6 +444,13 @@ export interface PresenteRecebido {
   nomeFormando: string | null
 }
 
+export interface PixResumo {
+  nomeConvidado: string
+  valor: number
+  conferido: boolean
+  informadoEm: string
+}
+
 export interface CompraCotaResumo {
   nomeConvidado: string
   quantidade: number
@@ -440,10 +487,11 @@ export interface ResumoPosEvento {
   nomeEvento: string
   dataEvento: string
   eventoRealizado: boolean
-  /** Estimado: presentes inteiros reservados/comprados (com valor) + cotas vendidas. */
+  /** Estimado: presentes inteiros reservados/comprados (com valor) + cotas vendidas + Pix livres avisados. */
   totalArrecadado: number
   valorPresentes: number
   valorCotas: number
+  valorPix: number
   presentesComprados: number
   presentesReservados: number
   cotasVendidas: number
@@ -455,6 +503,8 @@ export interface ResumoPosEvento {
   fotosAprovadas: number
   presentes: PresenteRecebido[]
   presentesComCotas: PresenteCotasResumo[]
+  /** Pix livres ("presente em dinheiro") avisados pelos convidados. */
+  pix: PixResumo[]
   agradecimentos: Agradecimento[]
   mensagemAgradecimento: string | null
   mensagemPadrao: string

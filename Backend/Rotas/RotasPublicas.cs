@@ -37,6 +37,7 @@ public static class RotasPublicas
         publico.MapPost("/presentes/{id:int}/cancelar-reserva", CancelarReserva).RequireRateLimiting(PoliticaLimite);
         publico.MapPost("/presentes/{id:int}/cotas", ComprarCotas).RequireRateLimiting(PoliticaLimite);
         publico.MapPost("/pix", GerarPix).RequireRateLimiting(PoliticaLimite);
+        publico.MapPost("/pix/informar", InformarPix).RequireRateLimiting(PoliticaLimite);
 
         // Envio de arquivo (multipart/form-data). Não há formulário do servidor, então o antiforgery não se aplica.
         publico.MapPost("/fotos", EnviarFoto).RequireRateLimiting(PoliticaLimite).DisableAntiforgery();
@@ -110,13 +111,19 @@ public static class RotasPublicas
     {
         var resultado = await servico.ComprarCotasAsync(slug, id, requisicao);
         return ParaHttp(resultado, compra => Results.Ok(
-            new CompraCotasResposta(ParaResposta(compra.Presente), compra.Quantidade, compra.Valor, compra.Pix)));
+            new CompraCotasResposta(ParaResposta(compra.Presente), compra.Quantidade, compra.Valor, compra.Pix, compra.CotaId)));
     }
 
     private static async Task<IResult> GerarPix(string slug, GerarPixRequisicao requisicao, ServicoPaginaPublica servico)
     {
         var resultado = await servico.GerarPixAsync(slug, requisicao);
         return ParaHttp(resultado, Results.Ok);
+    }
+
+    private static async Task<IResult> InformarPix(string slug, InformarPixRequisicao requisicao, ServicoPaginaPublica servico)
+    {
+        var resultado = await servico.InformarPixAsync(slug, requisicao);
+        return ParaHttp(resultado, pix => Results.Ok(new InformarPixResposta(pix.NomeConvidado, pix.Valor)));
     }
 
     private static async Task<IResult> ObterRecapitulacao(string slug, ServicoPosEvento servico)

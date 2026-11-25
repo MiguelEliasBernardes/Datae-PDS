@@ -2,6 +2,7 @@ import { requisicao } from './cliente'
 import type {
   CompraCotas,
   Contato,
+  DadosPixInformado,
   DadosPresenca,
   EventoPublico,
   FormandoPublico,
@@ -53,6 +54,10 @@ export const obterRecapitulacao = (slug: string) => requisicao<Recapitulacao>(`$
 
 /** Valor opcional: sem valor, o convidado digita o quanto quiser no app do banco. */
 export const gerarPix = (slug: string, valor: number | null) => requisicao<Pix>(`${base(slug)}/pix`, 'POST', { valor })
+
+/** "Já fiz o Pix": avisa o organizador, que confere no extrato (o Pix é estático). */
+export const informarPix = (slug: string, dados: DadosPixInformado) =>
+  requisicao<{ nome: string; valor: number }>(`${base(slug)}/pix/informar`, 'POST', dados)
 
 export function enviarFotoMural(slug: string, arquivo: File, nomeAutor: string) {
   const formulario = new FormData()

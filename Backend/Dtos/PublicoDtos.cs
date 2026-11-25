@@ -64,7 +64,22 @@ public record PixResposta(string CopiaECola, string QrCode, decimal? Valor, stri
 public record ComprarCotasRequisicao(string Nome, int Quantidade, string? Telefone = null, string? Email = null);
 
 // Pix é nulo quando o evento não tem Pix configurado (o convidado combina o pagamento com o organizador)
-public record CompraCotasResposta(PresentePublicoResposta Presente, int Quantidade, decimal? Valor, PixResposta? Pix);
+// CotaId: usado no "Já fiz o Pix" das cotas (com o mesmo nome da compra)
+public record CompraCotasResposta(PresentePublicoResposta Presente, int Quantidade, decimal? Valor, PixResposta? Pix, int CotaId);
+
+// "Já fiz o Pix": o convidado avisa o organizador. Com CotaId, é o Pix de uma compra de cotas
+// (o valor vem da compra e o nome precisa ser o mesmo usado nela); sem CotaId, é o Pix livre e Valor é obrigatório.
+// SlugFormando: Pix livre feito pela sub-página de um formando.
+public record InformarPixRequisicao(
+    string? Nome,
+    decimal? Valor,
+    string? Recado,
+    string? Telefone = null,
+    string? Email = null,
+    int? CotaId = null,
+    string? SlugFormando = null);
+
+public record InformarPixResposta(string Nome, decimal Valor);
 
 // Formandos da turma na página pública da formatura (cada um tem a sua sub-página)
 public record FormandoPublicoResposta(string Nome, string Slug);

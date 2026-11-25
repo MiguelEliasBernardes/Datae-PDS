@@ -175,9 +175,10 @@ public class ServicoPosEvento(
             .Select(c => 1 + c.QuantidadeAcompanhantes)
             .SumAsync();
 
-        var (presentes, cotas) = await CarregarPresentesAsync(evento.Id);
+        var (presentes, cotas, pix) = await CarregarPresentesAsync(evento.Id);
         var recebidos = presentes.Count(p => p.QuantidadeCotas is null && p.Status != StatusPresente.Disponivel)
-            + presentes.Count(p => p.QuantidadeCotas is not null && p.CotasVendidas > 0);
+            + presentes.Count(p => p.QuantidadeCotas is not null && p.CotasVendidas > 0)
+            + pix.Count;
 
         var fotos = evento.MuralAtivo
             ? await banco.FotosMural
@@ -190,11 +191,11 @@ public class ServicoPosEvento(
             evento.MensagemAgradecimento ?? MensagemPadrao(evento),
             confirmados,
             recebidos,
-            ContarPresenteadores(presentes, cotas),
+            ContarPresenteadores(presentes, cotas, pix),
             fotos);
     }
 
-    private async Task<(List<ItemPresente> Presentes, List<CotaPresente> Cotas)> CarregarPresentesAsync(int eventoId)
+    private async Task<(List<ItemPresente> Presentes, List<CotaPresente> Cotas, List<PixInformado> Pix)> CarregarPresentesAsync(int eventoId)
     {
         var presentes = await banco.ItensPresente.AsNoTracking()
             .Where(p => p.EventoId == eventoId)
@@ -205,21 +206,27 @@ public class ServicoPosEvento(
             .Where(c => idsPresentes.Contains(c.ItemPresenteId))
             .OrderBy(c => c.CriadoEm)
             .ToListAsync();
-        return (presentes, cotas);
+        // Pix livres avisados pelos convidados ("Já fiz o Pix"); o Pix das cotas já conta pelas próprias cotas
+        var pix = await banco.PixInformados.AsNoTracking()
+            .Where(p => p.EventoId == eventoId && p.CotaPresenteId == null)
+            .OrderBy(p => p.InformadoEm)
+            .ToListAsync();
+        return (presentes, cotas, pix);
     }
 
-    /// <summary>Pessoas diferentes que deram presente inteiro ou cotas.</summary>
-    private static int ContarPresenteadores(List<ItemPresente> presentes, List<CotaPresente> cotas) =>
+    /// <summary>Pessoas diferentes que deram presente inteiro, cotas ou um Pix livre.</summary>
+    private static int ContarPresenteadores(List<ItemPresente> presentes, List<CotaPresente> cotas, List<PixInformado> pix) =>
         presentes
             .Where(p => p.QuantidadeCotas is null && p.Status != StatusPresente.Disponivel && p.ConvidadoId is not null)
             .Select(p => $"c{p.ConvidadoId}")
             .Concat(cotas.Select(c => c.ConvidadoId is int id ? $"c{id}" : $"n{c.NomeConvidado.ToLowerInvariant()}"))
+            .Concat(pix.Select(p => p.ConvidadoId is int id ? $"c{id}" : $"n{p.NomeConvidado.ToLowerInvariant()}"))
             .Distinct()
             .Count();
 
     private async Task<ResumoPosEventoResposta> MontarResumoAsync(Evento evento)
     {
-        var (presentes, cotas) = await CarregarPresentesAsync(evento.Id);
+        var (presentes, cotas, pix) = await CarregarPresentesAsync(evento.Id);
         var convidados = await banco.Convidados.AsNoTracking()
             .Where(c => c.EventoId == evento.Id)
             .OrderBy(c => c.Nome)
@@ -250,18 +257,20 @@ public class ServicoPosEvento(
 
         var valorPresentes = inteiros.Sum(p => p.Valor ?? 0);
         var valorCotas = comCotas.Sum(p => p.ValorArrecadado);
+        var valorPix = pix.Sum(p => p.Valor);
 
         return new ResumoPosEventoResposta(
             evento.NomeEvento,
             evento.DataEvento,
             evento.DataEvento <= DateTime.UtcNow,
-            valorPresentes + valorCotas,
+            valorPresentes + valorCotas + valorPix,
             valorPresentes,
             valorCotas,
+            valorPix,
             inteiros.Count(p => p.Status == StatusPresente.Comprado),
             inteiros.Count(p => p.Status == StatusPresente.Reservado),
             comCotas.Sum(p => p.CotasVendidas),
-            ContarPresenteadores(presentes, cotas),
+            ContarPresenteadores(presentes, cotas, pix),
             convidados.Count(c => c.StatusPresenca == StatusPresenca.Confirmado),
             convidados.Where(c => c.StatusPresenca == StatusPresenca.Confirmado).Sum(c => c.QuantidadeAcompanhantes),
             convidados.Count(c => c.StatusPresenca == StatusPresenca.Recusado),
@@ -269,7 +278,8 @@ public class ServicoPosEvento(
             await banco.FotosMural.CountAsync(f => f.EventoId == evento.Id && f.Status == StatusFoto.Aprovada),
             inteiros,
             comCotas,
-            MontarAgradecimentos(evento, convidados, presentes, cotas),
+            pix.Select(p => new PixResumoResposta(p.NomeConvidado, p.Valor, p.Conferido, p.InformadoEm)).ToList(),
+            MontarAgradecimentos(evento, convidados, presentes, cotas, pix),
             evento.MensagemAgradecimento,
             MensagemPadrao(evento),
             LinkRecapitulacao(evento),
@@ -282,8 +292,11 @@ public class ServicoPosEvento(
     /// A mensagem cita os presentes de cada um.
     /// </summary>
     private List<AgradecimentoResposta> MontarAgradecimentos(
-        Evento evento, List<Convidado> convidados, List<ItemPresente> presentes, List<CotaPresente> cotas)
+        Evento evento, List<Convidado> convidados, List<ItemPresente> presentes, List<CotaPresente> cotas, List<PixInformado> pix)
     {
+        var pixPorConvidado = pix
+            .Where(p => p.ConvidadoId is not null)
+            .ToLookup(p => p.ConvidadoId!.Value);
         var presentesPorConvidado = presentes
             .Where(p => p.QuantidadeCotas is null && p.Status != StatusPresente.Disponivel && p.ConvidadoId is not null)
             .ToLookup(p => p.ConvidadoId!.Value, p => p.Nome);
@@ -301,8 +314,10 @@ public class ServicoPosEvento(
                 .Select(g => (Nome: nomesPresentes.GetValueOrDefault(g.Key, "presente"), Quantidade: g.Sum(c => c.Quantidade)))
                 .ToList();
 
+            var pixDele = pixPorConvidado[convidado.Id].Sum(p => p.Valor);
+
             var confirmou = convidado.StatusPresenca == StatusPresenca.Confirmado;
-            if (!confirmou && presentesDele.Count == 0 && cotasDele.Count == 0)
+            if (!confirmou && presentesDele.Count == 0 && cotasDele.Count == 0 && pixDele == 0)
                 continue;
 
             var motivos = new List<string>();
@@ -312,8 +327,12 @@ public class ServicoPosEvento(
                     : "Confirmou presença");
             motivos.AddRange(presentesDele.Select(nome => $"Presente: {nome}"));
             motivos.AddRange(cotasDele.Select(c => $"{(c.Quantidade == 1 ? "1 cota" : $"{c.Quantidade} cotas")} de {c.Nome}"));
+            if (pixDele > 0)
+                motivos.Add($"Pix de R$ {pixDele.ToString("N2", PtBr)}");
 
             var carinho = presentesDele.Concat(cotasDele.Select(c => c.Nome)).Distinct().ToList();
+            if (pixDele > 0)
+                carinho.Add("o presente em Pix");
             var mensagem = MontarMensagem(evento, convidado.Nome, carinho);
 
             resultado.Add(new AgradecimentoResposta(
@@ -376,6 +395,9 @@ public class ServicoPosEvento(
         texto.AppendLine($"Total arrecadado (estimado): {Moeda(resumo.TotalArrecadado)}");
         texto.AppendLine($"- Presentes: {resumo.PresentesComprados} comprados e {resumo.PresentesReservados} reservados ({Moeda(resumo.ValorPresentes)})");
         texto.AppendLine($"- Cotas: {resumo.CotasVendidas} vendidas ({Moeda(resumo.ValorCotas)})");
+        if (resumo.Pix.Count > 0)
+            texto.AppendLine($"- Pix avisados pelos convidados: {resumo.Pix.Count} ({Moeda(resumo.ValorPix)}; "
+                + $"{resumo.Pix.Count(p => p.Conferido)} conferidos)");
         texto.AppendLine($"- {resumo.Presenteadores} pessoas deram presente");
         texto.AppendLine();
         texto.AppendLine($"Presença: {resumo.Confirmados} confirmados (+{resumo.Acompanhantes} acompanhantes), "

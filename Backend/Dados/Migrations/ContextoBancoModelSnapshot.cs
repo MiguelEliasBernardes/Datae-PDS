@@ -497,6 +497,62 @@ namespace Backend.Dados.Migrations
                     b.ToTable("PagamentosFormando");
                 });
 
+            modelBuilder.Entity("Backend.Modelos.PixInformado", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Conferido")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ConferidoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ConvidadoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CotaPresenteId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EventoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("FormandoId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("InformadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NomeConvidado")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Recado")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConvidadoId");
+
+                    b.HasIndex("CotaPresenteId")
+                        .IsUnique();
+
+                    b.HasIndex("EventoId");
+
+                    b.HasIndex("FormandoId");
+
+                    b.ToTable("PixInformados");
+                });
+
             modelBuilder.Entity("Backend.Modelos.Usuario", b =>
                 {
                     b.Property<int>("Id")
@@ -640,6 +696,30 @@ namespace Backend.Dados.Migrations
                         .HasForeignKey("FormandoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Backend.Modelos.PixInformado", b =>
+                {
+                    b.HasOne("Backend.Modelos.Convidado", null)
+                        .WithMany()
+                        .HasForeignKey("ConvidadoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Backend.Modelos.CotaPresente", null)
+                        .WithMany()
+                        .HasForeignKey("CotaPresenteId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Backend.Modelos.Evento", null)
+                        .WithMany()
+                        .HasForeignKey("EventoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Modelos.Formando", null)
+                        .WithMany()
+                        .HasForeignKey("FormandoId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 #pragma warning restore 612, 618
         }

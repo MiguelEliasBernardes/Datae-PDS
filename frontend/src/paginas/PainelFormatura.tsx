@@ -11,6 +11,7 @@ import obrigado from '../assets/gift-stat.svg'
 import engrenagem from '../assets/settings.svg'
 import dividir from '../assets/split.svg'
 import pessoas from '../assets/users.svg'
+import pix from '../assets/pix.svg'
 import { obterEvento } from '../api/eventos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
@@ -40,6 +41,7 @@ export function PainelFormatura({
   onAbrirChecklist,
   onAbrirPosEvento,
   onAbrirRoteiro,
+  onAbrirFinanceiroPix,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -54,6 +56,7 @@ export function PainelFormatura({
   onAbrirChecklist: () => void
   onAbrirPosEvento: () => void
   onAbrirRoteiro: () => void
+  onAbrirFinanceiroPix: () => void
   onAbrirConfiguracoes?: () => void
   onAbrirVisualizacao: () => void
 }) {
@@ -72,6 +75,7 @@ export function PainelFormatura({
     if (pode(evento, 'GerenciarComissao')) acessos.push({ icone: pessoas, titulo: 'Formandos', onClick: onAbrirFormandos })
     acessos.push({ icone: notaDinheiro, titulo: 'Despesas', onClick: onAbrirDespesas })
     acessos.push({ icone: dividir, titulo: financeiro ? 'Rateio Pagamentos' : 'Minha parte', onClick: onAbrirRateio })
+    if (financeiro) acessos.push({ icone: pix, titulo: 'Financeiro (PIX)', onClick: onAbrirFinanceiroPix })
     if (evento.meuPapel) acessos.push({ icone: presente, titulo: 'Meus presentes', onClick: onAbrirMeusPresentes })
     if (pode(evento, 'ModerarMural')) acessos.push({ icone: livroImagem, titulo: 'Mural de fotos', onClick: onAbrirMural })
     if (pode(evento, 'GerenciarEvento')) acessos.push({ icone: emailConfirmado, titulo: 'Convidados', onClick: onAbrirConvidados })

@@ -164,6 +164,7 @@ export function PosEvento({
           </p>
           <p className="mt-2 text-[12px] text-primary-soft">
             Presentes: {formatarMoeda(resumo.valorPresentes)} · Cotas: {formatarMoeda(resumo.valorCotas)}
+            {resumo.pix.length > 0 && ` · Pix: ${formatarMoeda(resumo.valorPix)}`}
           </p>
         </div>
         <div className="-mx-6 flex gap-3 overflow-x-auto px-6 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0">
@@ -270,6 +271,27 @@ export function PosEvento({
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* Pix livres (presente em dinheiro) avisados pelos convidados; os das cotas já aparecem nas cotas */}
+      {resumo.pix.length > 0 && (
+        <section className={secao}>
+          <RotuloSecao>PRESENTES EM PIX</RotuloSecao>
+          <ul className="flex flex-col gap-2">
+            {resumo.pix.map((p, i) => (
+              <li key={i} className="flex items-center justify-between gap-3 rounded-[12px] bg-badge px-4 py-3">
+                <p className="min-w-0 truncate text-[14px] font-semibold text-heading">{p.nomeConvidado}</p>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className="text-[13px] font-semibold text-heading">{formatarMoeda(p.valor)}</span>
+                  <SeloStatus tom={p.conferido ? 'sucesso' : 'destaque'}>
+                    {p.conferido ? 'Conferido' : 'Aguardando conferência'}
+                  </SeloStatus>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[12px] text-muted">Confira os Pix no extrato e marque em Financeiro (Pix).</p>
         </section>
       )}
 

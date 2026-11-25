@@ -36,6 +36,7 @@ export function PainelEvento({
   onAbrirChecklist,
   onAbrirPosEvento,
   onAbrirRoteiro,
+  onAbrirFinanceiroPix,
   onAbrirConfiguracoes,
   onAbrirVisualizacao,
 }: {
@@ -47,6 +48,7 @@ export function PainelEvento({
   onAbrirChecklist: () => void
   onAbrirPosEvento: () => void
   onAbrirRoteiro: () => void
+  onAbrirFinanceiroPix: () => void
   onAbrirConfiguracoes: () => void
   onAbrirVisualizacao: () => void
 }) {
@@ -158,8 +160,8 @@ export function PainelEvento({
             { icone: circuloCheck, titulo: 'Checklist', onClick: onAbrirChecklist },
             { icone: prancheta, titulo: 'Roteiro com IA', onClick: onAbrirRoteiro },
             { icone: notaDinheiro, titulo: 'Pós-evento', onClick: onAbrirPosEvento },
-            // A chave Pix é cadastrada nas configurações da página
-            { icone: pix, titulo: 'Financeiro (PIX)', onClick: onAbrirConfiguracoes },
+            // Relatório dos Pix avisados pelos convidados (a chave Pix fica nas configurações)
+            { icone: pix, titulo: 'Financeiro (PIX)', onClick: onAbrirFinanceiroPix },
           ]}
         />
       </div>

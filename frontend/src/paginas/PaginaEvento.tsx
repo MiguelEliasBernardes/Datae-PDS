@@ -262,7 +262,7 @@ export function PaginaEvento({
               </div>
               <div className="mt-4 lg:mt-0">
                 {evento.pixDisponivel ? (
-                  <CartaoPix slug={slug} nomeRecebedor={evento.nomeRecebedorPix} />
+                  <CartaoPix slug={slug} nomeRecebedor={evento.nomeRecebedorPix} somenteLeitura={preVisualizacao} />
                 ) : (
                   // Só aparece para o organizador: convidados não veem a seção sem Pix configurado
                   <p className="rounded-[12px] border-[1.5px] border-dashed border-field-border p-5 text-[13px] text-muted">

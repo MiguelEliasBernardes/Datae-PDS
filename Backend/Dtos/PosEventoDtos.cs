@@ -15,6 +15,9 @@ public record PresenteRecebidoResposta(
     // Lista pessoal de um formando (nulo = lista do evento)
     string? NomeFormando);
 
+/// <summary>Pix livre ("presente em dinheiro") avisado por um convidado.</summary>
+public record PixResumoResposta(string NomeConvidado, decimal Valor, bool Conferido, DateTime InformadoEm);
+
 public record CompraCotaResumoResposta(string NomeConvidado, int Quantidade, decimal Valor, DateTime CompradaEm);
 
 /// <summary>Presente dividido em cotas que vendeu pelo menos uma cota.</summary>
@@ -47,10 +50,11 @@ public record ResumoPosEventoResposta(
     string NomeEvento,
     DateTime DataEvento,
     bool EventoRealizado,
-    // Arrecadação estimada: presentes inteiros reservados/comprados (com valor) + cotas vendidas
+    // Arrecadação estimada: presentes inteiros reservados/comprados (com valor) + cotas vendidas + Pix livres avisados
     decimal TotalArrecadado,
     decimal ValorPresentes,
     decimal ValorCotas,
+    decimal ValorPix,
     int PresentesComprados,
     int PresentesReservados,
     int CotasVendidas,
@@ -63,6 +67,7 @@ public record ResumoPosEventoResposta(
     int FotosAprovadas,
     List<PresenteRecebidoResposta> Presentes,
     List<PresenteCotasResumoResposta> PresentesComCotas,
+    List<PixResumoResposta> Pix,
     List<AgradecimentoResposta> Agradecimentos,
     // Mensagem: a do organizador (nula = usa a padrão)
     string? MensagemAgradecimento,

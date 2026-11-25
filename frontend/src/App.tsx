@@ -15,6 +15,7 @@ import { CriarEvento } from './paginas/CriarEvento'
 import { Despesas } from './paginas/Despesas'
 import { Formandos } from './paginas/Formandos'
 import { Login } from './paginas/Login'
+import { FinanceiroPix } from './paginas/FinanceiroPix'
 import { MeusEventos } from './paginas/MeusEventos'
 import { Mural } from './paginas/Mural'
 import { PaginaEvento, PreVisualizacaoEvento } from './paginas/PaginaEvento'
@@ -46,6 +47,7 @@ type Tela =
   | 'pos-evento'
   | 'recapitulacao'
   | 'roteiro'
+  | 'financeiro-pix'
 
 /**
  * Evento aberto no momento, qual painel ele usa (formatura tem um painel próprio) e o que o
@@ -193,6 +195,7 @@ function AreaOrganizador() {
             onAbrirChecklist={irPara('checklist')}
             onAbrirPosEvento={irPara('pos-evento')}
             onAbrirRoteiro={irPara('roteiro')}
+            onAbrirFinanceiroPix={irPara('financeiro-pix')}
             onAbrirConfiguracoes={irPara('configuracoes')}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -211,6 +214,7 @@ function AreaOrganizador() {
             onAbrirChecklist={irPara('checklist')}
             onAbrirPosEvento={irPara('pos-evento')}
             onAbrirRoteiro={irPara('roteiro')}
+            onAbrirFinanceiroPix={irPara('financeiro-pix')}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}
           />
@@ -289,6 +293,15 @@ function AreaOrganizador() {
             eventoId={evento.id}
             podeEscolherResponsavel={formatura && pode('GerenciarComissao')}
             acoes={acoesDicas}
+            onVoltar={voltarAoPainel}
+            onAbrirConfiguracoes={abrirConfiguracoes}
+            onAbrirVisualizacao={irPara('pagina-evento')}
+          />
+        )
+      case 'financeiro-pix':
+        return (
+          <FinanceiroPix
+            eventoId={evento.id}
             onVoltar={voltarAoPainel}
             onAbrirConfiguracoes={abrirConfiguracoes}
             onAbrirVisualizacao={irPara('pagina-evento')}

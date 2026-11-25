@@ -38,6 +38,7 @@ const checklist = await carregar('/src/api/checklist.ts')
 const posEvento = await carregar('/src/api/posEvento.ts')
 const assistente = await carregar('/src/api/assistente.ts')
 const usuarios = await carregar('/src/api/usuarios.ts')
+const relatorioPix = await carregar('/src/api/pix.ts')
 
 let aprovados = 0
 const falhas = []
@@ -684,6 +685,70 @@ try {
     // O membro tem a própria lista pessoal, com as gerações dele
     const minhaLista = await assistente.obterStatusAssistente(formaturaEvento.id, true)
     verificar(minhaLista.geracoesRestantes === 3, JSON.stringify(minhaLista))
+    usarSessao(tokenA)
+  })
+
+  console.log('\nPix avisado pelos convidados')
+  usarSessao(tokenA)
+  let festaPix = null
+  let viagemId = null
+  await testar('evento sem Pix configurado recusa o aviso (404)', async () => {
+    festaPix = await eventos.criarEvento({
+      tipo: 'Aniversario',
+      dataEvento: new Date(Date.now() - 86_400_000).toISOString(),
+      nomeEvento: `Festa com Pix ${sufixo}`,
+    })
+    await esperarErro(publico.informarPix(festaPix.slugPublico, { nome: 'Ana', valor: 50 }), 404)
+    const relatorio = await relatorioPix.obterRelatorioPix(festaPix.id)
+    verificar(relatorio.pixConfigurado === false && relatorio.itens.length === 0, JSON.stringify(relatorio))
+  })
+  await testar('Pix livre sem valor ou sem nome → 400 nos campos certos', async () => {
+    await eventos.atualizarEvento(festaPix.id, { chavePix: 'pix@datae.dev', nomeRecebedorPix: 'Teste', cidadePix: 'Sao Paulo' })
+    const erro = await esperarErro(publico.informarPix(festaPix.slugPublico, { nome: ' ', valor: 0 }), 400)
+    verificar(erro.doCampo('nome') && erro.doCampo('valor'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('Pix livre e Pix das cotas chegam ao relatório aguardando conferência', async () => {
+    await publico.informarPix(festaPix.slugPublico, {
+      nome: 'Ana Lima', valor: 120.5, recado: 'Felicidades!', telefone: '(11) 98888-7777',
+    })
+    const viagem = await presentes.criarPresente(festaPix.id, { nome: 'Viagem', valorEstimado: 300, quantidadeCotas: 3 })
+    viagemId = viagem.id
+    const compra = await publico.comprarCotas(festaPix.slugPublico, viagem.id, 'Bruno Reis', 2)
+    // Nome diferente do usado na compra não confirma a compra de outra pessoa
+    await esperarErro(publico.informarPix(festaPix.slugPublico, { nome: 'Outra Pessoa', cotaId: compra.cotaId }), 404)
+    await publico.informarPix(festaPix.slugPublico, { nome: 'bruno reis', cotaId: compra.cotaId })
+    await esperarErro(publico.informarPix(festaPix.slugPublico, { nome: 'Bruno Reis', cotaId: compra.cotaId }), 409)
+    const relatorio = await relatorioPix.obterRelatorioPix(festaPix.id)
+    verificar(relatorio.itens.length === 2 && relatorio.totalInformado === 320.5, JSON.stringify(relatorio))
+    verificar(relatorio.aguardandoConferencia === 2 && relatorio.totalConferido === 0, JSON.stringify(relatorio))
+    const cotas = relatorio.itens.find((p) => p.origem === 'Cotas')
+    verificar(cotas.valor === 200 && cotas.detalhe === '2 cotas de Viagem', JSON.stringify(cotas))
+    const livre = relatorio.itens.find((p) => p.origem === 'Livre')
+    verificar(livre.recado === 'Felicidades!' && livre.nomeConvidado === 'Ana Lima', JSON.stringify(livre))
+  })
+  await testar('conferir e excluir atualizam os totais', async () => {
+    const antes = await relatorioPix.obterRelatorioPix(festaPix.id)
+    const livre = antes.itens.find((p) => p.origem === 'Livre')
+    const conferido = await relatorioPix.marcarPixConferido(festaPix.id, livre.id, true)
+    verificar(conferido.totalConferido === 120.5 && conferido.aguardandoConferencia === 1, JSON.stringify(conferido))
+    const cotas = antes.itens.find((p) => p.origem === 'Cotas')
+    const depois = await relatorioPix.excluirPixInformado(festaPix.id, cotas.id)
+    verificar(depois.itens.length === 1 && depois.totalInformado === 120.5, JSON.stringify(depois))
+    // A compra das cotas continua: excluir o aviso não desfaz as cotas
+    verificar((await presentes.listarCotas(festaPix.id, viagemId)).length === 1, 'a compra das cotas foi apagada junto')
+  })
+  await testar('Pix livre entra no total do pós-evento e nos agradecimentos', async () => {
+    const resumo = await posEvento.obterResumoPosEvento(festaPix.id)
+    verificar(resumo.valorPix === 120.5 && resumo.pix.length === 1 && resumo.pix[0].conferido, JSON.stringify(resumo.pix))
+    verificar(resumo.totalArrecadado === 320.5, `total: ${resumo.totalArrecadado}`)
+    const ana = resumo.agradecimentos.find((a) => a.nome === 'Ana Lima')
+    verificar(ana && ana.motivos.some((m) => m.startsWith('Pix de R$')) && ana.telefone === '5511988887777', JSON.stringify(ana))
+  })
+  await testar('relatório de Pix: 404 de fora e 403 para membro da formatura', async () => {
+    usarSessao(tokenB)
+    await esperarErro(relatorioPix.obterRelatorioPix(festaPix.id), 404)
+    usarSessao(tokenC)
+    await esperarErro(relatorioPix.obterRelatorioPix(formaturaEvento.id), 403)
     usarSessao(tokenA)
   })
 

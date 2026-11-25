@@ -111,7 +111,7 @@ export function PaginaFormando({ slug, slugFormando }: { slug: string; slugForma
               </p>
             </div>
             <div className="mt-4 lg:mt-0">
-              <CartaoPix slug={slug} nomeRecebedor={evento.nomeRecebedorPix} />
+              <CartaoPix slug={slug} slugFormando={slugFormando} nomeRecebedor={evento.nomeRecebedorPix} />
             </div>
           </div>
         </section>

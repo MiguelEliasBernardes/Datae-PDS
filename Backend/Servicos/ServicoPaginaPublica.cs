@@ -227,14 +227,14 @@ public class ServicoPaginaPublica(ContextoBanco banco)
     /// passa se ainda houver cotas suficientes, então duas compras ao mesmo tempo nunca vendem além do total.
     /// Se o evento tiver Pix, a resposta já traz o QR Code com o valor das cotas.
     /// </summary>
-    public async Task<Resultado<(ItemPresente Presente, int Quantidade, decimal? Valor, PixResposta? Pix)>> ComprarCotasAsync(
+    public async Task<Resultado<(ItemPresente Presente, int Quantidade, decimal? Valor, PixResposta? Pix, int CotaId)>> ComprarCotasAsync(
         string slug, int presenteId, ComprarCotasRequisicao requisicao)
     {
         var evento = await BuscarPorSlugAsync(slug);
         if (evento is null)
-            return EventoNaoEncontrado<(ItemPresente, int, decimal?, PixResposta?)>();
+            return EventoNaoEncontrado<(ItemPresente, int, decimal?, PixResposta?, int)>();
         if (!evento.ListaPresentesAtiva)
-            return ListaDesativada<(ItemPresente, int, decimal?, PixResposta?)>();
+            return ListaDesativada<(ItemPresente, int, decimal?, PixResposta?, int)>();
 
         var nome = NormalizarNome(requisicao.Nome);
         var quantidade = requisicao.Quantidade;
@@ -249,20 +249,20 @@ public class ServicoPaginaPublica(ContextoBanco banco)
         var (telefone, email) = ValidarContato(requisicao.Telefone, requisicao.Email, erros);
 
         if (erros.Count > 0)
-            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Invalido(erros);
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?, int)>.Invalido(erros);
 
         var presente = await banco.ItensPresente.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == presenteId && p.EventoId == evento.Id);
         if (presente is null)
-            return PresenteNaoEncontrado<(ItemPresente, int, decimal?, PixResposta?)>();
+            return PresenteNaoEncontrado<(ItemPresente, int, decimal?, PixResposta?, int)>();
         if (presente.QuantidadeCotas is not int totalCotas)
-            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Falha(TipoErro.Conflito, "Este presente não é dividido em cotas. Reserve o presente inteiro.");
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?, int)>.Falha(TipoErro.Conflito, "Este presente não é dividido em cotas. Reserve o presente inteiro.");
 
         var restantes = totalCotas - presente.CotasVendidas;
         if (restantes <= 0)
-            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Falha(TipoErro.Conflito, "Todas as cotas deste presente já foram compradas.");
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?, int)>.Falha(TipoErro.Conflito, "Todas as cotas deste presente já foram compradas.");
         if (quantidade > restantes)
-            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Invalido(new()
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?, int)>.Invalido(new()
             {
                 ["quantidade"] = [restantes == 1 ? "Só resta 1 cota." : $"Só restam {restantes} cotas."],
             });
@@ -282,18 +282,19 @@ public class ServicoPaginaPublica(ContextoBanco banco)
 
         // Outra pessoa comprou as últimas cotas entre a consulta e o UPDATE: desfaz o convidado criado agora
         if (alterados == 0)
-            return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Falha(
+            return Resultado<(ItemPresente, int, decimal?, PixResposta?, int)>.Falha(
                 TipoErro.Conflito, "As cotas deste presente acabaram de ser compradas por outra pessoa. Atualize a página.");
 
         var valor = presente.ValorCota * quantidade;
-        banco.CotasPresente.Add(new CotaPresente
+        var cota = new CotaPresente
         {
             ItemPresenteId = presente.Id,
             ConvidadoId = convidado.Id,
             NomeConvidado = nome,
             Quantidade = quantidade,
             Valor = valor ?? 0,
-        });
+        };
+        banco.CotasPresente.Add(cota);
         await banco.SaveChangesAsync();
         await transacao.CommitAsync();
 
@@ -303,8 +304,120 @@ public class ServicoPaginaPublica(ContextoBanco banco)
 
         // Presente sem valor não tem como gerar Pix: o convidado combina o pagamento com o organizador
         var pix = PixDisponivel(evento) && valor is > 0 and <= ValorMaximoPix ? MontarPix(evento, valor) : null;
-        return Resultado<(ItemPresente, int, decimal?, PixResposta?)>.Ok((presente, quantidade, valor, pix));
+        return Resultado<(ItemPresente, int, decimal?, PixResposta?, int)>.Ok((presente, quantidade, valor, pix, cota.Id));
     }
+
+    /// <summary>
+    /// "Já fiz o Pix": o convidado avisa o organizador do Pix que fez. O aviso chega aguardando conferência
+    /// (o Pix é estático, então só o extrato confirma). Com CotaId, é o Pix de uma compra de cotas: o valor
+    /// vem da compra e o nome precisa ser o mesmo dela, para ninguém marcar a compra de outra pessoa.
+    /// </summary>
+    public async Task<Resultado<PixInformado>> InformarPixAsync(string slug, InformarPixRequisicao requisicao)
+    {
+        var evento = await BuscarPorSlugAsync(slug);
+        if (evento is null)
+            return EventoNaoEncontrado<PixInformado>();
+        if (!PixDisponivel(evento))
+            return Resultado<PixInformado>.Falha(TipoErro.NaoEncontrado, "Este evento não recebe presentes via Pix.");
+
+        var nome = NormalizarNome(requisicao.Nome);
+        var recado = TextoOpcional(requisicao.Recado);
+        var erros = new Dictionary<string, string[]>();
+
+        if (nome.Length == 0)
+            erros["nome"] = ["Informe seu nome."];
+        else if (nome.Length > 120)
+            erros["nome"] = ["O nome pode ter no máximo 120 caracteres."];
+        if (recado?.Length > 500)
+            erros["recado"] = ["O recado pode ter no máximo 500 caracteres."];
+
+        if (requisicao.CotaId is int cotaId)
+        {
+            if (erros.Count > 0)
+                return Resultado<PixInformado>.Invalido(erros);
+            return await InformarPixCotasAsync(evento, cotaId, nome, recado);
+        }
+
+        if (requisicao.Valor is not decimal valor || valor <= 0 || valor > ValorMaximoPix || decimal.Round(valor, 2) != valor)
+            erros["valor"] = [$"Informe o valor do Pix, entre R$ 0,01 e R$ {ValorMaximoPix:N0}."];
+        var (telefone, email) = ValidarContato(requisicao.Telefone, requisicao.Email, erros);
+
+        if (erros.Count > 0)
+            return Resultado<PixInformado>.Invalido(erros);
+
+        int? formandoId = null;
+        if (TextoOpcional(requisicao.SlugFormando) is string slugFormando)
+        {
+            var slugNormalizado = slugFormando.ToLowerInvariant();
+            formandoId = await banco.Formandos
+                .Where(f => f.EventoId == evento.Id && f.Slug == slugNormalizado)
+                .Select(f => (int?)f.Id)
+                .FirstOrDefaultAsync();
+            if (formandoId is null)
+                return Resultado<PixInformado>.Falha(TipoErro.NaoEncontrado, "Formando não encontrado. Confira o link.");
+        }
+
+        // O convidado entra na lista (ou tem os contatos atualizados) para receber o agradecimento do pós-evento
+        var convidado = await BuscarOuCriarConvidadoAsync(evento.Id, nome, telefone, email);
+        await banco.SaveChangesAsync();
+
+        var pix = new PixInformado
+        {
+            EventoId = evento.Id,
+            ConvidadoId = convidado.Id,
+            NomeConvidado = nome,
+            FormandoId = formandoId,
+            Valor = requisicao.Valor!.Value,
+            Recado = recado,
+        };
+        banco.PixInformados.Add(pix);
+        await banco.SaveChangesAsync();
+        return Resultado<PixInformado>.Ok(pix);
+    }
+
+    private async Task<Resultado<PixInformado>> InformarPixCotasAsync(Evento evento, int cotaId, string nome, string? recado)
+    {
+        var cota = await (
+                from c in banco.CotasPresente
+                join p in banco.ItensPresente on c.ItemPresenteId equals p.Id
+                where c.Id == cotaId && p.EventoId == evento.Id
+                select c)
+            .FirstOrDefaultAsync();
+
+        // Nome diferente do usado na compra responde igual a "não existe", para não confirmar quais compras existem
+        if (cota is null || !string.Equals(cota.NomeConvidado, nome, StringComparison.OrdinalIgnoreCase))
+            return Resultado<PixInformado>.Falha(
+                TipoErro.NaoEncontrado, "Compra de cotas não encontrada. Use o mesmo nome que você informou ao comprar.");
+        if (cota.Valor <= 0)
+            return Resultado<PixInformado>.Falha(
+                TipoErro.Conflito, "Este presente não tem valor definido. Combine o pagamento com o organizador.");
+        if (await banco.PixInformados.AnyAsync(p => p.CotaPresenteId == cota.Id))
+            return PixJaInformado();
+
+        var pix = new PixInformado
+        {
+            EventoId = evento.Id,
+            ConvidadoId = cota.ConvidadoId,
+            NomeConvidado = cota.NomeConvidado,
+            CotaPresenteId = cota.Id,
+            Valor = cota.Valor,
+            Recado = recado,
+        };
+        banco.PixInformados.Add(pix);
+        try
+        {
+            await banco.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Dois avisos da mesma compra ao mesmo tempo: o índice único deixa passar só um
+            return PixJaInformado();
+        }
+        return Resultado<PixInformado>.Ok(pix);
+    }
+
+    private static Resultado<PixInformado> PixJaInformado() =>
+        Resultado<PixInformado>.Falha(TipoErro.Conflito, "Você já avisou o organizador sobre o Pix destas cotas.");
 
     /// <summary>Confere o código de reserva e aplica a alteração. A alteração devolve uma mensagem se não for permitida.</summary>
     private async Task<Resultado<ItemPresente>> AlterarReservaAsync(

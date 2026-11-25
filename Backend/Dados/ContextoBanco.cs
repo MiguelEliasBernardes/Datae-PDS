@@ -15,6 +15,7 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
     public DbSet<Despesa> Despesas => Set<Despesa>();
     public DbSet<PagamentoFormando> PagamentosFormando => Set<PagamentoFormando>();
     public DbSet<ItemChecklist> ItensChecklist => Set<ItemChecklist>();
+    public DbSet<PixInformado> PixInformados => Set<PixInformado>();
 
     protected override void OnModelCreating(ModelBuilder modelo)
     {
@@ -128,6 +129,23 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             item.Property(i => i.Categoria).HasConversion<string>().HasMaxLength(20);
             item.Property(i => i.Origem).HasConversion<string>().HasMaxLength(20);
             item.Property(i => i.ChaveSugestao).HasMaxLength(60);
+        });
+
+        modelo.Entity<PixInformado>(pix =>
+        {
+            // Excluir o evento ou desfazer a compra de cotas exclui o aviso; excluir o convidado ou o formando
+            // mantém o aviso (o nome fica guardado)
+            pix.HasOne<Evento>().WithMany().HasForeignKey(p => p.EventoId).OnDelete(DeleteBehavior.Cascade);
+            pix.HasOne<CotaPresente>().WithMany().HasForeignKey(p => p.CotaPresenteId).OnDelete(DeleteBehavior.Cascade);
+            pix.HasOne<Convidado>().WithMany().HasForeignKey(p => p.ConvidadoId).OnDelete(DeleteBehavior.SetNull);
+            pix.HasOne<Formando>().WithMany().HasForeignKey(p => p.FormandoId).OnDelete(DeleteBehavior.SetNull);
+
+            // Uma compra de cotas tem no máximo um aviso de Pix (vários nulos são permitidos)
+            pix.HasIndex(p => p.CotaPresenteId).IsUnique();
+
+            pix.Property(p => p.NomeConvidado).HasMaxLength(120).IsRequired();
+            pix.Property(p => p.Valor).HasPrecision(10, 2);
+            pix.Property(p => p.Recado).HasMaxLength(500);
         });
 
         modelo.Entity<PagamentoFormando>(pagamento =>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ErroApi, mensagemDeErro } from '../api/cliente'
-import { comprarCotas } from '../api/publico'
+import { comprarCotas, informarPix } from '../api/publico'
 import type { CompraCotas, Contato, PresentePublico } from '../api/tipos'
 import { formatarMoeda } from '../dados/formatacao'
 import { AvisoErro } from './AvisoErro'
@@ -33,6 +33,24 @@ export function FormularioCotas({
   const [mensagemGeral, setMensagemGeral] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [compra, setCompra] = useState<CompraCotas | null>(null)
+  // "Já fiz o Pix" depois da compra: avisa o organizador (o valor vem da compra)
+  const [avisando, setAvisando] = useState(false)
+  const [pixAvisado, setPixAvisado] = useState(false)
+  const [erroAviso, setErroAviso] = useState<string | null>(null)
+
+  async function avisarPix(cotaId: number) {
+    setErroAviso(null)
+    setAvisando(true)
+    try {
+      // O nome precisa ser o mesmo da compra: é assim que o backend confere que a compra é desta pessoa
+      await informarPix(slug, { nome, cotaId })
+      setPixAvisado(true)
+    } catch (e) {
+      setErroAviso(mensagemDeErro(e))
+    } finally {
+      setAvisando(false)
+    }
+  }
 
   const numero = Number(quantidade)
   const total = presente.valorCota !== null && Number.isInteger(numero) && numero > 0 ? presente.valorCota * numero : null
@@ -91,8 +109,20 @@ export function FormularioCotas({
           {presente.nome}"{compra.valor ? ` (${formatarMoeda(compra.valor)})` : ''}.
         </p>
         {compra.pix ? (
-          <div className="rounded-[12px] bg-heading p-5">
+          <div className="flex flex-col gap-3 rounded-[12px] bg-heading p-5">
             <ExibicaoPix pix={compra.pix} />
+            {pixAvisado ? (
+              <p role="status" className="text-center text-[13px] text-white">
+                Avisamos o organizador do seu Pix. Ele vai conferir no extrato do banco.
+              </p>
+            ) : (
+              <>
+                <AvisoErro mensagem={erroAviso} />
+                <Botao variante="secundario" carregando={avisando} onClick={() => void avisarPix(compra.cotaId)}>
+                  Já fiz o Pix
+                </Botao>
+              </>
+            )}
           </div>
         ) : (
           <p className="text-[13px] text-heading">Combine o pagamento diretamente com o organizador.</p>
