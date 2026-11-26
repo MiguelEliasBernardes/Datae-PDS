@@ -78,7 +78,7 @@ public class ContextoBanco(DbContextOptions<ContextoBanco> opcoes) : DbContext(o
             presente.Property(p => p.ValorEstimado).HasPrecision(10, 2);
             presente.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
             presente.Property(p => p.LinkAfiliado).HasMaxLength(500);
-            presente.Property(p => p.Foto).HasMaxLength(500);
+            presente.Property(p => p.Foto).HasMaxLength(64);
             presente.Property(p => p.CodigoReserva).HasMaxLength(32);
             presente.Ignore(p => p.ValorCota);
         });

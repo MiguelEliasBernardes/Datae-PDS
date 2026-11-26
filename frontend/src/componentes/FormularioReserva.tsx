@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ErroApi, mensagemDeErro } from '../api/cliente'
+import { ErroApi, mensagemDeErro, urlApi } from '../api/cliente'
 import { cancelarReservaPresente, marcarPresenteComprado, reservarPresente } from '../api/publico'
 import type { Contato, PresentePublico } from '../api/tipos'
 import { esquecerReserva, guardarReserva } from '../dados/reservas'
@@ -66,7 +66,9 @@ export function FormularioReserva({
 
   const cabecalho = (
     <div className="mb-4">
-      {presente.foto && <img src={presente.foto} alt="" className="mb-3 h-40 w-full rounded-[10px] object-cover" />}
+      {presente.fotoUrl && (
+        <img src={urlApi(presente.fotoUrl)} alt="" className="mb-3 h-40 w-full rounded-[10px] object-cover" />
+      )}
       <p className="text-[13px] text-muted">{formatarMoeda(presente.valorEstimado)}</p>
       {presente.descricao && <p className="mt-1 text-[13px] whitespace-pre-line text-heading">{presente.descricao}</p>}
       {presente.linkAfiliado && (

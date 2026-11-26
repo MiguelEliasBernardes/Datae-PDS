@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import imagemCapa from '../assets/event-hero.png'
 import { urlApi } from '../api/cliente'
 import { obterRecapitulacaoPrevia } from '../api/posEvento'
 import { obterRecapitulacao } from '../api/publico'
 import { ApresentacaoFotos } from '../componentes/ApresentacaoFotos'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { BarraLateral } from '../componentes/BarraLateral'
+import { FundoCorEvento } from '../componentes/FundoCorEvento'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { NavegacaoInferior, type ItemNavegacao } from '../componentes/NavegacaoInferior'
 import { RotuloSecao } from '../componentes/RotuloSecao'
@@ -93,7 +93,11 @@ export function PaginaRecapitulacao({
         <section className="pt-8 lg:pt-14">
           <div className={envoltorio}>
             <div className="relative aspect-[4/5] overflow-hidden rounded-[16px] sm:aspect-video lg:rounded-[24px]">
-              <img src={evento.bannerUrl ? urlApi(evento.bannerUrl) : imagemCapa} alt="" className="size-full object-cover" />
+              {evento.bannerUrl ? (
+                <img src={urlApi(evento.bannerUrl)} alt="" className="size-full object-cover" />
+              ) : (
+                <FundoCorEvento className="size-full" />
+              )}
               <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
               <span className="absolute top-4 right-4 text-[10px] font-bold tracking-[1.8px] text-white uppercase lg:top-6 lg:right-6 lg:text-[12px]">
                 {rotulosTipoEvento[evento.tipo]}

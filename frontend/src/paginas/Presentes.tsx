@@ -1,15 +1,24 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import circuloCheck from '../assets/circle-check-big.svg'
 import circuloMais from '../assets/circle-plus.svg'
 import olho from '../assets/eye.svg'
 import presenteIcone from '../assets/gift-stat.svg'
 import casaBranca from '../assets/house-white.svg'
-import imagemPadrao from '../assets/product-sample.png'
 import engrenagem from '../assets/settings.svg'
 import sacola from '../assets/shopping-bag.svg'
+import { urlApi } from '../api/cliente'
 import { listarConvidados } from '../api/convidados'
-import { atualizarPresente, criarPresente, excluirPresente, listarPresentes } from '../api/presentes'
+import { obterEvento } from '../api/eventos'
+import {
+  atualizarPresente,
+  criarPresente,
+  enviarFotoPresente,
+  excluirPresente,
+  listarPresentes,
+  removerFotoPresente,
+} from '../api/presentes'
 import type { DadosPresente, Presente } from '../api/tipos'
+import type { AlteracaoFoto } from '../dados/fotoPresente'
 import { AssistentePresentes } from '../componentes/AssistentePresentes'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { CartaoMinhaPagina } from '../componentes/CartaoMinhaPagina'
@@ -53,13 +62,23 @@ export function Presentes({
 }) {
   // Os convidados vêm junto só para mostrar o nome de quem reservou cada presente
   // (na lista pessoal o formando não acessa os convidados do evento, então os nomes não aparecem)
+  // O evento vem junto pela cor dele, usada no lugar da foto dos presentes sem foto
   const carregar = useCallback(
-    () => Promise.all([listarPresentes(eventoId, minhaLista), minhaLista ? Promise.resolve([]) : listarConvidados(eventoId)]),
+    () =>
+      Promise.all([
+        listarPresentes(eventoId, minhaLista),
+        minhaLista ? Promise.resolve([]) : listarConvidados(eventoId),
+        obterEvento(eventoId),
+      ]),
     [eventoId, minhaLista],
   )
   const { dados, erro, carregando, recarregar } = useCarregamento(carregar)
   const presentes = dados?.[0] ?? null
   const nomesConvidados = useMemo(() => new Map((dados?.[1] ?? []).map((c) => [c.id, c.nome])), [dados])
+  const corEvento = dados?.[2].corPrincipal ?? null
+
+  // Presente criado nesta janela cuja foto falhou: o "salvar" de novo atualiza ele em vez de criar outro
+  const presenteCriado = useRef<Presente | null>(null)
 
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState<Filtro | null>(null)
@@ -67,7 +86,12 @@ export function Presentes({
   const [assistenteAberto, setAssistenteAberto] = useState(false)
 
   const alternarFiltro = (f: Filtro) => setFiltro((atual) => (atual === f ? null : f))
-  const fecharJanela = useCallback(() => setEdicao(null), [])
+  const fecharJanela = useCallback(() => {
+    // Fechou depois de criar um presente cuja foto falhou: ele já existe, então aparece na lista
+    if (presenteCriado.current) recarregar()
+    presenteCriado.current = null
+    setEdicao(null)
+  }, [recarregar])
   const fecharAssistente = useCallback(() => setAssistenteAberto(false), [])
 
   const visiveis = useMemo(() => {
@@ -86,16 +110,27 @@ export function Presentes({
   const reservados = lista.filter((p) => p.status === 'Reservado').length
   const comprados = lista.filter((p) => p.status === 'Comprado').length
 
-  async function salvar(dados: DadosPresente) {
-    if (edicao === 'novo') await criarPresente(eventoId, dados, minhaLista)
-    else if (edicao) await atualizarPresente(eventoId, edicao.id, dados, minhaLista)
-    setEdicao(null)
+  async function salvar(dados: DadosPresente, foto: AlteracaoFoto) {
+    const existente = edicao === 'novo' ? presenteCriado.current : edicao
+    let salvo: Presente
+    if (existente) {
+      salvo = await atualizarPresente(eventoId, existente.id, dados, minhaLista)
+    } else {
+      salvo = await criarPresente(eventoId, dados, minhaLista)
+      presenteCriado.current = salvo
+    }
+
+    // A foto vai depois, porque o envio precisa do id do presente
+    if (foto === 'remover') await removerFotoPresente(eventoId, salvo.id, minhaLista)
+    else if (foto) await enviarFotoPresente(eventoId, salvo.id, foto, minhaLista)
+
+    fecharJanela()
     recarregar()
   }
 
   async function excluir() {
     if (edicao && edicao !== 'novo') await excluirPresente(eventoId, edicao.id, minhaLista)
-    setEdicao(null)
+    fecharJanela()
     recarregar()
   }
 
@@ -175,7 +210,8 @@ export function Presentes({
           visiveis.map((p) => (
             <LinhaPresente
               key={p.id}
-              imagem={p.foto || imagemPadrao}
+              imagem={p.fotoUrl && urlApi(p.fotoUrl)}
+              cor={corEvento}
               nome={p.nome}
               preco={formatarMoeda(p.valorEstimado)}
               status={p.status}

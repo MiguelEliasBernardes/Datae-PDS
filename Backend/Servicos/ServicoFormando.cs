@@ -11,7 +11,7 @@ namespace Backend.Servicos;
 /// Cadastrar, mudar papéis e convidar exige gerenciar a comissão (organizador ou administrador);
 /// cada formando que entrou por convite edita a própria sub-página ("eu").
 /// </summary>
-public class ServicoFormando(ContextoBanco banco)
+public class ServicoFormando(ContextoBanco banco, ArmazenamentoArquivos armazenamento)
 {
     private const int TamanhoMaximoSlug = 120;
 
@@ -120,9 +120,18 @@ public class ServicoFormando(ContextoBanco banco)
         if (formando is null)
             return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Formando não encontrado.");
 
+        // As fotos da lista pessoal ficam no armazenamento e são apagadas à parte, depois do banco
+        var fotos = await banco.ItensPresente
+            .Where(p => p.FormandoId == formando.Id && p.Foto != null)
+            .Select(p => p.Foto!)
+            .ToListAsync();
+
         // Os pagamentos e a lista pessoal dele são excluídos junto (cascata no banco); a conta perde o acesso
         banco.Formandos.Remove(formando);
         await banco.SaveChangesAsync();
+
+        foreach (var foto in fotos)
+            await armazenamento.ExcluirFotoPresenteAsync(eventoId, foto);
         return Resultado<bool>.Ok(true);
     }
 

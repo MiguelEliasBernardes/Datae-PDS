@@ -2,13 +2,13 @@ using Backend.Modelos;
 
 namespace Backend.Dtos;
 
-// QuantidadeCotas divide o presente em cotas (de 2 a 100); nulo ou 0 = presente inteiro
+// QuantidadeCotas divide o presente em cotas (de 2 a 100); nulo ou 0 = presente inteiro.
+// A foto é enviada à parte, como arquivo (PUT .../presentes/{id}/foto).
 public record CriarPresenteRequisicao(
     string Nome,
     string? Descricao,
     decimal? ValorEstimado,
     string? LinkAfiliado,
-    string? Foto,
     int? QuantidadeCotas);
 
 // Campos nulos não são alterados; texto vazio ("") limpa os campos opcionais.
@@ -22,9 +22,9 @@ public record AtualizarPresenteRequisicao(
     StatusPresente? Status,
     int? ConvidadoId,
     string? LinkAfiliado,
-    string? Foto,
     int? QuantidadeCotas);
 
+// FotoUrl: caminho da foto na API (nulo = sem foto; o frontend mostra a cor do evento)
 public record PresenteResposta(
     int Id,
     int EventoId,
@@ -34,7 +34,7 @@ public record PresenteResposta(
     decimal? ValorEstimado,
     StatusPresente Status,
     string? LinkAfiliado,
-    string? Foto,
+    string? FotoUrl,
     int? QuantidadeCotas,
     int CotasVendidas,
     decimal? ValorCota);

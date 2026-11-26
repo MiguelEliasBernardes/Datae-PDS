@@ -10,7 +10,7 @@ namespace Backend.Servicos;
 /// Presentes de duas listas: a do evento (gerenciada pelo organizador e pelos administradores)
 /// e a lista pessoal de cada formando (minhaLista = true), que só o próprio formando gerencia.
 /// </summary>
-public class ServicoPresente(ContextoBanco banco)
+public class ServicoPresente(ContextoBanco banco, ArmazenamentoArquivos armazenamento)
 {
     private const int MinimoCotas = 2;
     private const int MaximoCotas = 100;
@@ -70,7 +70,6 @@ public class ServicoPresente(ContextoBanco banco)
             Descricao = TextoOpcional(requisicao.Descricao),
             ValorEstimado = requisicao.ValorEstimado,
             LinkAfiliado = TextoOpcional(requisicao.LinkAfiliado),
-            Foto = TextoOpcional(requisicao.Foto),
             QuantidadeCotas = quantidadeCotas,
         };
 
@@ -128,8 +127,6 @@ public class ServicoPresente(ContextoBanco banco)
             presente.Descricao = TextoOpcional(requisicao.Descricao);
         if (requisicao.LinkAfiliado is not null)
             presente.LinkAfiliado = TextoOpcional(requisicao.LinkAfiliado);
-        if (requisicao.Foto is not null)
-            presente.Foto = TextoOpcional(requisicao.Foto);
 
         if (erros.Count > 0)
             return Resultado<ItemPresente>.Invalido(erros);
@@ -150,8 +147,71 @@ public class ServicoPresente(ContextoBanco banco)
 
         banco.ItensPresente.Remove(presente);
         await banco.SaveChangesAsync();
+        if (presente.Foto is string foto)
+            await armazenamento.ExcluirFotoPresenteAsync(eventoId, foto);
         return Resultado<bool>.Ok(true);
     }
+
+    /// <summary>Troca a foto do presente pelo arquivo enviado (JPG, PNG, GIF ou WEBP, até 10 MB).</summary>
+    public async Task<Resultado<ItemPresente>> EnviarFotoAsync(
+        int usuarioId, int eventoId, bool minhaLista, int id, IFormFile? arquivo)
+    {
+        var lista = await ResolverListaAsync(usuarioId, eventoId, minhaLista);
+        if (!lista.Sucesso)
+            return lista.Repassar<ItemPresente>();
+
+        var presente = await BuscarAsync(eventoId, lista.Valor, id);
+        if (presente is null)
+            return PresenteNaoEncontrado();
+
+        if (arquivo is null || arquivo.Length == 0)
+            return Resultado<ItemPresente>.Invalido(new() { ["arquivo"] = ["Escolha uma foto para o presente."] });
+        if (arquivo.Length > ServicoEvento.TamanhoMaximoBannerBytes)
+            return Resultado<ItemPresente>.Invalido(new()
+            {
+                ["arquivo"] = [$"A foto pode ter no máximo {ServicoEvento.TamanhoMaximoBannerBytes / 1024 / 1024} MB."],
+            });
+
+        // Lê o começo do arquivo para conferir se é mesmo uma imagem
+        var extensao = await ArmazenamentoArquivos.DetectarExtensaoImagemAsync(arquivo);
+        if (extensao is null)
+            return Resultado<ItemPresente>.Invalido(new() { ["arquivo"] = ["Envie uma imagem JPG, PNG, GIF ou WEBP."] });
+
+        var fotoAnterior = presente.Foto;
+        await using (var conteudo = arquivo.OpenReadStream())
+            presente.Foto = await armazenamento.SalvarFotoPresenteAsync(eventoId, conteudo, extensao);
+
+        await banco.SaveChangesAsync();
+        if (fotoAnterior is not null)
+            await armazenamento.ExcluirFotoPresenteAsync(eventoId, fotoAnterior);
+
+        return Resultado<ItemPresente>.Ok(presente);
+    }
+
+    /// <summary>Tira a foto do presente; a lista volta a mostrar a cor do evento no lugar.</summary>
+    public async Task<Resultado<ItemPresente>> RemoverFotoAsync(int usuarioId, int eventoId, bool minhaLista, int id)
+    {
+        var lista = await ResolverListaAsync(usuarioId, eventoId, minhaLista);
+        if (!lista.Sucesso)
+            return lista.Repassar<ItemPresente>();
+
+        var presente = await BuscarAsync(eventoId, lista.Valor, id);
+        if (presente is null)
+            return PresenteNaoEncontrado();
+
+        if (presente.Foto is string foto)
+        {
+            presente.Foto = null;
+            await banco.SaveChangesAsync();
+            await armazenamento.ExcluirFotoPresenteAsync(eventoId, foto);
+        }
+
+        return Resultado<ItemPresente>.Ok(presente);
+    }
+
+    /// <summary>Endereço público da foto, ou nulo se o presente não tem foto.</summary>
+    public static string? UrlDaFoto(ItemPresente presente) =>
+        presente.Foto is null ? null : $"/api/presentes/fotos/{presente.EventoId}/{presente.Foto}";
 
     public async Task<Resultado<List<CotaPresente>>> ListarCotasAsync(int usuarioId, int eventoId, bool minhaLista, int id)
     {

@@ -460,8 +460,8 @@ namespace Backend.Dados.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("Foto")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("LinkAfiliado")
                         .HasMaxLength(500)

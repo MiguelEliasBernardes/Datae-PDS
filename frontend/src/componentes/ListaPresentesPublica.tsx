@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import presenteBotao from '../assets/gift-btn.svg'
+import { urlApi } from '../api/cliente'
 import type { PresentePublico, StatusPresente } from '../api/tipos'
 import { formatarMoeda, rotulosStatusPresente } from '../dados/formatacao'
 import { codigoReserva } from '../dados/reservas'
@@ -72,7 +73,7 @@ export function ListaPresentesPublica({
             key={p.id}
             nome={p.nome}
             preco={precoDoPresente(p)}
-            imagem={p.foto ?? undefined}
+            imagem={p.fotoUrl ? urlApi(p.fotoUrl) : undefined}
             link={p.linkAfiliado ?? undefined}
             status={{ rotulo: rotulosStatusPresente[p.status], tom: tomStatusPresente[p.status] }}
             acao={acaoDoPresente(p)}

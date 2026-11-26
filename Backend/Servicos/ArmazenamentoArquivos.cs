@@ -4,7 +4,8 @@ namespace Backend.Servicos;
 
 /// <summary>
 /// Guarda as imagens enviadas, numa "pasta" por evento:
-/// mural/{eventoId}/{arquivo} para as fotos do mural e banners/{eventoId}/{arquivo} para o banner da página.
+/// mural/{eventoId}/{arquivo} para as fotos do mural, banners/{eventoId}/{arquivo} para o banner da página
+/// e presentes/{eventoId}/{arquivo} para as fotos dos presentes.
 /// O nome do arquivo é sempre gerado aqui (GUID aleatório), então não dá para adivinhar
 /// o endereço de uma foto pendente nem escapar da pasta com "../".
 ///
@@ -65,11 +66,22 @@ public sealed partial class ArmazenamentoArquivos : IDisposable
 
     public Task ExcluirBannerAsync(int eventoId, string arquivo) => ExcluirAsync($"banners/{eventoId}", arquivo);
 
+    // ===== Foto dos presentes (lista do evento e listas pessoais dos formandos) =====
+
+    public Task<string> SalvarFotoPresenteAsync(int eventoId, Stream conteudo, string extensao) =>
+        SalvarAsync($"presentes/{eventoId}", conteudo, extensao);
+
+    /// <summary>Como entregar a foto, ou nulo se o nome for inválido ou ela não existir.</summary>
+    public Task<ImagemGuardada?> AbrirFotoPresenteAsync(int eventoId, string arquivo) =>
+        AbrirAsync($"presentes/{eventoId}", arquivo);
+
+    public Task ExcluirFotoPresenteAsync(int eventoId, string arquivo) => ExcluirAsync($"presentes/{eventoId}", arquivo);
+
     /// <summary>Apaga todas as imagens de um evento (chamado quando o evento é excluído).</summary>
     public async Task ExcluirPastaEventoAsync(int eventoId)
     {
-        await TentarExcluirAsync($"mural/{eventoId}/", () => destino.ExcluirPrefixoAsync($"mural/{eventoId}/"));
-        await TentarExcluirAsync($"banners/{eventoId}/", () => destino.ExcluirPrefixoAsync($"banners/{eventoId}/"));
+        foreach (var pasta in (string[])["mural", "banners", "presentes"])
+            await TentarExcluirAsync($"{pasta}/{eventoId}/", () => destino.ExcluirPrefixoAsync($"{pasta}/{eventoId}/"));
     }
 
     /// <summary>

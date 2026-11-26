@@ -20,7 +20,17 @@ export const atualizarPresente = (eventoId: number, id: number, dados: Partial<D
 export const excluirPresente = (eventoId: number, id: number, minhaLista = false) =>
   requisicao<void>(`${base(eventoId, minhaLista)}/${id}`, 'DELETE')
 
-export const listarCotas = (eventoId: number, id: number, minhaLista = false) =>
+/** Troca a foto do presente pelo arquivo escolhido (vai para o armazenamento da API). */
+export function enviarFotoPresente(eventoId: number, id: number, arquivo: File, minhaLista = false) {
+  const formulario = new FormData()
+  formulario.append('arquivo', arquivo)
+  return requisicao<Presente>(`${base(eventoId, minhaLista)}/${id}/foto`, 'PUT', formulario)
+}
+
+export const removerFotoPresente = (eventoId: number, id: number, minhaLista = false) =>
+  requisicao<Presente>(`${base(eventoId, minhaLista)}/${id}/foto`, 'DELETE')
+
+export const listarCotas =(eventoId: number, id: number, minhaLista = false) =>
   requisicao<CotaPresente[]>(`${base(eventoId, minhaLista)}/${id}/cotas`)
 
 /** Desfaz uma compra de cotas (ex.: o convidado não pagou); devolve o presente atualizado. */

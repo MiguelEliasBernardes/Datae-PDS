@@ -249,6 +249,45 @@ try {
     verificar(depois && depois.convidadoId === null, JSON.stringify(depois))
   })
 
+  console.log('\nFoto do presente')
+  const pngPresente = () =>
+    new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])], 'presente.png', { type: 'image/png' })
+  await testar('presente nasce sem foto (fotoUrl null)', async () => {
+    verificar(presente.fotoUrl === null, JSON.stringify(presente))
+  })
+  await testar('arquivo que não é imagem → 400 no campo arquivo', async () => {
+    const texto = new File(['não sou imagem'], 'foto.png', { type: 'image/png' })
+    const erro = await esperarErro(presentes.enviarFotoPresente(evento.id, presente.id, texto), 400)
+    verificar(erro.doCampo('arquivo'), JSON.stringify(erro.errosCampos))
+  })
+  let fotoAntiga = null
+  await testar('enviar a foto: fotoUrl aponta para a imagem, que abre sem login', async () => {
+    const comFoto = await presentes.enviarFotoPresente(evento.id, presente.id, pngPresente())
+    fotoAntiga = comFoto.fotoUrl
+    verificar(fotoAntiga?.startsWith(`/api/presentes/fotos/${evento.id}/`), JSON.stringify(comFoto))
+    const resposta = await fetch(`${URL_BACKEND}${fotoAntiga}`)
+    verificar(resposta.ok && resposta.headers.get('content-type') === 'image/png', `imagem: ${resposta.status}`)
+  })
+  await testar('trocar a foto apaga a anterior (404)', async () => {
+    const trocada = await presentes.enviarFotoPresente(evento.id, presente.id, pngPresente())
+    verificar(trocada.fotoUrl && trocada.fotoUrl !== fotoAntiga, JSON.stringify(trocada))
+    verificar((await fetch(`${URL_BACKEND}${fotoAntiga}`)).status === 404, 'a foto antiga deveria ter sido apagada')
+    fotoAntiga = trocada.fotoUrl
+  })
+  await testar('outra conta não envia foto (404)', async () => {
+    usarSessao(tokenB)
+    try {
+      await esperarErro(presentes.enviarFotoPresente(evento.id, presente.id, pngPresente()), 404)
+    } finally {
+      usarSessao(tokenA)
+    }
+  })
+  await testar('remover a foto: fotoUrl null e o arquivo some', async () => {
+    const semFoto = await presentes.removerFotoPresente(evento.id, presente.id)
+    verificar(semFoto.fotoUrl === null, JSON.stringify(semFoto))
+    verificar((await fetch(`${URL_BACKEND}${fotoAntiga}`)).status === 404, 'o arquivo deveria ter sido apagado')
+  })
+
   console.log('\nCotas de presente')
   let presenteCotas = null
   await testar('dividir em cotas sem valor → 400 no campo valorEstimado', async () => {

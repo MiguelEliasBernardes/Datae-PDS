@@ -1,7 +1,5 @@
 import { useCallback } from 'react'
 import circuloMais from '../assets/circle-plus.svg'
-import imagemFormatura from '../assets/event-formatura.png'
-import imagemEvento from '../assets/event-marina-rafael.png'
 import { urlApi } from '../api/cliente'
 import { listarEventos } from '../api/eventos'
 import type { Evento, Usuario } from '../api/tipos'
@@ -79,13 +77,8 @@ export function MeusEventos({
           {eventos?.map((evento) => (
             <CartaoEvento
               key={evento.id}
-              imagem={
-                evento.bannerUrl
-                  ? urlApi(evento.bannerUrl)
-                  : evento.tipo === 'Formatura'
-                    ? imagemFormatura
-                    : imagemEvento
-              }
+              imagem={evento.bannerUrl && urlApi(evento.bannerUrl)}
+              cor={evento.corPrincipal}
               titulo={evento.nomeEvento}
               data={formatarData(evento.dataEvento)}
               // Formatura em que a pessoa entrou por convite: mostra o papel dela na comissão

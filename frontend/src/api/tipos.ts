@@ -47,7 +47,7 @@ export interface Evento {
   cidadePix: string | null
   listaPresentesAtiva: boolean
   muralAtivo: boolean
-  /** Caminho na API (use urlApi no <img src>); nulo = imagem padrão. */
+  /** Caminho na API (use urlApi no <img src>); nulo = sem banner (mostra a cor do evento). */
   bannerUrl: string | null
   criadoEm: string
   /** Se quem está vendo criou o evento. */
@@ -112,7 +112,8 @@ export interface Presente {
   valorEstimado: number | null
   status: StatusPresente
   linkAfiliado: string | null
-  foto: string | null
+  /** Caminho na API (use urlApi no <img src>); nulo = sem foto (mostra a cor do evento). */
+  fotoUrl: string | null
   /** Presente dividido em cotas (null = presente inteiro). */
   quantidadeCotas: number | null
   cotasVendidas: number
@@ -125,7 +126,6 @@ export interface DadosPresente {
   valorEstimado?: number | null
   status?: StatusPresente
   linkAfiliado?: string
-  foto?: string
   /** 0 volta a ser um presente inteiro. */
   quantidadeCotas?: number
 }
@@ -177,7 +177,8 @@ export interface PresentePublico {
   valorEstimado: number | null
   status: StatusPresente
   linkAfiliado: string | null
-  foto: string | null
+  /** Caminho na API (use urlApi no <img src>); nulo = sem foto. */
+  fotoUrl: string | null
   quantidadeCotas: number | null
   cotasVendidas: number
   valorCota: number | null

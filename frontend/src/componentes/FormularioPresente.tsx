@@ -1,18 +1,24 @@
-import { useState } from 'react'
-import { ErroApi, mensagemDeErro } from '../api/cliente'
+import { useEffect, useMemo, useState } from 'react'
+import { ErroApi, mensagemDeErro, urlApi } from '../api/cliente'
 import type { DadosPresente, Presente, StatusPresente } from '../api/tipos'
+import type { AlteracaoFoto } from '../dados/fotoPresente'
 import { lerValorMonetario, rotulosStatusPresente } from '../dados/formatacao'
 import { AreaTexto } from './AreaTexto'
 import { AvisoErro } from './AvisoErro'
 import { Botao } from './Botao'
 import { BotaoOpcao } from './BotaoOpcao'
 import { CampoTexto } from './CampoTexto'
+import { EnvioImagem } from './EnvioImagem'
 
 const statusPresente = Object.keys(rotulosStatusPresente) as StatusPresente[]
 
+/** O mesmo limite do backend. */
+const TAMANHO_MAXIMO_FOTO_MB = 10
+
 /**
  * Formulário de adicionar/editar presente. Quem chama decide o que fazer
- * ao salvar (criar ou atualizar na API); os erros da API aparecem nos campos.
+ * ao salvar (criar ou atualizar na API, e depois enviar ou tirar a foto); os erros da API aparecem nos campos.
+ * A foto escolhida só é enviada ao clicar em salvar.
  */
 export function FormularioPresente({
   presente,
@@ -20,7 +26,7 @@ export function FormularioPresente({
   onExcluir,
 }: {
   presente?: Presente
-  onSalvar: (dados: DadosPresente) => Promise<void>
+  onSalvar: (dados: DadosPresente, foto: AlteracaoFoto) => Promise<void>
   onExcluir?: () => Promise<void>
 }) {
   const [nome, setNome] = useState(presente?.nome ?? '')
@@ -30,13 +36,35 @@ export function FormularioPresente({
   )
   const [status, setStatus] = useState<StatusPresente>(presente?.status ?? 'Disponivel')
   const [link, setLink] = useState(presente?.linkAfiliado ?? '')
-  const [foto, setFoto] = useState(presente?.foto ?? '')
+  const [foto, setFoto] = useState<AlteracaoFoto>(null)
   const [cotas, setCotas] = useState(presente?.quantidadeCotas != null ? String(presente.quantidadeCotas) : '')
 
   const [erro, setErro] = useState<ErroApi | null>(null)
   const [mensagemGeral, setMensagemGeral] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+
+  // Prévia do arquivo escolhido, antes de enviar; o endereço temporário é liberado ao trocar ou fechar
+  const previa = useMemo(() => (foto instanceof File ? URL.createObjectURL(foto) : null), [foto])
+  useEffect(() => () => {
+    if (previa) URL.revokeObjectURL(previa)
+  }, [previa])
+
+  const fotoExibida = foto === 'remover' ? null : (previa ?? (presente?.fotoUrl ? urlApi(presente.fotoUrl) : null))
+
+  function escolherFoto(arquivo: File) {
+    if (arquivo.size > TAMANHO_MAXIMO_FOTO_MB * 1024 * 1024) {
+      setMensagemGeral(`A foto pode ter no máximo ${TAMANHO_MAXIMO_FOTO_MB} MB.`)
+      return
+    }
+    setMensagemGeral(null)
+    setFoto(arquivo)
+  }
+
+  function tirarFoto() {
+    // Foto ainda não enviada: só desiste dela; foto já salva: é removida ao salvar
+    setFoto(presente?.fotoUrl ? 'remover' : null)
+  }
 
   async function executar(acao: () => Promise<void>) {
     setSalvando(true)
@@ -76,22 +104,35 @@ export function FormularioPresente({
     }
 
     void executar(() =>
-      onSalvar({
-        nome,
-        descricao,
-        valorEstimado,
-        linkAfiliado: link,
+      onSalvar(
+        {
+          nome,
+          descricao,
+          valorEstimado,
+          linkAfiliado: link,
+          quantidadeCotas,
+          // Status só existe na edição de um presente inteiro; com cotas, ele é calculado pelo servidor
+          ...(presente && quantidadeCotas === 0 && presente.quantidadeCotas === null ? { status } : {}),
+        },
         foto,
-        quantidadeCotas,
-        // Status só existe na edição de um presente inteiro; com cotas, ele é calculado pelo servidor
-        ...(presente && quantidadeCotas === 0 && presente.quantidadeCotas === null ? { status } : {}),
-      }),
+      ),
     )
   }
 
   return (
     <form onSubmit={aoEnviar} className="flex flex-col gap-4" noValidate>
       <AvisoErro mensagem={mensagemGeral} />
+
+      <div className="flex flex-col items-center gap-1">
+        <EnvioImagem
+          rotulo={fotoExibida ? 'Trocar foto' : 'Foto (opcional)'}
+          imagem={fotoExibida}
+          carregando={salvando}
+          onEscolher={escolherFoto}
+          onRemover={tirarFoto}
+        />
+        {erro?.doCampo('arquivo') && <p className="text-[12px] text-danger">{erro.doCampo('arquivo')}</p>}
+      </div>
 
       <CampoTexto
         rotulo="Nome"
@@ -137,14 +178,6 @@ export function FormularioPresente({
         value={link}
         onChange={(e) => setLink(e.target.value)}
         erro={erro?.doCampo('linkAfiliado')}
-      />
-      <CampoTexto
-        rotulo="Link da foto (opcional)"
-        type="url"
-        placeholder="https://..."
-        value={foto}
-        onChange={(e) => setFoto(e.target.value)}
-        erro={erro?.doCampo('foto')}
       />
 
       {presente && presente.quantidadeCotas === null && (

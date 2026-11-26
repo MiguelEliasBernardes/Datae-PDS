@@ -1,3 +1,4 @@
+import { FundoCorEvento } from './FundoCorEvento'
 import { SeloStatus, type TomSelo } from './SeloStatus'
 
 export interface CartaoPresentePublicoProps {
@@ -15,13 +16,12 @@ export interface CartaoPresentePublicoProps {
 export function CartaoPresentePublico({ nome, preco, status, acao, imagem, link, onAcao }: CartaoPresentePublicoProps) {
   return (
     <div className="flex gap-3 rounded-[12px] bg-surface p-3 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.12)]">
-      <div
-        className="size-20 shrink-0 overflow-hidden rounded-[10px] bg-primary-soft"
-      >
-        {imagem && (
-          <img src={imagem} alt="" className="size-full object-cover" />
-        )}
-      </div>
+      {/* Sem foto: degradê na cor do evento (a página pública já aplica o tema) com um ícone de presente */}
+      {imagem ? (
+        <img src={imagem} alt="" className="size-20 shrink-0 rounded-[10px] object-cover" />
+      ) : (
+        <FundoCorEvento icone className="size-20 shrink-0 rounded-[10px]" />
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <h3 className="truncate text-[14px] font-bold text-heading">{nome}</h3>

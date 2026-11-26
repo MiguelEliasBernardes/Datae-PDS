@@ -1,9 +1,9 @@
 import { useCallback, useEffect } from 'react'
-import imagemCapa from '../assets/event-formatura.png'
 import { urlApi } from '../api/cliente'
 import { listarPresentesFormando, obterPaginaFormando } from '../api/publico'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { CartaoPix } from '../componentes/CartaoPix'
+import { FundoCorEvento } from '../componentes/FundoCorEvento'
 import { ListaPresentesPublica } from '../componentes/ListaPresentesPublica'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { RotuloSecao } from '../componentes/RotuloSecao'
@@ -50,18 +50,18 @@ export function PaginaFormando({ slug, slugFormando }: { slug: string; slugForma
 
   return (
     <main className="min-h-screen w-full bg-page pb-6" style={estiloTema}>
-      {/* Capa: a mesma imagem da formatura, com o nome do formando */}
+      {/* Capa: o banner da formatura (ou a cor do evento), com o nome do formando */}
       <section className="pt-8 lg:pt-14">
         <div className={envoltorio}>
           <a href={linkPublicoEvento(slug)} className="text-[13px] font-medium text-primary underline">
             ← {evento.nomeEvento}
           </a>
           <div className="relative mt-4 h-56 overflow-hidden rounded-[10px] lg:h-72 lg:rounded-[24px]">
-            <img
-              src={evento.bannerUrl ? urlApi(evento.bannerUrl) : imagemCapa}
-              alt=""
-              className="size-full object-cover"
-            />
+            {evento.bannerUrl ? (
+              <img src={urlApi(evento.bannerUrl)} alt="" className="size-full object-cover" />
+            ) : (
+              <FundoCorEvento className="size-full" />
+            )}
             <div className="absolute inset-0 bg-black/40" />
             <div className="absolute inset-x-5 bottom-5 lg:inset-x-8 lg:bottom-8">
               <p className="text-[11px] font-bold tracking-[1.8px] text-white uppercase lg:text-[12px]">

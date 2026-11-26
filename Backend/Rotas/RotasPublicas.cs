@@ -172,7 +172,7 @@ public static class RotasPublicas
         presente.ValorEstimado,
         presente.Status,
         presente.LinkAfiliado,
-        presente.Foto,
+        ServicoPresente.UrlDaFoto(presente),
         presente.QuantidadeCotas,
         presente.CotasVendidas,
         presente.ValorCota);

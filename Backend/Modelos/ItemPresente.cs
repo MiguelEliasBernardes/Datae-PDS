@@ -20,6 +20,7 @@ public class ItemPresente
     public decimal? ValorEstimado { get; set; }
     public StatusPresente Status { get; set; } = StatusPresente.Disponivel;
     public string? LinkAfiliado { get; set; }
+    // Nome do arquivo da foto (ver ArmazenamentoArquivos); nulo = sem foto (o frontend mostra a cor do evento)
     public string? Foto { get; set; }
 
     // Presente dividido em cotas (nulo = presente inteiro, reservado por uma pessoa só).

@@ -1,9 +1,12 @@
 import setaTraco from '../assets/arrow-big-right-dash.svg'
 import { Botao } from './Botao'
 import { Etiqueta } from './Etiqueta'
+import { FundoCorEvento } from './FundoCorEvento'
 
 export interface CartaoEventoProps {
-  imagem: string
+  /** Banner do evento; sem ele, mostra um degradê na cor do evento. */
+  imagem?: string | null
+  cor?: string | null
   titulo: string
   data: string
   categoria: string
@@ -13,6 +16,7 @@ export interface CartaoEventoProps {
 /** Cartão de evento da lista "Meus Eventos". */
 export function CartaoEvento({
   imagem,
+  cor,
   titulo,
   data,
   categoria,
@@ -20,11 +24,11 @@ export function CartaoEvento({
 }: CartaoEventoProps) {
   return (
     <article className="flex h-[115px] overflow-hidden rounded-[12px] bg-surface shadow-[0px_2px_6px_0px_rgba(0,0,0,0.25)]">
-      <img
-        src={imagem}
-        alt=""
-        className="h-full w-[111px] shrink-0 object-cover"
-      />
+      {imagem ? (
+        <img src={imagem} alt="" className="h-full w-[111px] shrink-0 object-cover" />
+      ) : (
+        <FundoCorEvento cor={cor} className="h-full w-[111px] shrink-0" />
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col p-3">
         <div className="flex items-start justify-between gap-2">

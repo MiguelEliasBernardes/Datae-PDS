@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import calendario from '../assets/calendar.svg'
-import imagemCapa from '../assets/event-hero.png'
 import olhoAtivo from '../assets/eye-active.svg'
 import casaBranca from '../assets/house-white.svg'
 import engrenagem from '../assets/settings.svg'
@@ -14,6 +13,7 @@ import { CartaoPix } from '../componentes/CartaoPix'
 import { ContagemRegressiva } from '../componentes/ContagemRegressiva'
 import { EnvioFotosMural } from '../componentes/EnvioFotosMural'
 import { FormularioPresenca } from '../componentes/FormularioPresenca'
+import { FundoCorEvento } from '../componentes/FundoCorEvento'
 import { ListaPresentesPublica } from '../componentes/ListaPresentesPublica'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { NavegacaoInferior, type ItemNavegacao } from '../componentes/NavegacaoInferior'
@@ -123,11 +123,12 @@ export function PaginaEvento({
           <div className={`${duasColunas} lg:items-center`}>
             {/* Imagem do evento */}
             <div className="relative aspect-[338/507] overflow-hidden rounded-[10px] lg:aspect-[3/4] lg:rounded-[24px]">
-              <img
-                src={evento.bannerUrl ? urlApi(evento.bannerUrl) : imagemCapa}
-                alt=""
-                className="size-full object-cover"
-              />
+              {/* Sem banner, a capa é um degradê na cor do evento */}
+              {evento.bannerUrl ? (
+                <img src={urlApi(evento.bannerUrl)} alt="" className="size-full object-cover" />
+              ) : (
+                <FundoCorEvento className="size-full" />
+              )}
               {/* Degradê só na parte de baixo: a foto fica viva em cima e o texto sempre tem contraste */}
               <div className="absolute inset-x-0 bottom-0 h-3/4 bg-linear-to-t from-black/80 via-black/35 to-transparent" />
 

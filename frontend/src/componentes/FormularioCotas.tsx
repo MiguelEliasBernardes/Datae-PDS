@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ErroApi, mensagemDeErro } from '../api/cliente'
+import { ErroApi, mensagemDeErro, urlApi } from '../api/cliente'
 import { comprarCotas, informarPix } from '../api/publico'
 import type { CompraCotas, Contato, PresentePublico } from '../api/tipos'
 import { formatarMoeda } from '../dados/formatacao'
@@ -84,7 +84,9 @@ export function FormularioCotas({
 
   const cabecalho = (
     <div className="mb-4">
-      {presente.foto && <img src={presente.foto} alt="" className="mb-3 h-40 w-full rounded-[10px] object-cover" />}
+      {presente.fotoUrl && (
+        <img src={urlApi(presente.fotoUrl)} alt="" className="mb-3 h-40 w-full rounded-[10px] object-cover" />
+      )}
       <p className="text-[13px] text-muted">
         {formatarMoeda(presente.valorEstimado)} dividido em {presente.quantidadeCotas} cotas de{' '}
         {formatarMoeda(presente.valorCota)}

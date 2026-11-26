@@ -27,7 +27,7 @@ public record PresentePublicoResposta(
     decimal? ValorEstimado,
     StatusPresente Status,
     string? LinkAfiliado,
-    string? Foto,
+    string? FotoUrl,
     int? QuantidadeCotas,
     int CotasVendidas,
     decimal? ValorCota);

@@ -1,5 +1,6 @@
 import lapis from '../assets/pencil.svg'
 import type { StatusPresente } from '../api/tipos'
+import { FundoCorEvento } from './FundoCorEvento'
 import { SeloStatus, type TomSelo } from './SeloStatus'
 
 const infoStatus: Record<StatusPresente, { tom: TomSelo; rotulo: string }> = {
@@ -9,7 +10,9 @@ const infoStatus: Record<StatusPresente, { tom: TomSelo; rotulo: string }> = {
 }
 
 interface LinhaPresenteProps {
-  imagem: string
+  /** Foto do presente; sem ela, mostra um degradê na cor do evento com um ícone. */
+  imagem?: string | null
+  cor?: string | null
   nome: string
   preco: string
   status: StatusPresente
@@ -21,15 +24,15 @@ interface LinhaPresenteProps {
 }
 
 /** Linha de produto da lista de presentes. */
-export function LinhaPresente({ imagem, nome, preco, status, reservadoPor, cotas, onEditar }: LinhaPresenteProps) {
+export function LinhaPresente({ imagem, cor, nome, preco, status, reservadoPor, cotas, onEditar }: LinhaPresenteProps) {
   const { tom, rotulo } = infoStatus[status]
   return (
     <div className="flex gap-3 border-b border-field-border pb-3">
-      <img
-        src={imagem}
-        alt=""
-        className="size-[71px] shrink-0 rounded-[5px] object-cover"
-      />
+      {imagem ? (
+        <img src={imagem} alt="" className="size-[71px] shrink-0 rounded-[5px] object-cover" />
+      ) : (
+        <FundoCorEvento cor={cor} icone className="size-[71px] shrink-0 rounded-[5px]" />
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <span className="truncate text-[14px] font-medium text-heading">

@@ -22,6 +22,9 @@ public static class RotasPresente
         MapearLista(
             app.MapGroup("/api/eventos/{eventoId:int}/meus-presentes").WithTags("Presentes").RequireAuthorization(),
             minhaLista: true);
+
+        // Arquivo da foto, sem login (aparece na página pública e funciona em <img src>)
+        app.MapGet("/api/presentes/fotos/{eventoId:int}/{arquivo}", BaixarFoto).WithTags("Presentes");
     }
 
     private static void MapearLista(RouteGroupBuilder presentes, bool minhaLista)
@@ -37,6 +40,12 @@ public static class RotasPresente
             Atualizar(eventoId, minhaLista, id, requisicao, principal, servico));
         presentes.MapDelete("/{id:int}", (int eventoId, int id, ClaimsPrincipal principal, ServicoPresente servico) =>
             Excluir(eventoId, minhaLista, id, principal, servico));
+
+        // Foto do presente (multipart/form-data, campo "arquivo"). Sem formulário do servidor, o antiforgery não se aplica.
+        presentes.MapPut("/{id:int}/foto", (int eventoId, int id, IFormFile? arquivo, ClaimsPrincipal principal, ServicoPresente servico) =>
+            EnviarFoto(eventoId, minhaLista, id, arquivo, principal, servico)).DisableAntiforgery();
+        presentes.MapDelete("/{id:int}/foto", (int eventoId, int id, ClaimsPrincipal principal, ServicoPresente servico) =>
+            RemoverFoto(eventoId, minhaLista, id, principal, servico));
 
         // Compras de cotas feitas pelos convidados na página pública
         presentes.MapGet("/{id:int}/cotas", (int eventoId, int id, ClaimsPrincipal principal, ServicoPresente servico) =>
@@ -102,6 +111,35 @@ public static class RotasPresente
         return ParaHttp(resultado, _ => Results.NoContent());
     }
 
+    private static async Task<IResult> EnviarFoto(
+        int eventoId, bool minhaLista, int id, IFormFile? arquivo, ClaimsPrincipal principal, ServicoPresente servicoPresente)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servicoPresente.EnviarFotoAsync(usuarioId, eventoId, minhaLista, id, arquivo);
+        return ParaHttp(resultado, presente => Results.Ok(ParaResposta(presente)));
+    }
+
+    private static async Task<IResult> RemoverFoto(
+        int eventoId, bool minhaLista, int id, ClaimsPrincipal principal, ServicoPresente servicoPresente)
+    {
+        if (ObterIdUsuarioLogado(principal) is not int usuarioId)
+            return Results.Unauthorized();
+
+        var resultado = await servicoPresente.RemoverFotoAsync(usuarioId, eventoId, minhaLista, id);
+        return ParaHttp(resultado, presente => Results.Ok(ParaResposta(presente)));
+    }
+
+    private static async Task<IResult> BaixarFoto(int eventoId, string arquivo, ArmazenamentoArquivos armazenamento) =>
+        await armazenamento.AbrirFotoPresenteAsync(eventoId, arquivo) switch
+        {
+            ImagemGuardada.EmDisco disco => Results.File(disco.Caminho, ArmazenamentoArquivos.TipoConteudo(arquivo)),
+            // Bucket privado: manda o navegador para um link assinado e temporário
+            ImagemGuardada.LinkTemporario link => Results.Redirect(link.Url),
+            _ => Results.NotFound(new { mensagem = "Imagem não encontrada." }),
+        };
+
     private static async Task<IResult> ListarCotas(
         int eventoId, bool minhaLista, int id, ClaimsPrincipal principal, ServicoPresente servicoPresente)
     {
@@ -133,7 +171,7 @@ public static class RotasPresente
         presente.ValorEstimado,
         presente.Status,
         presente.LinkAfiliado,
-        presente.Foto,
+        ServicoPresente.UrlDaFoto(presente),
         presente.QuantidadeCotas,
         presente.CotasVendidas,
         presente.ValorCota);
