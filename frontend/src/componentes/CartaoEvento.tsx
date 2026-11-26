@@ -23,9 +23,19 @@ export function CartaoEvento({
   onAcessar,
 }: CartaoEventoProps) {
   return (
-    <article className="flex h-[115px] overflow-hidden rounded-[12px] bg-surface shadow-[0px_2px_6px_0px_rgba(0,0,0,0.25)]">
+    // isolate + transform-gpu: o Safari do iPhone às vezes deixa uma faixa em branco no topo do cartão
+    // quando a imagem termina de carregar depois (comum em produção, onde ela vem do armazenamento).
+    // Com uma camada própria, o cartão é repintado inteiro.
+    <article className="isolate flex h-[115px] transform-gpu overflow-hidden rounded-[12px] bg-surface shadow-[0px_2px_6px_0px_rgba(0,0,0,0.25)]">
       {imagem ? (
-        <img src={imagem} alt="" className="h-full w-[111px] shrink-0 object-cover" />
+        <img
+          src={imagem}
+          alt=""
+          width={111}
+          height={115}
+          decoding="async"
+          className="h-full w-[111px] shrink-0 object-cover"
+        />
       ) : (
         <FundoCorEvento cor={cor} className="h-full w-[111px] shrink-0" />
       )}
