@@ -236,7 +236,7 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
             else if (NormalizarChavePix(requisicao.ChavePix) is string chave)
                 evento.ChavePix = chave;
             else
-                erros["chavePix"] = ["Chave Pix inválida. Use CPF, CNPJ, e-mail, telefone com +55 ou chave aleatória."];
+                erros["chavePix"] = ["Chave Pix inválida. Confira o CPF, o CNPJ, o e-mail, o telefone (+55 com DDD) ou a chave aleatória."];
         }
 
         if (requisicao.NomeRecebedorPix is not null)

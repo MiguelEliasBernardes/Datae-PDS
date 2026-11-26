@@ -83,8 +83,10 @@ public static partial class Validacoes
 
     /// <summary>
     /// Padroniza a chave Pix e devolve nulo se ela não for de nenhum tipo aceito:
-    /// e-mail, CPF (11 dígitos), CNPJ (14 dígitos), telefone (+55...) ou chave aleatória.
-    /// Pontuação de CPF/CNPJ é removida: "123.456.789-09" vira "12345678909".
+    /// e-mail, CPF (11 dígitos), CNPJ (14 dígitos), telefone (+55 com DDD) ou chave aleatória.
+    /// Pontuação é removida: "123.456.789-09" vira "12345678909" e "+55 (11) 99999-8888" vira "+5511999998888".
+    /// CPF e CNPJ precisam ter os dígitos verificadores certos. O telefone precisa do "+": sem ele,
+    /// 11 dígitos são lidos como CPF (o frontend acrescenta o +55 quando o tipo escolhido é telefone).
     /// </summary>
     public static string? NormalizarChavePix(string? chave)
     {
@@ -99,12 +101,61 @@ public static partial class Validacoes
             return EmailValido(email) && email.Length <= 77 && !email.Contains(' ') ? email : null;
         }
 
+        if (!RegexDocumentoOuTelefone().IsMatch(texto))
+            return null;
+
         var digitos = new string(texto.Where(char.IsAsciiDigit).ToArray());
 
+        // Telefone: +55, DDD (não começa com 0) e número de 8 ou 9 dígitos
         if (texto.StartsWith('+'))
-            return RegexDocumentoOuTelefone().IsMatch(texto) && digitos.Length is >= 12 and <= 13 ? $"+{digitos}" : null;
+            return digitos.Length is 12 or 13 && digitos.StartsWith("55") && digitos[2] != '0' ? $"+{digitos}" : null;
 
-        return RegexDocumentoOuTelefone().IsMatch(texto) && digitos.Length is 11 or 14 ? digitos : null;
+        return digitos.Length switch
+        {
+            11 when CpfValido(digitos) => digitos,
+            14 when CnpjValido(digitos) => digitos,
+            _ => null,
+        };
+    }
+
+    /// <summary>Confere os dois dígitos verificadores de um CPF (só dígitos).</summary>
+    public static bool CpfValido(string cpf)
+    {
+        if (cpf.Length != 11 || !cpf.All(char.IsAsciiDigit) || cpf.Distinct().Count() == 1)
+            return false;
+
+        return DigitoVerificador(cpf[..9], 10) == cpf[9] - '0'
+            && DigitoVerificador(cpf[..10], 11) == cpf[10] - '0';
+    }
+
+    /// <summary>Confere os dois dígitos verificadores de um CNPJ (só dígitos).</summary>
+    public static bool CnpjValido(string cnpj)
+    {
+        if (cnpj.Length != 14 || !cnpj.All(char.IsAsciiDigit) || cnpj.Distinct().Count() == 1)
+            return false;
+
+        int[] pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        int[] pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        return DigitoCnpj(cnpj, pesos1) == cnpj[12] - '0' && DigitoCnpj(cnpj, pesos2) == cnpj[13] - '0';
+    }
+
+    /// <summary>Dígito do CPF: soma com pesos decrescentes a partir de <paramref name="pesoInicial"/>.</summary>
+    private static int DigitoVerificador(string parte, int pesoInicial)
+    {
+        var soma = 0;
+        for (var i = 0; i < parte.Length; i++)
+            soma += (parte[i] - '0') * (pesoInicial - i);
+        var resto = soma * 10 % 11;
+        return resto == 10 ? 0 : resto;
+    }
+
+    private static int DigitoCnpj(string cnpj, int[] pesos)
+    {
+        var soma = 0;
+        for (var i = 0; i < pesos.Length; i++)
+            soma += (cnpj[i] - '0') * pesos[i];
+        var resto = soma % 11;
+        return resto < 2 ? 0 : 11 - resto;
     }
 
     /// <summary>

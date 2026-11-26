@@ -321,6 +321,28 @@ try {
     const erro = await esperarErro(presentes.atualizarPresente(evento.id, presenteCotas.id, { quantidadeCotas: 2 }), 400)
     verificar(erro.doCampo('quantidadeCotas'), JSON.stringify(erro.errosCampos))
   })
+  await testar('chave Pix: CPF com dígito errado → 400 no campo chavePix', async () => {
+    const erro = await esperarErro(
+      eventos.atualizarEvento(evento.id, { chavePix: '123.456.789-00', nomeRecebedorPix: 'Teste', cidadePix: 'Sao Paulo' }),
+      400,
+    )
+    verificar(erro.doCampo('chavePix'), JSON.stringify(erro.errosCampos))
+  })
+  await testar('chave Pix: celular sem +55 não vira CPF → 400', async () => {
+    await esperarErro(
+      eventos.atualizarEvento(evento.id, { chavePix: '(11) 99999-8888', nomeRecebedorPix: 'Teste', cidadePix: 'Sao Paulo' }),
+      400,
+    )
+  })
+  await testar('chave Pix: telefone com máscara e CNPJ são padronizados', async () => {
+    const comTelefone = await eventos.atualizarEvento(evento.id, {
+      chavePix: '+55 (11) 99999-8888', nomeRecebedorPix: 'Teste', cidadePix: 'Sao Paulo',
+    })
+    verificar(comTelefone.chavePix === '+5511999998888', comTelefone.chavePix)
+    const comCnpj = await eventos.atualizarEvento(evento.id, { chavePix: '11.222.333/0001-81' })
+    verificar(comCnpj.chavePix === '11222333000181', comCnpj.chavePix)
+    await eventos.atualizarEvento(evento.id, { chavePix: '' })
+  })
   await testar('com Pix configurado, a última cota vem com QR Code e o presente vira Comprado', async () => {
     await eventos.atualizarEvento(evento.id, { chavePix: 'pix@datae.dev', nomeRecebedorPix: 'Teste', cidadePix: 'Sao Paulo' })
     const compra = await publico.comprarCotas(evento.slugPublico, presenteCotas.id, 'Carlos', 1)

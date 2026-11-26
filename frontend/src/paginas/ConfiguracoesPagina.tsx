@@ -10,12 +10,14 @@ import { AreaTexto } from '../componentes/AreaTexto'
 import { AvisoErro } from '../componentes/AvisoErro'
 import { Botao } from '../componentes/Botao'
 import { BotaoVoltar } from '../componentes/BotaoVoltar'
+import { CampoChavePix } from '../componentes/CampoChavePix'
 import { CampoTexto } from '../componentes/CampoTexto'
 import { EnvioImagem } from '../componentes/EnvioImagem'
 import { LayoutPainel } from '../componentes/LayoutPainel'
 import { MensagemLista } from '../componentes/MensagemLista'
 import { OpcaoConfiguracao } from '../componentes/OpcaoConfiguracao'
 import { TituloDestaque } from '../componentes/TituloDestaque'
+import { detectarTipoChave, formatarChavePix, normalizarChavePix, validarChavePix } from '../dados/chavePix'
 import { coresTema } from '../dados/coresTema'
 import { tonsRotulo } from '../dados/estilosCampo'
 import { deCampoDataHora, paraCampoDataHora } from '../dados/formatacao'
@@ -66,7 +68,9 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
   const [data, setData] = useState(paraCampoDataHora(evento.dataEvento))
   const [slug, setSlug] = useState(evento.slugPublico)
   const [cor, setCor] = useState(evento.corPrincipal ?? coresTema[0].valor)
-  const [chavePix, setChavePix] = useState(evento.chavePix ?? '')
+  const [tipoChavePix, setTipoChavePix] = useState(() => detectarTipoChave(evento.chavePix ?? ''))
+  const [chavePix, setChavePix] = useState(() => formatarChavePix(tipoChavePix, evento.chavePix ?? ''))
+  const [erroChavePix, setErroChavePix] = useState<string | null>(null)
   const [nomeRecebedorPix, setNomeRecebedorPix] = useState(evento.nomeRecebedorPix ?? '')
   const [cidadePix, setCidadePix] = useState(evento.cidadePix ?? '')
   const [bannerUrl, setBannerUrl] = useState(evento.bannerUrl)
@@ -93,6 +97,12 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
       setMensagemGeral('O nome e a data do evento são obrigatórios.')
       return
     }
+    const problemaChave = validarChavePix(tipoChavePix, chavePix)
+    setErroChavePix(problemaChave)
+    if (problemaChave) {
+      setMensagemGeral('Confira a chave Pix.')
+      return
+    }
     if (chavePix.trim() && (!nomeRecebedorPix.trim() || !cidadePix.trim())) {
       setMensagemGeral('Para receber via Pix, informe também o nome e a cidade de quem recebe.')
       return
@@ -108,13 +118,15 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
         dataEvento: deCampoDataHora(data),
         slugPublico: slug,
         corPrincipal: cor,
-        chavePix,
+        chavePix: normalizarChavePix(tipoChavePix, chavePix),
         nomeRecebedorPix,
         cidadePix,
       })
       setSlug(atualizado.slugPublico)
-      // O servidor padroniza os dados do Pix (ex.: tira pontos do CPF e acentos do nome)
-      setChavePix(atualizado.chavePix ?? '')
+      // O servidor padroniza os dados do Pix (ex.: tira acentos do nome); a chave volta com a máscara do tipo
+      const tipoSalvo = detectarTipoChave(atualizado.chavePix ?? '')
+      setTipoChavePix(atualizado.chavePix ? tipoSalvo : tipoChavePix)
+      setChavePix(formatarChavePix(tipoSalvo, atualizado.chavePix ?? ''))
       setNomeRecebedorPix(atualizado.nomeRecebedorPix ?? '')
       setCidadePix(atualizado.cidadePix ?? '')
       setSucesso('Alterações salvas.')
@@ -279,14 +291,16 @@ function FormularioConfiguracoes({ evento, onExcluido }: { evento: Evento; onExc
             esconder a opção.
           </p>
         </div>
-        <CampoTexto
+        <CampoChavePix
           className="lg:col-span-2"
-          rotulo="Chave Pix"
-          tomRotulo="campo"
-          placeholder="CPF, CNPJ, e-mail, telefone (+55...) ou chave aleatória"
-          value={chavePix}
-          onChange={(e) => setChavePix(e.target.value)}
-          erro={erro?.doCampo('chavePix')}
+          valor={chavePix}
+          tipo={tipoChavePix}
+          onAlterar={(valor, tipo) => {
+            setChavePix(valor)
+            setTipoChavePix(tipo)
+            setErroChavePix(null)
+          }}
+          erro={erroChavePix ?? erro?.doCampo('chavePix')}
         />
         <CampoTexto
           rotulo="Nome de quem recebe"
