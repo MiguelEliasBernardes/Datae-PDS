@@ -160,10 +160,10 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         var evento = acesso.Evento;
 
         // Convidados, presentes e fotos do evento são excluídos junto (cascata no banco);
-        // os arquivos das fotos e do banner precisam ser apagados do disco à parte
+        // os arquivos das fotos e do banner precisam ser apagados do armazenamento à parte
         banco.Eventos.Remove(evento);
         await banco.SaveChangesAsync();
-        armazenamento.ExcluirPastaEvento(id);
+        await armazenamento.ExcluirPastaEventoAsync(id);
         return Resultado<bool>.Ok(true);
     }
 
@@ -195,7 +195,7 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
 
         await banco.SaveChangesAsync();
         if (bannerAnterior is not null)
-            armazenamento.ExcluirBanner(evento.Id, bannerAnterior);
+            await armazenamento.ExcluirBannerAsync(evento.Id, bannerAnterior);
 
         return acesso;
     }
@@ -213,7 +213,7 @@ public class ServicoEvento(ContextoBanco banco, ArmazenamentoArquivos armazename
         {
             evento.Banner = null;
             await banco.SaveChangesAsync();
-            armazenamento.ExcluirBanner(evento.Id, banner);
+            await armazenamento.ExcluirBannerAsync(evento.Id, banner);
         }
 
         return acesso;

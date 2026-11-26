@@ -1,0 +1,63 @@
+# Blueprint da Render: cria o banco PostgreSQL e a API de uma vez (painel da Render → New → Blueprint).
+# O frontend fica na Vercel (ver frontend/vercel.json). Passo a passo completo em docs/PUBLICACAO.md.
+
+databases:
+  - name: datae-banco
+    plan: free
+    region: virginia
+    databaseName: datae
+    user: datae
+
+services:
+  - type: web
+    name: datae-api
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerContext: ./Backend
+    dockerfilePath: ./Backend/Dockerfile
+    healthCheckPath: /api/saude
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # Endereço interno do banco (mesma região, sem sair da rede da Render); o backend converte o formato
+      - key: ConnectionStrings__Padrao
+        fromDatabase:
+          name: datae-banco
+          property: connectionString
+      - key: Jwt__Chave
+        generateValue: true
+      - key: Armazenamento__Tipo
+        value: S3
+
+      # Preenchidas por você no painel (sync: false = a Render pede o valor e não guarda no repositório)
+      - key: Armazenamento__S3__Endpoint
+        sync: false
+      - key: Armazenamento__S3__Regiao
+        sync: false
+      - key: Armazenamento__S3__Bucket
+        sync: false
+      - key: Armazenamento__S3__ChaveAcesso
+        sync: false
+      - key: Armazenamento__S3__ChaveSecreta
+        sync: false
+      - key: OrigensPermitidas__0
+        sync: false
+      - key: UrlSite
+        sync: false
+
+      # Opcionais: sem elas, o login com Google, a IA e o e-mail ficam desligados (respondem 503)
+      - key: Google__ClientId
+        sync: false
+      - key: Ia__ChaveApi
+        sync: false
+      - key: Email__Remetente
+        sync: false
+      - key: Email__Servidor
+        sync: false
+      - key: Email__Porta
+        sync: false
+      - key: Email__Usuario
+        sync: false
+      - key: Email__Senha
+        sync: false

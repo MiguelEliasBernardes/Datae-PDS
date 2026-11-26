@@ -183,14 +183,14 @@ public class ServicoUsuario(
         if (usuario is null)
             return Resultado<bool>.Falha(TipoErro.NaoEncontrado, "Usuário não encontrado.");
 
-        // Os eventos saem junto (cascata no banco); as fotos do mural deles ficam em disco e são apagadas à parte
+        // Os eventos saem junto (cascata no banco); as imagens deles ficam no armazenamento e são apagadas à parte
         var idsEventos = await banco.Eventos.Where(e => e.UsuarioId == id).Select(e => e.Id).ToListAsync();
 
         banco.Usuarios.Remove(usuario);
         await banco.SaveChangesAsync();
 
         foreach (var eventoId in idsEventos)
-            armazenamento.ExcluirPastaEvento(eventoId);
+            await armazenamento.ExcluirPastaEventoAsync(eventoId);
 
         return Resultado<bool>.Ok(true);
     }

@@ -3,13 +3,16 @@ using System.Text.RegularExpressions;
 namespace Backend.Servicos;
 
 /// <summary>
-/// Guarda as imagens enviadas em disco, numa pasta por evento:
-/// {PastaUploads}/mural/{eventoId}/{arquivo} para as fotos do mural e
-/// {PastaUploads}/banners/{eventoId}/{arquivo} para o banner da página.
+/// Guarda as imagens enviadas, numa "pasta" por evento:
+/// mural/{eventoId}/{arquivo} para as fotos do mural e banners/{eventoId}/{arquivo} para o banner da página.
 /// O nome do arquivo é sempre gerado aqui (GUID aleatório), então não dá para adivinhar
 /// o endereço de uma foto pendente nem escapar da pasta com "../".
+///
+/// Onde os arquivos ficam depende de Armazenamento:Tipo:
+/// - "Disco" (padrão): na pasta Armazenamento:PastaUploads do servidor (desenvolvimento e testes);
+/// - "S3": num bucket compatível com S3 (Supabase Storage em produção), configurado em Armazenamento:S3.
 /// </summary>
-public partial class ArmazenamentoArquivos(IConfiguration configuracao, IWebHostEnvironment ambiente)
+public sealed partial class ArmazenamentoArquivos : IDisposable
 {
     private static readonly Dictionary<string, string> TiposConteudo = new()
     {
@@ -19,52 +22,54 @@ public partial class ArmazenamentoArquivos(IConfiguration configuracao, IWebHost
         [".webp"] = "image/webp",
     };
 
-    private string PastaUploads => Path.Combine(
-        ambiente.ContentRootPath,
-        configuracao["Armazenamento:PastaUploads"] is { Length: > 0 } pasta ? pasta : "Uploads");
+    private readonly IDestinoArquivos destino;
+    private readonly ILogger<ArmazenamentoArquivos> registro;
 
-    private string PastaMural => Path.Combine(PastaUploads, "mural");
-    private string PastaBanners => Path.Combine(PastaUploads, "banners");
+    public ArmazenamentoArquivos(IConfiguration configuracao, IWebHostEnvironment ambiente, ILogger<ArmazenamentoArquivos> registro)
+    {
+        this.registro = registro;
+        var secao = configuracao.GetSection("Armazenamento");
+        destino = (secao["Tipo"] ?? "Disco").Trim().ToUpperInvariant() switch
+        {
+            "S3" => CriarDestinoS3(secao.GetSection("S3")),
+            "DISCO" => new DestinoDisco(Path.Combine(
+                ambiente.ContentRootPath,
+                secao["PastaUploads"] is { Length: > 0 } pasta ? pasta : "Uploads")),
+            var tipo => throw new InvalidOperationException(
+                $"Armazenamento:Tipo inválido (\"{tipo}\"). Use \"Disco\" ou \"S3\"."),
+        };
+    }
+
+    /// <summary>Tipo do conteúdo pela extensão do nome gerado (ex.: "image/png").</summary>
+    public static string TipoConteudo(string arquivo) => TiposConteudo[Path.GetExtension(arquivo)];
 
     // ===== Mural =====
 
     public Task<string> SalvarFotoMuralAsync(int eventoId, Stream conteudo, string extensao) =>
-        SalvarAsync(Path.Combine(PastaMural, eventoId.ToString()), conteudo, extensao);
+        SalvarAsync($"mural/{eventoId}", conteudo, extensao);
 
-    /// <summary>Caminho completo e tipo da foto, ou nulo se o nome for inválido ou o arquivo não existir.</summary>
-    public (string Caminho, string TipoConteudo)? AbrirFotoMural(int eventoId, string arquivo) =>
-        Abrir(Path.Combine(PastaMural, eventoId.ToString()), arquivo);
+    /// <summary>Como entregar a foto, ou nulo se o nome for inválido ou ela não existir.</summary>
+    public Task<ImagemGuardada?> AbrirFotoMuralAsync(int eventoId, string arquivo) =>
+        AbrirAsync($"mural/{eventoId}", arquivo);
 
-    public void ExcluirFotoMural(int eventoId, string arquivo)
-    {
-        if (AbrirFotoMural(eventoId, arquivo) is { } foto)
-            File.Delete(foto.Caminho);
-    }
+    public Task ExcluirFotoMuralAsync(int eventoId, string arquivo) => ExcluirAsync($"mural/{eventoId}", arquivo);
 
     // ===== Banner da página =====
 
     public Task<string> SalvarBannerAsync(int eventoId, Stream conteudo, string extensao) =>
-        SalvarAsync(Path.Combine(PastaBanners, eventoId.ToString()), conteudo, extensao);
+        SalvarAsync($"banners/{eventoId}", conteudo, extensao);
 
-    /// <summary>Caminho completo e tipo do banner, ou nulo se o nome for inválido ou o arquivo não existir.</summary>
-    public (string Caminho, string TipoConteudo)? AbrirBanner(int eventoId, string arquivo) =>
-        Abrir(Path.Combine(PastaBanners, eventoId.ToString()), arquivo);
+    /// <summary>Como entregar o banner, ou nulo se o nome for inválido ou ele não existir.</summary>
+    public Task<ImagemGuardada?> AbrirBannerAsync(int eventoId, string arquivo) =>
+        AbrirAsync($"banners/{eventoId}", arquivo);
 
-    public void ExcluirBanner(int eventoId, string arquivo)
-    {
-        if (AbrirBanner(eventoId, arquivo) is { } banner)
-            File.Delete(banner.Caminho);
-    }
+    public Task ExcluirBannerAsync(int eventoId, string arquivo) => ExcluirAsync($"banners/{eventoId}", arquivo);
 
     /// <summary>Apaga todas as imagens de um evento (chamado quando o evento é excluído).</summary>
-    public void ExcluirPastaEvento(int eventoId)
+    public async Task ExcluirPastaEventoAsync(int eventoId)
     {
-        foreach (var pastaBase in new[] { PastaMural, PastaBanners })
-        {
-            var pasta = Path.Combine(pastaBase, eventoId.ToString());
-            if (Directory.Exists(pasta))
-                Directory.Delete(pasta, recursive: true);
-        }
+        await TentarExcluirAsync($"mural/{eventoId}/", () => destino.ExcluirPrefixoAsync($"mural/{eventoId}/"));
+        await TentarExcluirAsync($"banners/{eventoId}/", () => destino.ExcluirPrefixoAsync($"banners/{eventoId}/"));
     }
 
     /// <summary>
@@ -96,24 +101,50 @@ public partial class ArmazenamentoArquivos(IConfiguration configuracao, IWebHost
         return null;
     }
 
-    private static async Task<string> SalvarAsync(string pasta, Stream conteudo, string extensao)
+    public void Dispose() => (destino as IDisposable)?.Dispose();
+
+    private async Task<string> SalvarAsync(string pasta, Stream conteudo, string extensao)
     {
-        Directory.CreateDirectory(pasta);
-
         var arquivo = $"{Guid.NewGuid():N}{extensao}";
-        await using var destino = File.Create(Path.Combine(pasta, arquivo));
-        await conteudo.CopyToAsync(destino);
-
+        await destino.SalvarAsync($"{pasta}/{arquivo}", conteudo, TiposConteudo[extensao]);
         return arquivo;
     }
 
-    private static (string Caminho, string TipoConteudo)? Abrir(string pasta, string arquivo)
-    {
-        if (!RegexNomeArquivo().IsMatch(arquivo))
-            return null;
+    private Task<ImagemGuardada?> AbrirAsync(string pasta, string arquivo) =>
+        RegexNomeArquivo().IsMatch(arquivo) ? destino.AbrirAsync($"{pasta}/{arquivo}") : Task.FromResult<ImagemGuardada?>(null);
 
-        var caminho = Path.Combine(pasta, arquivo);
-        return File.Exists(caminho) ? (caminho, TiposConteudo[Path.GetExtension(arquivo)]) : null;
+    private Task ExcluirAsync(string pasta, string arquivo) =>
+        RegexNomeArquivo().IsMatch(arquivo)
+            ? TentarExcluirAsync($"{pasta}/{arquivo}", () => destino.ExcluirAsync($"{pasta}/{arquivo}"))
+            : Task.CompletedTask;
+
+    /// <summary>
+    /// As exclusões acontecem depois que o banco já foi salvo: se o arquivo não puder ser apagado
+    /// (ex.: o bucket fora do ar), fica um arquivo órfão e o motivo vai para o log, sem derrubar a requisição.
+    /// </summary>
+    private async Task TentarExcluirAsync(string chave, Func<Task> excluir)
+    {
+        try
+        {
+            await excluir();
+        }
+        catch (Exception ex)
+        {
+            registro.LogWarning(ex, "Não foi possível apagar {Chave} do armazenamento.", chave);
+        }
+    }
+
+    private static DestinoS3 CriarDestinoS3(IConfigurationSection s3)
+    {
+        string Obrigatorio(string chave) => Validacoes.TextoOpcional(s3[chave])
+            ?? throw new InvalidOperationException($"Com Armazenamento:Tipo = \"S3\", configure Armazenamento:S3:{chave}.");
+
+        return new DestinoS3(
+            Validacoes.TextoOpcional(s3["Endpoint"]),
+            Obrigatorio("Regiao"),
+            Obrigatorio("Bucket"),
+            Obrigatorio("ChaveAcesso"),
+            Obrigatorio("ChaveSecreta"));
     }
 
     [GeneratedRegex(@"^[0-9a-f]{32}\.(jpg|png|gif|webp)$")]

@@ -3,8 +3,9 @@ import { limparSessao, obterToken } from './sessao'
 /**
  * Endereço da API. Em desenvolvimento fica vazio: o Vite repassa "/api" para
  * o backend (ver vite.config.ts). Em produção, defina VITE_API_URL.
+ * A barra do fim é tirada, para o endereço não ficar com barra dupla ("//api") se a variável vier com barra.
  */
-const URL_API = import.meta.env.VITE_API_URL ?? ''
+const URL_API = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
 
 /** Endereço completo de um caminho da API, para usar fora do fetch (ex.: <img src> das fotos do mural). */
 export const urlApi = (caminho: string) => `${URL_API}${caminho}`

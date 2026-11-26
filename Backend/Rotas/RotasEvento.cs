@@ -95,13 +95,14 @@ public static class RotasEvento
         return ParaHttp(resultado, acesso => Results.Ok(ParaResposta(acesso)));
     }
 
-    private static IResult BaixarBanner(int eventoId, string arquivo, ArmazenamentoArquivos armazenamento)
-    {
-        if (armazenamento.AbrirBanner(eventoId, arquivo) is not { } banner)
-            return Results.NotFound(new { mensagem = "Imagem não encontrada." });
-
-        return Results.File(banner.Caminho, banner.TipoConteudo);
-    }
+    private static async Task<IResult> BaixarBanner(int eventoId, string arquivo, ArmazenamentoArquivos armazenamento) =>
+        await armazenamento.AbrirBannerAsync(eventoId, arquivo) switch
+        {
+            ImagemGuardada.EmDisco disco => Results.File(disco.Caminho, ArmazenamentoArquivos.TipoConteudo(arquivo)),
+            // Bucket privado: manda o navegador para um link assinado e temporário
+            ImagemGuardada.LinkTemporario link => Results.Redirect(link.Url),
+            _ => Results.NotFound(new { mensagem = "Imagem não encontrada." }),
+        };
 
     /// <summary>Usado também pelas rotas de convite, que devolvem o evento em que a pessoa entrou.</summary>
     internal static EventoResposta ParaResposta(AcessoEvento acesso)

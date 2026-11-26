@@ -1,0 +1,11 @@
+# Não vai para a imagem: saídas de compilação, arquivos locais e configurações com segredos de desenvolvimento
+bin/
+obj/
+Uploads/
+EmailsEnviados/
+appsettings.Development.json
+appsettings.Local.json
+*.user
+Backend.http
+Dockerfile
+.dockerignore

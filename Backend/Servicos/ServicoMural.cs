@@ -124,7 +124,7 @@ public class ServicoMural(ContextoBanco banco, ArmazenamentoArquivos armazenamen
 
         banco.FotosMural.Remove(foto);
         await banco.SaveChangesAsync();
-        armazenamento.ExcluirFotoMural(eventoId, foto.Arquivo);
+        await armazenamento.ExcluirFotoMuralAsync(eventoId, foto.Arquivo);
         return Resultado<bool>.Ok(true);
     }
 

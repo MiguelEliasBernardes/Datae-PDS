@@ -56,13 +56,14 @@ public static class RotasMural
         return ParaHttp(resultado, _ => Results.NoContent());
     }
 
-    private static IResult BaixarArquivo(int eventoId, string arquivo, ArmazenamentoArquivos armazenamento)
-    {
-        if (armazenamento.AbrirFotoMural(eventoId, arquivo) is not { } foto)
-            return Results.NotFound(new { mensagem = "Foto não encontrada." });
-
-        return Results.File(foto.Caminho, foto.TipoConteudo);
-    }
+    private static async Task<IResult> BaixarArquivo(int eventoId, string arquivo, ArmazenamentoArquivos armazenamento) =>
+        await armazenamento.AbrirFotoMuralAsync(eventoId, arquivo) switch
+        {
+            ImagemGuardada.EmDisco disco => Results.File(disco.Caminho, ArmazenamentoArquivos.TipoConteudo(arquivo)),
+            // Bucket privado: manda o navegador para um link assinado e temporário
+            ImagemGuardada.LinkTemporario link => Results.Redirect(link.Url),
+            _ => Results.NotFound(new { mensagem = "Foto não encontrada." }),
+        };
 
     private static FotoResposta ParaResposta(FotoMural foto) => new(
         foto.Id,

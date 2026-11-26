@@ -6,6 +6,7 @@ using Backend.Modelos;
 using Backend.Rotas;
 using Backend.Servicos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -18,9 +19,20 @@ builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, relo
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// Banco de dados (PostgreSQL)
-builder.Services.AddDbContext<ContextoBanco>(opcoes =>
-    opcoes.UseNpgsql(builder.Configuration.GetConnectionString("Padrao")));
+// Banco de dados (PostgreSQL). Aceita o formato do Npgsql ("Host=...;Database=...") e também o endereço
+// que a Render entrega ("postgresql://usuario:senha@host/banco")
+var conexaoBanco = TextoConexao.ParaNpgsql(builder.Configuration.GetConnectionString("Padrao"));
+builder.Services.AddDbContext<ContextoBanco>(opcoes => opcoes.UseNpgsql(conexaoBanco));
+
+// Atrás do proxy da hospedagem (Render), o IP de quem acessa e o "https" chegam nos cabeçalhos X-Forwarded-*.
+// Sem isso, o limite de requisições por IP valeria para todos juntos (o IP seria o do proxy)
+// e o redirecionamento para https entraria em loop. Só o último proxy da cadeia (o da hospedagem) é considerado
+builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
+{
+    opcoes.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    opcoes.KnownIPNetworks.Clear();
+    opcoes.KnownProxies.Clear();
+});
 
 // Autenticação com JWT
 var secaoJwt = builder.Configuration.GetSection("Jwt");
@@ -99,6 +111,10 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
+    // Fora do desenvolvimento a API roda atrás do proxy da hospedagem (ver ForwardedHeadersOptions acima).
+    // Em desenvolvimento não: um cliente poderia mandar um X-Forwarded-For falso para fugir do limite por IP
+    app.UseForwardedHeaders();
+
     // Em desenvolvimento o frontend chama a API por http (proxy do Vite);
     // o redirecionamento para https quebraria essas chamadas
     app.UseHttpsRedirection();
@@ -121,5 +137,8 @@ app.MapearRotasAssistente();
 app.MapearRotasPix();
 app.MapearRotasOrganizacao();
 app.MapearRotasPublicas();
+
+// Usada pela hospedagem para saber se a API subiu
+app.MapGet("/api/saude", () => Results.Ok(new { status = "ok" })).WithTags("Saúde");
 
 app.Run();
