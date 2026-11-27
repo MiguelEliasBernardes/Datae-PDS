@@ -31,3 +31,6 @@ Desktop.ini
 !.vscode/extensions.json
 
 # O frontend tem seu próprio .gitignore em frontend/.gitignore
+
+# Guia de publicação (fica só na máquina local)
+docs/PUBLICACAO.md
